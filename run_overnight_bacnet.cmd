@@ -1,3 +1,3 @@
 @echo off
 cd /d C:\Users\ben\OneDrive\Desktop\testing\automated_testing
-python 3_long_term_bacnet_scrape_test.py --api-url http://192.168.204.16:8000 --frontend-url http://192.168.204.16 --once --check-faults >> overnight_bacnet.log 2>&1
+python automated_suite.py --api-url http://192.168.204.16:8000 --frontend-url http://192.168.204.16 --bacnet-devices 3456789 3456790 --long-run-check-faults >> overnight_bacnet.log 2>&1
