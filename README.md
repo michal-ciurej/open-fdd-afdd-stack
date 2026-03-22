@@ -72,8 +72,10 @@ The goal is not just to run scripts. The goal is to create **defensible evidence
 
 - fake BACnet devices with deterministic fault schedules
 - BACnet scraping validation against known bad-good windows
+- BACnet graph/addressing validation through SPARQL and API checks
 - YAML rule hot-reload checks
 - proof that faults are computed and surfaced by Open-FDD as expected
+- future-facing context for optimization and supervisory logic based on equipment semantics
 
 ---
 
@@ -229,3 +231,5 @@ Current emphasis:
 ## License
 
 This project is licensed under the **MIT License**. See [LICENSE](LICENSE).
+ensed under the **MIT License**. See [LICENSE](LICENSE).
+License**. See [LICENSE](LICENSE).
