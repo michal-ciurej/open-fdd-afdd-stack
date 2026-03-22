@@ -68,3 +68,4 @@ The goal is simple:
 - make it visible to humans
 - make it reusable by future agents
 - reduce dependence on tribal knowledge
+- keep the tooling portable enough to run from other machines against other Open-FDD servers

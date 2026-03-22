@@ -19,6 +19,9 @@ This repo should be portable to another lab, another workstation, or another Ope
 - BACnet gateway hostnames or IPs
 - active Open-FDD rules directory
 - Docker/container naming
+- LAN / OT network topology
+- the actual HVAC system, naming conventions, and semantic model shape
+- SPARQL queries or filters needed for that environment
 
 ## Portability goal
 
@@ -33,3 +36,15 @@ A clone of this repo should make it easy for another engineer to answer:
 ## Engineering principle
 
 Keep environment-specific values configurable and keep the verification logic reusable.
+-FDD runs on some other server (often a Linux box on the OT LAN)
+- the testing/tooling repo is cloned onto another machine
+- the tooling is pointed at the target Open-FDD URL, auth, BACnet gateway, and rule/model context for that environment
+
+The tooling should therefore be robust to:
+- different LAN IP schemes
+- different Open-FDD hosts
+- different HVAC systems and point naming
+- different site/equipment modeling shapes
+- different SPARQL needs per deployment
+
+The goal is portability with context, not a one-off lab setup.
