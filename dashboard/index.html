@@ -26,7 +26,13 @@
     .grid { display: grid; gap: 16px; }
     .top { grid-template-columns: 1.2fr .8fr; }
     .two { grid-template-columns: 1fr 1fr; }
-    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.22); }
+    .card { position: relative; background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.22); overflow: hidden; }
+    .card:fullscreen { padding: 24px; border-radius: 0; width: 100vw; height: 100vh; box-sizing: border-box; background: var(--panel); }
+    .card:fullscreen .logbox { max-height: calc(100vh - 180px); }
+    .card:fullscreen canvas { height: min(70vh, 540px); }
+    .card-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; z-index: 5; }
+    .card-btn { border: 1px solid var(--border); background: rgba(255,255,255,.04); color: var(--text); border-radius: 10px; font-size: 12px; padding: 6px 10px; cursor: pointer; }
+    .card-btn:hover { background: rgba(255,255,255,.09); }
     .badge { display:inline-block; padding:6px 10px; border-radius:999px; background:#13264f; color:var(--accent2); font-size:12px; margin-right:8px; }
     .small { font-size: 13px; color: var(--muted); }
     ul { margin: 10px 0 0 20px; }
@@ -57,7 +63,8 @@
 <body>
   <div class="wrap">
     <div class="grid top">
-      <section class="card">
+      <section class="card" data-card-title="Dashboard Summary">
+        <div class="card-actions"><button class="card-btn" data-fullscreen>⛶ Fullscreen</button><button class="card-btn" data-download>⬇ PNG</button></div>
         <span class="badge">last 24 hours</span>
         <span class="badge">7-day view</span>
         <h1>Open-FDD Testing Progress Dashboard</h1>
@@ -68,14 +75,16 @@
           <div class="metric"><div id="m-bacnet" class="n">–</div><div class="k">Raw BACnet RPC requests</div></div>
         </div>
       </section>
-      <section class="card">
+      <section class="card" data-card-title="Tracked GitHub Work">
+        <div class="card-actions"><button class="card-btn" data-fullscreen>⛶ Fullscreen</button><button class="card-btn" data-download>⬇ PNG</button></div>
         <h2>Tracked GitHub work</h2>
         <div id="github"></div>
       </section>
     </div>
 
     <div class="grid two" style="margin-top:16px;">
-      <section class="card">
+      <section class="card" data-card-title="7-day Activity Series">
+        <div class="card-actions"><button class="card-btn" data-fullscreen>⛶ Fullscreen</button><button class="card-btn" data-download>⬇ PNG</button></div>
         <h2>7-day activity series</h2>
         <p class="small" id="series-note"></p>
         <div class="chart-wrap"><canvas id="chart" width="800" height="260"></canvas></div>
@@ -87,29 +96,34 @@
           <span class="l5">Context window relapse</span>
         </div>
       </section>
-      <section class="card">
+      <section class="card" data-card-title="Recent Logs">
+        <div class="card-actions"><button class="card-btn" data-fullscreen>⛶ Fullscreen</button><button class="card-btn" data-download>⬇ PNG</button></div>
         <h2>Recent logs</h2>
         <div id="logs" class="logbox"></div>
       </section>
     </div>
 
     <div class="grid two" style="margin-top:16px;">
-      <section class="card">
+      <section class="card" data-card-title="Progress Timeline">
+        <div class="card-actions"><button class="card-btn" data-fullscreen>⛶ Fullscreen</button><button class="card-btn" data-download>⬇ PNG</button></div>
         <h2>Progress timeline</h2>
         <div id="timeline"></div>
       </section>
-      <section class="card">
+      <section class="card" data-card-title="Recent Pushed Commits">
+        <div class="card-actions"><button class="card-btn" data-fullscreen>⛶ Fullscreen</button><button class="card-btn" data-download>⬇ PNG</button></div>
         <h2>Recent pushed commits</h2>
         <div id="commits"></div>
       </section>
     </div>
 
     <div class="grid two" style="margin-top:16px;">
-      <section class="card">
+      <section class="card" data-card-title="Key Findings">
+        <div class="card-actions"><button class="card-btn" data-fullscreen>⛶ Fullscreen</button><button class="card-btn" data-download>⬇ PNG</button></div>
         <h2>Key findings</h2>
         <ul id="findings"></ul>
       </section>
-      <section class="card">
+      <section class="card" data-card-title="Next Steps">
+        <div class="card-actions"><button class="card-btn" data-fullscreen>⛶ Fullscreen</button><button class="card-btn" data-download>⬇ PNG</button></div>
         <h2>Next steps</h2>
         <ul id="next"></ul>
       </section>
@@ -153,6 +167,66 @@
       });
     }
 
+    function escapeXml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+    }
+
+    function downloadCard(card) {
+      const title = card.dataset.cardTitle || 'dashboard-card';
+      const text = card.innerText.trim().split('\n').map(line => line.trim()).filter(Boolean);
+      const width = 1400;
+      const lineHeight = 30;
+      const padding = 40;
+      const usableChars = 78;
+      const wrapped = [];
+      text.forEach(line => {
+        const parts = line.match(new RegExp(`.{1,${usableChars}}`, 'g')) || [''];
+        parts.forEach(p => wrapped.push(p));
+      });
+      const height = Math.max(500, padding * 2 + wrapped.length * lineHeight + 40);
+      const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+  <rect width="100%" height="100%" rx="24" ry="24" fill="#121933"/>
+  <rect x="8" y="8" width="${width-16}" height="${height-16}" rx="20" ry="20" fill="none" stroke="#233055"/>
+  <text x="${padding}" y="${padding}" fill="#e8eefc" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700">${escapeXml(title)}</text>
+  ${wrapped.map((line, i) => `<text x="${padding}" y="${padding + 50 + i*lineHeight}" fill="#d9e4ff" font-family="Segoe UI, Arial, sans-serif" font-size="20">${escapeXml(line)}</text>`).join('')}
+</svg>`;
+      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.png';
+        a.click();
+      };
+      img.src = url;
+    }
+
+    function bindCardActions() {
+      document.querySelectorAll('[data-fullscreen]').forEach(btn => {
+        btn.onclick = async () => {
+          const card = btn.closest('.card');
+          if (!document.fullscreenElement) await card.requestFullscreen();
+          else await document.exitFullscreen();
+        };
+      });
+      document.querySelectorAll('[data-download]').forEach(btn => {
+        btn.onclick = () => downloadCard(btn.closest('.card'));
+      });
+    }
+
     async function load() {
       const res = await fetch('./progress.json?_=' + Date.now());
       const data = await res.json();
@@ -188,6 +262,7 @@
       document.getElementById('commits').innerHTML = data.recent_commits.map(c => `<p><span class="commit">${c.sha}</span> — ${c.message}<br><span class="small">${c.time}</span></p>`).join('');
       document.getElementById('findings').innerHTML = data.key_findings.map(x => `<li>${x}</li>`).join('');
       document.getElementById('next').innerHTML = data.next_steps.map(x => `<li>${x}</li>`).join('');
+      bindCardActions();
     }
     load();
   </script>
