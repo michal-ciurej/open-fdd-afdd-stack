@@ -21,7 +21,7 @@
       --line5: #c7a6ff;
     }
     body { margin: 0; font-family: Inter, Segoe UI, Arial, sans-serif; background: var(--bg); color: var(--text); }
-    .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .wrap { width: min(96vw, 1600px); max-width: none; margin: 0 auto; padding: 20px; box-sizing: border-box; }
     h1,h2,h3 { margin: 0 0 10px; }
     p { color: var(--muted); }
     .grid { display: grid; gap: 16px; }
@@ -194,6 +194,7 @@
         const layout = JSON.parse(raw);
         GRID_IDS.forEach(id => {
           const grid = document.getElementById(id);
+          if (!grid) return;
           const ids = layout[id] || [];
           ids.forEach(cardId => {
             const card = document.getElementById(cardId);
