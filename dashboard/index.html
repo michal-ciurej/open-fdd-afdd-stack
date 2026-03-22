@@ -164,7 +164,7 @@
         <h2>Key findings</h2>
         <ul id="findings"></ul>
       </section>
-      <section class="card" data-card-title="Next Steps">
+      <section class="card" id="card-next" data-card-title="Next Steps">
         <div class="card-actions"><button class="card-btn" data-fullscreen>⛶ Fullscreen</button><button class="card-btn" data-download>⬇ PNG</button></div>
         <h2>Next steps</h2>
         <ul id="next"></ul>
@@ -206,6 +206,7 @@
     function enableDragLayout() {
       GRID_IDS.forEach(id => {
         const el = document.getElementById(id);
+        if (!el || typeof Sortable === 'undefined') return;
         Sortable.create(el, {
           group: 'dashboard-cards',
           animation: 180,
