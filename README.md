@@ -1,5 +1,7 @@
 # Open-FDD Automated Testing
 
+![Open-FDD automated testing dashboard](docs/images/dashboard_snip.png)
+
 ## Core validation layers
 
 ### 1. Frontend and API regression testing
