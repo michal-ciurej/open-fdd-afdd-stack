@@ -4,7 +4,7 @@
 >
 > Getting started note: [OpenClaw setup with ChatGPT subscription / Codex OAuth (not API key)](docs/howto/openclaw_subscription_setup.md)
 
-![Open-FDD automated testing dashboard](docs/images/dashboard_snip.png)
+![Open-FDD automated testing dashboard](docs/images/dashboard_snip.png)`r`n`r`n> **Tagline:** Same tools, any building — only the knowledge graph changes.
 
 ## Purpose
 
@@ -123,3 +123,4 @@ That means:
 ## License
 
 This project is licensed under the **MIT License**. See [LICENSE](LICENSE).
+
