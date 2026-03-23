@@ -35,8 +35,14 @@ def main() -> int:
     parser.add_argument("--long-run-check-faults", action="store_true", help="Enable fault schedule verification in the long-run test")
     parser.add_argument("--long-run-config-via-frontend", action="store_true", help="Have the long-run test adjust config via the frontend instead of API")
     parser.add_argument("--long-run-short-day", action="store_true", help="Run the BACnet scrape test in a daytime short profile (<2h) instead of the full ~3h once pass")
+    parser.add_argument("--daytime-smoke", action="store_true", help="Run the recommended daytime smoke profile: E2E + SPARQL parity + short BACnet/FDD pass + hot reload")
     parser.add_argument("--hot-reload-frontend-check", action="store_true", help="Run the optional /faults UI smoke check in the hot-reload script")
     args = parser.parse_args()
+
+    if args.daytime_smoke:
+        args.long_run_check_faults = True
+        args.long_run_short_day = True
+        args.hot_reload_frontend_check = True
 
     python = sys.executable
 

@@ -158,9 +158,14 @@ def _load_env_file(path: str) -> None:
 
 def _load_stack_env() -> None:
     repo_root = SCRIPT_DIR.parent.parent
-    _load_env_file(str(repo_root / "stack" / ".env"))
-    _load_env_file(os.path.join(os.getcwd(), ".env"))
-    _load_env_file(str(SCRIPT_DIR / ".env"))
+    candidate_envs = [
+        repo_root / "stack" / ".env",
+        Path(os.getcwd()) / ".env",
+        SCRIPT_DIR / ".env",
+        Path(r"C:\Users\ben\.openclaw\workspace\open-fdd\stack\.env"),
+    ]
+    for env_path in candidate_envs:
+        _load_env_file(str(env_path))
 
 
 _load_stack_env()
