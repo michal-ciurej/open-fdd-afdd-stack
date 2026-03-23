@@ -623,6 +623,19 @@ The OpenClaw workflow should continuously watch active PRs in the same spirit as
 See `docs/appendix/ai_pr_review_playbook.md`.
 
 
+### Daytime short-run counterpart
+
+The overnight suite should have a daytime counterpart that exercises the same major paths without taking the full 12-hour window.
+
+Current recommended shape:
+- keep E2E, SPARQL/frontend parity, hot-reload, and BACnet/FDD checks
+- use a shorter BACnet scrape profile that stays under 2 hours total
+- use this as a daytime confidence pass before the real overnight run
+
+Example:
+- `python automated_suite.py --api-url http://HOST:8000 --frontend-url http://HOST --long-run-check-faults --long-run-short-day`
+- or `run_daytime_short_suite.cmd` on the current bench
+
 ### 1. Restore authenticated backend graph checks
 
 Problem:
