@@ -394,16 +394,29 @@ It returns:
 
 That is a strong starting point for proving that BACnet addressing is present in the graph and matched to polling points.
 
-## Current live-environment status (2026-03-22)
+## Current live-environment status
+
+### 2026-03-22 snapshot
 
 Attempted live Open-FDD API query:
 - `POST http://192.168.204.16:8000/data-model/sparql`
 - Result: `401 Missing or invalid Authorization header`
 
-Meaning:
+Meaning at that time:
 - the live query path exists
-- this machine currently does not have the correct `OFDD_API_KEY` available for backend SPARQL access
-- the right next step is to load the same auth secret used by the Open-FDD stack so graph validation can run non-interactively
+- this machine did not yet have the correct `OFDD_API_KEY` available for backend SPARQL access
+- the right next step was to load the same auth secret used by the Open-FDD stack so graph validation could run non-interactively
+
+### 2026-03-24 snapshot
+
+Authenticated backend access is now working again from the bench context.
+
+Observed behavior worth preserving for future clones:
+- `GET /data-model/check` succeeded and reported live graph metadata
+- `POST /data-model/sparql` succeeded with the same bench auth context
+- the current backend response shape was the simplified form `{"bindings": [...]}` rather than strict SPARQL JSON `{"results": {"bindings": [...]}}`
+
+That response-shape detail matters because a test script can falsely conclude that the graph is empty if it only looks for `results.bindings`.
 
 ## BACnet scraper / DIY gateway context
 
@@ -506,6 +519,18 @@ The overnight process should increasingly automate the following:
 - identify which YAML rules are most relevant to the current fake faults
 - compare Open-FDD fault outputs to expected rule behavior
 - write a durable report for the morning review
+
+## Important interpretation rule for the current fake bench
+
+Do not treat an out-of-bounds spike like `180.0` on `SA-T`, `RA-T`, `MA-T`, or `ZoneTemp` as an automatic product bug.
+
+On this bench that value is intentionally injected by the fake devices during the UTC out-of-bounds window defined in `fake_bacnet_devices/fault_schedule.py`.
+
+The right question is not simply:
+- "did a spike happen?"
+
+The right question is:
+- "did the spike happen in the scheduled UTC window, and did Open-FDD surface the expected `bad_sensor_flag` over the expected rolling window?"
 
 ## Minimum overnight report contents
 
@@ -709,17 +734,25 @@ Example:
 - `python automated_suite.py --api-url http://HOST:8000 --frontend-url http://HOST --long-run-check-faults --long-run-short-day`
 - or `run_daytime_short_suite.cmd` on the current bench
 
-### 1. Restore authenticated backend graph checks
+### 1. Keep authenticated backend graph checks healthy
 
-Problem:
-- `POST /data-model/sparql` currently returns `401 Missing or invalid Authorization header` from this test bench.
+Latest status:
+- direct authenticated backend access has been restored on the current bench context
+- `GET /data-model/check` and authenticated `POST /data-model/sparql` are now working again
+
+Ongoing risk:
+- auth still depends on the real launch context, not just a remembered file location
+- future overnight runs can regress back into auth/config drift if the automated-testing shell or Python context loses `OFDD_API_KEY`
+- the current `/data-model/sparql` response shape is `{"bindings": [...]}` in this environment, so tooling should not assume strict SPARQL JSON `results.bindings`
 
 Action:
-- ensure `OFDD_API_KEY` is available to the automated testing environment
-- verify the SPARQL suite and parity suite can run unattended
+- keep verifying that `OFDD_API_KEY` is available to the actual automated testing environment before overnight runs
+- make SPARQL-parsing code tolerant to both `bindings` and `results.bindings`
+- keep treating backend auth failure as a pre-overnight readiness issue, not a product regression by default
 
 Why it matters:
 - without authenticated SPARQL/API access, BACnet graph validation is incomplete
+- without response-shape tolerance, a healthy graph can be misclassified as empty
 
 ### 2. Promote BACnet addressing to a first-class validation target
 
@@ -943,6 +976,12 @@ So the sweep should focus on:
 - expected device presence
 - whether the bench is trustworthy enough for the next overnight window
 
+One subtle but important rule on this bench:
+- a raw 180°F spike on a scheduled fake-device point is not automatically abnormal
+- first compare it to the shared UTC schedule in `fake_bacnet_devices/fault_schedule.py`
+- use `scripts/monitor_fake_fault_schedule.py` when possible so the sweep can distinguish expected fault injection from unscheduled drift
+- if 180°F appears **outside** the scheduled bounds window, classify that as a meaningful anomaly
+
 ### Future live HVAC mode
 If later used on a real HVAC system, add lightweight common-sense HVAC sanity checks.
 
@@ -1102,6 +1141,25 @@ The dashboard should reflect:
 - HVAC sanity summary
 - representative live sensor reads
 - action plan and findings
+
+### 9) Fake-device fault schedule context must be explicit
+On the current test bench, the fake BACnet devices intentionally inject deterministic faults.
+
+Important durable facts:
+- the shared schedule lives in `fake_bacnet_devices/fault_schedule.py`
+- schedule basis is **UTC minute-of-hour**, not process start time
+- UTC minutes `10-49` are the flatline window
+- UTC minutes `50-54` are the out-of-bounds window
+- the out-of-bounds marker is intentionally `180.0` on scheduled points
+
+That means a 180°F spike on points like `SA-T` or `ZoneTemp` is not automatically a product bug.
+The right next step is to compare:
+- current UTC minute
+- expected schedule mode from `fault_schedule.py`
+- live BACnet RPC reads
+- Open-FDD fault outputs and rolling-window expectations
+
+Future clones should use `scripts/monitor_fake_fault_schedule.py` instead of treating a raw spike as mysterious.
 
 ## Recommended backup discipline
 
@@ -1484,6 +1542,24 @@ Use this order on a fresh site:
 - fix auth/model/BACnet issues found there before trusting the overnight 12-hour run
 - only then move into recurring integrity sweeps and overnight review
 
+## Same-bench OpenClaw clone checklist
+
+If OpenClaw is cloned onto another machine for the **same current test bench**, the new clone should read these first:
+
+1. `README.md`
+2. `docs/operations/openclaw_context_bootstrap.md`
+3. `docs/operations/openfdd_integrity_sweep.md`
+4. `docs/bacnet/fault_verification.md`
+5. `fake_bacnet_devices/README.md`
+6. `docs/howto/fake_fault_schedule_monitoring.md`
+
+And it should know these durable facts immediately:
+- the fake devices intentionally inject faults on a **UTC** schedule
+- the 180°F spike is expected only during the shared out-of-bounds window
+- the correct way to judge that spike is to compare live BACnet RPC reads against `fake_bacnet_devices/fault_schedule.py`
+- the integrity sweep should classify graph drift, auth drift, BACnet drift, and product behavior separately
+- durable reasoning belongs in this repo, not only in local OpenClaw chat memory
+
 ## Portability goal
 
 A clone of this repo should make it easy for another engineer to answer:
@@ -1731,6 +1807,114 @@ They should be written into durable repo notes when appropriate, with secrets ha
 This was learned through actual setup/debugging and should not live only in chat history. It is the kind of practical onboarding/context that future humans and agents will need again.
 
 
+# Monitor the fake fault schedule
+
+# Monitor the fake fault schedule
+
+This page explains the right way to interpret spikes from the Open-FDD fake BACnet bench.
+
+## Why this matters
+
+On this bench, a value like **SA-T = 180°F** is not automatically a product bug.
+
+The fake BACnet devices intentionally inject deterministic faults so Open-FDD can be verified end to end.
+That behavior lives in:
+
+- `fake_bacnet_devices/fault_schedule.py`
+- `fake_bacnet_devices/fake_ahu_faults.py`
+- `fake_bacnet_devices/fake_vav_faults.py`
+
+## The shared UTC fault schedule
+
+The fake AHU and fake VAV both follow the same repeating **UTC minute-of-hour** schedule:
+
+| Minute (UTC) | Mode | Expected behavior |
+|---|---|---|
+| 0-9 | normal | scheduled points should stay in their rough normal band |
+| 10-49 | flatline | scheduled points should hold constant |
+| 50-54 | bounds | scheduled points should jump to **180.0°F** |
+| 55-59 | normal | scheduled points should return to normal variability |
+
+### Scheduled points
+
+The current fake devices intentionally schedule faults on these points:
+
+- fake AHU: `SA-T`, `RA-T`, `MA-T`
+- fake VAV: `ZoneTemp`
+
+That means the 180°F spike should be treated as:
+- **expected bench behavior** during UTC minutes **50-54**
+- **unexpected drift or misalignment** outside that window
+
+## Recommended monitor
+
+Use the repo helper:
+
+```bash
+python scripts/monitor_fake_fault_schedule.py
+```
+
+What it does:
+- loads the same `fault_schedule.py` module used by the fake devices
+- determines the current expected mode from UTC minute-of-hour
+- reads the scheduled BACnet points directly through the DIY BACnet JSON-RPC API
+- explains whether the observed values match the expected schedule
+
+### Example output
+
+```text
+UTC time: 2026-03-24T12:52:10+00:00
+Scheduled mode: bounds (minute 52 UTC)
+Expected windows: normal 0-9, flatline 10-49, bounds 50-54, normal 55-59
+- SA-T: PASS value=180.000 | matches scheduled bounds value 180.0 F
+- RA-T: PASS value=180.000 | matches scheduled bounds value 180.0 F
+- MA-T: PASS value=180.000 | matches scheduled bounds value 180.0 F
+- ZoneTemp: PASS value=180.000 | matches scheduled bounds value 180.0 F
+```
+
+## How to reason about anomalies
+
+### Case 1: 180°F during UTC minutes 50-54
+Treat this as **expected testbench fault injection**, not an unexpected product failure.
+
+Next question:
+- did Open-FDD surface the expected `bad_sensor_flag` in the corresponding fault window?
+
+### Case 2: 180°F outside UTC minutes 50-54
+Treat this as a likely anomaly in one of:
+- fake-device schedule alignment
+- fake-device runtime state
+- testbench orchestration / timebase drift
+- Open-FDD ingest lag or stale-value behavior
+
+### Case 3: flatline window but value keeps changing
+During UTC minutes 10-49, scheduled points should stop moving.
+If they do not, that points more toward:
+- fake-device scheduling drift
+- device restart / process interruption
+- wrong host timezone / no UTC alignment on the Pi
+
+## How this connects to Open-FDD verification
+
+The better verification chain is:
+1. use this monitor to confirm the fake BACnet source state
+2. use SPARQL to confirm the points are modeled and addressable
+3. use Open-FDD fault APIs or frontend fault views to verify the expected fault flags
+4. compare the observed fault windows against `fault_schedule.py`
+
+That is much stronger than treating a single spike as mysterious.
+
+## Clone note
+
+If OpenClaw is cloned onto another machine on the same bench, this page plus:
+- `fake_bacnet_devices/README.md`
+- `docs/bacnet/fault_verification.md`
+- `docs/operations/openclaw_context_bootstrap.md`
+- `scripts/monitor_fake_fault_schedule.py`
+
+should be enough to explain why the 180°F spike exists and how to monitor it correctly.
+
+
 # How-to guides
 
 # How-to guides
@@ -1739,6 +1923,7 @@ These pages explain setup and portability tasks.
 
 - [Cloning and porting](cloning_and_porting)
 - [OpenClaw subscription setup](openclaw_subscription_setup)
+- [Monitor the fake fault schedule](fake_fault_schedule_monitoring)
 
 
 # AI PR review playbook
@@ -1877,5 +2062,135 @@ That does **not** mean the PR is broken, but it does mean local backend verifica
 Reference material and supporting playbooks.
 
 - [AI PR review playbook](ai_pr_review_playbook)
+- [Issue draft - graph drift after overnight fake-device activity](issue-draft-openfdd-graph-drift-2026-03-24)
+- [Issue draft - SPARQL parity mismatch on count-oriented queries](issue-draft-openfdd-parity-2026-03-24)
+
+
+# Issue draft - graph drift after overnight fake-device activity
+
+# Issue draft - graph drift after overnight fake-device activity
+
+Repo target: `bbartling/open-fdd`
+
+## Proposed title
+
+Graph triple count and orphan blank nodes grow during post-overnight bench sweeps while BACnet/auth remain healthy
+
+## Summary
+
+On the Open-FDD test bench, authenticated backend checks and BACnet RPC reads remained healthy after the overnight run, but repeated daytime integrity sweeps showed continuing growth in:
+
+- `triple_count`
+- `orphan_blank_nodes`
+
+from `GET /data-model/check`.
+
+This looks like graph hygiene drift or repeated residual graph writes rather than an auth failure or BACnet outage.
+
+## Observed evidence
+
+Authenticated `GET /data-model/check` snapshots on 2026-03-24:
+
+- ~06:11 CDT: `triple_count=92339`, `orphan_blank_nodes=23324`
+- ~06:31 CDT: `triple_count=93881`, `orphan_blank_nodes=23726`
+- ~06:51 CDT: `triple_count=95166`, `orphan_blank_nodes=24061`
+- ~07:11 CDT: `triple_count=96194`, `orphan_blank_nodes=24329`
+- ~07:31 CDT: `triple_count=97479`, `orphan_blank_nodes=24664`
+
+At the same time:
+- backend auth worked
+- BACnet RPC reads worked
+- model-derived BACnet addressing remained present
+
+## Why this looks product-level
+
+The drift persisted across multiple sweeps even when:
+- auth was healthy
+- BACnet transport was healthy
+- the test bench remained reachable
+
+That makes this look less like launch-context drift and more like backend graph cleanup / write-path behavior.
+
+## Possible hypotheses
+
+- repeated BACnet discovery merges are leaving residual blank nodes
+- post-discovery graph sync is appending instead of replacing some address-related structures
+- count-oriented SPARQL parity mismatches may be downstream symptoms of the same graph-hygiene problem
+
+## Repro direction
+
+1. Start from a clean graph on the fake-device bench.
+2. Import the test site and run BACnet discovery for fake devices `3456789` and `3456790`.
+3. Leave the bench running overnight or re-run the same discovery / scrape workflow.
+4. Poll `GET /data-model/check` periodically.
+5. Observe whether triple count and orphan blank nodes grow steadily without corresponding intentional model expansion.
+
+## Expected behavior
+
+Counts may change during a real import/discovery event, but they should not keep drifting upward indefinitely on a stable fake bench without a clear reason.
+
+## Actual behavior
+
+Counts kept increasing across post-overnight sweeps while the bench otherwise stayed healthy.
+
+
+# Issue draft - SPARQL parity mismatch on count-oriented queries
+
+# Issue draft - SPARQL parity mismatch on count-oriented queries
+
+Repo target: `bbartling/open-fdd`
+
+## Proposed title
+
+Data Model Testing frontend/API parity still diverges on count-oriented SPARQL queries even after auth is healthy
+
+## Summary
+
+The overnight bench run showed a real frontend/API parity failure in the SPARQL/Data Model Testing flow.
+
+Some earlier failures were inflated by intermittent backend auth drift, but even after auth was restored the parity suite still reported a smaller set of repeatable mismatches on count-oriented queries.
+
+## Main affected queries seen in overnight evidence
+
+- `07_count_triples.sparql`
+- `23_orphan_external_references.sparql`
+
+## Why this issue should stay separate from auth drift
+
+The overnight log contained two layers of failure:
+
+1. early parity API re-fetch failures caused by `401 Missing or invalid Authorization header`
+2. later parity mismatches that still remained after authenticated backend access was healthy again
+
+This issue draft is about the second layer only.
+
+## Overnight evidence summary
+
+- Selenium passed
+- BACnet discovery passed for fake devices `3456789` and `3456790`
+- SPARQL CRUD + frontend parity still failed with exit code 1
+- count-style queries showed API vs frontend result differences even in the healthier later run
+
+## Repro direction
+
+1. Run the bench with healthy backend auth for the full parity run.
+2. Execute:
+   - `2_sparql_crud_and_frontend_test.py --api-url ... --frontend-url ... --frontend-parity`
+3. Focus on:
+   - `07_count_triples.sparql`
+   - `23_orphan_external_references.sparql`
+4. Compare API/reference bindings vs frontend file-upload and textarea results.
+
+## Expected behavior
+
+Frontend query execution should match the backend reference result for the same graph state.
+
+## Actual behavior
+
+The frontend path and backend reference path can diverge on count-sensitive queries, which undermines confidence in Data Model Testing parity.
+
+## Hypothesis
+
+This may be related to graph-state timing, stale frontend state, or the same graph-hygiene / orphan-node drift seen elsewhere on the bench.
 
 
