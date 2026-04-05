@@ -22,11 +22,12 @@ This repository is the **full on-prem AFDD platform**, which bootstraps entirely
 
 ## Documentation
 
-- 📖 [**Stack documentation**](https://bbartling.github.io/open-fdd-afdd-stack/) — Bootstrap, Docker Compose, API, drivers, React UI (this repo’s `docs/` on push).
-- 📘 [**Engine documentation**](https://bbartling.github.io/open-fdd/) — `RuleRunner`, rule YAML, pandas; source [bbartling/open-fdd](https://github.com/bbartling/open-fdd), package [`open-fdd` on PyPI](https://pypi.org/project/open-fdd/).
-- 📕 [**Documentation PDF**](https://github.com/bbartling/open-fdd/blob/master/pdf/open-fdd-docs.pdf) — Offline / Kindle-friendly. Regenerate from this repo with `python3 scripts/build_docs_pdf.py` → `pdf/open-fdd-docs.pdf`.
-- ✨ [**LLM prompt (copy/paste template)**](https://bbartling.github.io/open-fdd-afdd-stack/modeling/llm_workflow#copy-paste-prompt-template-recommended) — Export the data model (knowledge graph) as JSON, run an **external** LLM-assisted tagging workflow, then re-import; the API parses JSON on import.
-- 🤖 [**Open‑Claw / external agents**](https://bbartling.github.io/open-fdd-afdd-stack/openclaw_integration) — `GET /model-context/docs`, `GET /mcp/manifest`, data-model export/import for your own OpenAI-compatible stack.
+
+* 📖 **[Stack Docs](https://bbartling.github.io/open-fdd-afdd-stack/)** — bootstrap, Docker, API, drivers, React UI
+* 📘 **[Engine Docs](https://bbartling.github.io/open-fdd/)** — RuleRunner, YAML rules, pandas ([repo](https://github.com/bbartling/open-fdd), [`open-fdd` PyPI](https://pypi.org/project/open-fdd/))
+* 📕 **[PDF Docs](https://github.com/bbartling/open-fdd/blob/master/pdf/open-fdd-docs.pdf)** — offline build: `python3 scripts/build_docs_pdf.py`
+* ✨ **[LLM Workflow](https://bbartling.github.io/open-fdd-afdd-stack/modeling/llm_workflow#copy-paste-prompt-template-recommended)** — export → tag → import
+* 🤖 **[Open-Claw](https://bbartling.github.io/open-fdd-afdd-stack/openclaw_integration)** — model context, MCP, API workflows
 
 ---
 

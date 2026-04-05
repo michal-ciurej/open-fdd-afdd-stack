@@ -1,11 +1,15 @@
 ---
 title: Home
 nav_order: 1
+description: "Docker AFDD platform: bootstrap.sh, Compose, BACnet, TimescaleDB, React UI. Engine (PyPI) docs on bbartling.github.io/open-fdd."
 ---
 
 # Open-FDD AFDD stack
 
-> **Docs split:** This site (when published from **open-fdd-afdd-stack**) covers the **Docker platform**. The **`open-fdd`** Python engine (`RuleRunner`, rule YAML, column-map resolvers) is documented at **[bbartling.github.io/open-fdd](https://bbartling.github.io/open-fdd/)** ([source](https://github.com/bbartling/open-fdd)).
+> **Docs split:** This site (published from **open-fdd-afdd-stack**) is the **Docker platform**. The **`open-fdd`** engine (`RuleRunner`, rule YAML, column maps) is documented at **[bbartling.github.io/open-fdd](https://bbartling.github.io/open-fdd/)** ([repo](https://github.com/bbartling/open-fdd)).
+
+{: .fs-6 .fw-400 }
+**On-prem AFDD stack** — **`./scripts/bootstrap.sh`** brings up Compose services; the rules engine is **`open-fdd`** from **PyPI**. Brick/BACnet RDF, REST API, React dashboard, optional Grafana.
 
 Open-FDD is an open-source knowledge graph fault-detection platform for HVAC systems that helps facilities optimize their energy usage and cost-savings. Because it runs on-prem, facilities never have to worry about a vendor hiking prices, going dark, or walking away with their data. The platform is an AFDD stack designed to run inside the building, behind the firewall, under the owner’s control. It transforms operational data into actionable, cost-saving insights and provides a secure integration layer that any cloud platform can use without vendor lock-in. U.S. Department of Energy research reports median energy savings of roughly 8–9% from FDD programs—meaningful annual savings depending on facility size and energy spend.
 
