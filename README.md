@@ -1,144 +1,82 @@
-# Open-FDD Automated Testing
+# Open-FDD AFDD stack
 
-> **Autonomy note:** This repo is being continuously and autonomously maintained by **OpenClaw** as an evolving Open-FDD testing, operator, and documentation system.
->
-> Getting started note: [OpenClaw setup with ChatGPT subscription / Codex OAuth (not API key)](docs/howto/openclaw_subscription_setup.md)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Server-5865F2.svg?logo=discord&logoColor=white)](https://discord.gg/Ta48yQF8fC)
+[![CI](https://github.com/bbartling/open-fdd-afdd-stack/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bbartling/open-fdd-afdd-stack/actions/workflows/ci.yml)
+![MIT License](https://img.shields.io/badge/license-MIT-green.svg)
+![Development Status](https://img.shields.io/badge/status-Beta-blue)
+![Python](https://img.shields.io/badge/Python-3.9+-blue?logo=python&logoColor=white)
+[![Engine (PyPI)](https://img.shields.io/pypi/v/open-fdd?label=engine%20(PyPI))](https://pypi.org/project/open-fdd/)
 
-![Open-FDD automated testing dashboard](docs/images/dashboard_snip.png)
+<div align="center">
 
-> **Tagline:** Same tools, any building — only the knowledge graph changes.
+![open-fdd logo](https://raw.githubusercontent.com/bbartling/open-fdd-afdd-stack/main/image.png)
 
-## Purpose
+</div>
 
-This repo is the reusable testing, verification, and model-context pack for Open-FDD development and future HVAC deployments.
+This repository is the **full on-prem AFDD platform**: Docker Compose, **FastAPI** data-model API, BACnet and weather scrapers, **FDD loop**, optional Grafana/Caddy, and the **React** dashboard. The **rules engine** is **not** vendored here — containers and this package install **`open-fdd` from [PyPI](https://pypi.org/project/open-fdd/)** (`open_fdd.engine`, YAML rules on pandas). Platform code lives under the Python package **`openfdd_stack.platform`**.
 
-It is also the GitHub-backed memory and operating playbook for an autonomous OpenClaw-driven virtual building operator focused on:
-- Open-FDD application verification
-- HVAC / BACnet / RCx reasoning
-- AI-assisted Brick and data-model interpretation
-- overnight evidence review and continuous process improvement
-
-It is meant to help both humans and AI agents:
-- run frontend/API/BACnet/FDD checks
-- review overnight evidence
-- preserve durable engineering context
-- carry lessons forward across future jobs and future buildings
-- evolve a portable virtual operator framework without hard-coding one site into repo docs
-
-## Core validation layers
-
-### 1. Frontend and API regression testing
-- Selenium-based UI smoke and regression coverage
-- frontend-to-API parity checks
-- SPARQL CRUD and data-model validation
-- verification that visible app state matches backend truth
-
-### 2. AI-assisted data modeling verification
-- export/import Open-FDD data model flows
-- Brick tagging and `rule_input` mapping validation
-- SPARQL checks that confirm imported data is usable by Open-FDD
-- evidence that AI-assisted tagging outputs still land in the app correctly
-
-### 3. Live BACnet and FDD verification
-- fake BACnet devices with deterministic fault schedules
-- BACnet scraping validation against known bad-good windows
-- BACnet graph/addressing validation through SPARQL and API checks
-- YAML rule hot-reload checks
-- proof that faults are computed and surfaced by Open-FDD as expected
-- future-facing context for optimization and supervisory logic based on equipment semantics
-
-## Main scripts
-- `1_e2e_frontend_selenium.py`
-- `2_sparql_crud_and_frontend_test.py`
-- `3_long_term_bacnet_scrape_test.py`
-- `4_hot_reload_test.py`
-- `automated_suite.py`
+---
 
 ## Documentation
 
-The docs are organized to be useful to both human engineers and autonomous OpenClaw clones, and they are structured so the repo stays portable while site-specific truth comes from the live Open-FDD knowledge graph.
+- **This stack** (bootstrap, Compose, API, drivers, UI): **[GitHub Pages — open-fdd-afdd-stack](https://bbartling.github.io/open-fdd-afdd-stack/)** (built from `docs/` on push).
+- **Engine / PyPI library** (`RuleRunner`, rule YAML, pandas): **[open-fdd documentation](https://bbartling.github.io/open-fdd/)** — source [bbartling/open-fdd](https://github.com/bbartling/open-fdd), package [PyPI `open-fdd`](https://pypi.org/project/open-fdd/).
 
-### Docs home
-- [`docs/index.md`](docs/index.md)
+---
 
-### Sections
-- [Concepts](docs/concepts/index.md)
-- [BACnet verification](docs/bacnet/index.md)
-- [Operations](docs/operations/index.md)
-- [How-to guides](docs/howto/index.md)
-- [Appendix](docs/appendix/index.md)
+## Quick start (Linux + Docker)
 
-### Key pages
-- [`docs/concepts/operational_states.md`](docs/concepts/operational_states.md)
-- [`docs/concepts/context_and_recordkeeping.md`](docs/concepts/context_and_recordkeeping.md)
-- [`docs/bacnet/graph_context.md`](docs/bacnet/graph_context.md)
-- [`docs/bacnet/fault_verification.md`](docs/bacnet/fault_verification.md)
-- [`docs/operations/overnight_review.md`](docs/operations/overnight_review.md)
-- [`docs/operations/testing_plan.md`](docs/operations/testing_plan.md)
-- [`docs/operations/openfdd_integrity_sweep.md`](docs/operations/openfdd_integrity_sweep.md)
-- [`docs/operations/operator_framework.md`](docs/operations/operator_framework.md)
-- [`docs/operations/continuous_context_backup.md`](docs/operations/continuous_context_backup.md)
-- [`docs/howto/cloning_and_porting.md`](docs/howto/cloning_and_porting.md)
-- [`docs/howto/fake_fault_schedule_monitoring.md`](docs/howto/fake_fault_schedule_monitoring.md)
-- [`operator_framework.yaml`](operator_framework.yaml)
-- [`sparql/24_operator_site_context.sparql`](sparql/24_operator_site_context.sparql)
-- [`docs/appendix/ai_pr_review_playbook.md`](docs/appendix/ai_pr_review_playbook.md)
-
-## Schedule-aware fake fault monitoring
-
-For the current Open-FDD fake BACnet bench, use:
-
-- `scripts/monitor_fake_fault_schedule.py`
-- `docs/howto/fake_fault_schedule_monitoring.md`
-
-This is the supported way to distinguish:
-- expected scheduled 180°F out-of-bounds injection
-- expected flatline windows
-- unscheduled anomalous spikes or schedule drift
-
-The local dashboard schema now has room for a `schedule_monitor` block under `integrity_sweep` so recurring sweeps can surface that interpretation instead of only showing raw point values.
-
-## PDF build
-
-This repo now has its own docs PDF builder:
-
-- `scripts/build_docs_pdf.py`
-
-Expected output:
-- `pdf/open-fdd-automated-testing-docs.pdf`
-- `pdf/open-fdd-automated-testing-docs.txt`
-
-Example:
+Prerequisites: **Docker** + **Docker Compose**, **Git**. Clone **this** repo (not only `open-fdd`).
 
 ```bash
-python scripts/build_docs_pdf.py
+git clone https://github.com/bbartling/open-fdd-afdd-stack.git
+cd open-fdd-afdd-stack
+chmod +x scripts/bootstrap.sh
+./scripts/bootstrap.sh --help
 ```
 
-Requirements:
-- `pandoc`
-- `PyYAML`
-- for PDF output, a supported Pandoc engine such as `weasyprint`, `pdflatex`, or `xelatex`
+Example HTTP bootstrap (see engine docs for BACnet addressing and auth notes):
 
-## Engineering principle
+```bash
+printf '%s' 'YourSecurePassword' | ./scripts/bootstrap.sh \
+  --bacnet-address 192.168.204.16/24:47808 \
+  --bacnet-instance 12345 \
+  --user ben \
+  --password-stdin
+```
 
-This repo should stay:
-- portable across labs and OT LANs
-- professional enough for human engineers to trust
-- structured enough for agents to reuse without depending on chat memory
-- explicit about the difference between product bugs, auth/config drift, testbench limitations, and BACnet/model drift
-- clear that the repo stores the reusable autonomous process while the live Open-FDD knowledge graph stores site-specific truth
+Compose file: **`stack/docker-compose.yml`**. API module path: **`openfdd_stack.platform.api.main:app`**. FDD loop: **`python -m openfdd_stack.platform.drivers.run_rule_loop`**.
 
-## Autonomous maintenance model
+---
 
-This repo is intended to be continuously improved by OpenClaw.
+## Python layout
 
-That means:
-- the overnight workflow should keep upgrading the docs, playbooks, SPARQL patterns, and operator framework
-- durable improvements should be committed and pushed to GitHub
-- secrets, auth material, private local state, and one-site tribal knowledge should **not** be pushed
-- the autonomous system should evolve professionally, not chaotically
+| Install | Role |
+|--------|------|
+| **`open-fdd`** (PyPI) | `open_fdd.engine`, `open_fdd.schema`, `open_fdd.reports` |
+| **`openfdd-afdd-stack`** (this repo, `pip install -e .`) | `openfdd_stack.platform` (API, DB loop, drivers) |
+
+Local development (co-developing engine + stack):
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -e "/path/to/open-fdd[dev]"
+pip install -e ".[dev]"
+pytest openfdd_stack/tests -v
+```
+
+**Default / CI:** install only the stack package (`pip install -e ".[dev]"`). Dependencies resolve **`open-fdd` from PyPI** (version range in `pyproject.toml`). The CI workflow asserts `import open_fdd` loads from **`site-packages`**, matching production containers.
+
+---
+
+## Images
+
+Same branding assets as the engine repo: `image.png`, `OpenFDD_system_pyramid.png`, schematics (see repo root).
+
+---
 
 ## License
 
-This project is licensed under the **MIT License**. See [LICENSE](LICENSE).
-
+MIT

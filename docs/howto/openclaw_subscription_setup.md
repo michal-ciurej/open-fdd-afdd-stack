@@ -1,16 +1,16 @@
 ---
-title: OpenClaw subscription setup
+title: OpenClaw subscription setup (Codex OAuth)
 parent: How-to guides
-nav_order: 2
+nav_order: 16
 ---
 
-# OpenClaw Setup: ChatGPT Subscription / Codex OAuth (Not API Key)
+# OpenClaw setup: ChatGPT subscription / Codex OAuth (not API key)
 
 This note captures a setup path that worked for using **OpenClaw with the OpenAI Codex OAuth / ChatGPT subscription path** instead of the plain OpenAI API-key provider.
 
 ## Why this matters
 
-A normal ChatGPT subscription and a normal OpenAI API key are **not the same thing**.
+A normal ChatGPT subscription and a normal OpenAI API key are **not** the same thing.
 
 That means OpenClaw can appear partly configured, but still fail with errors like:
 
@@ -133,17 +133,7 @@ Also inspect:
 notepad $HOME\.openclaw\agents\main\agent\auth-profiles.json
 ```
 
-If that file still contains a stale:
-
-```json
-"openai:default"
-```
-
-remove it and keep only:
-
-```json
-"openai-codex:default"
-```
+If that file still contains a stale `"openai:default"`, remove it and keep only `"openai-codex:default"`.
 
 ### 6. Restart the gateway
 
@@ -212,8 +202,7 @@ When OpenClaw is used with Open-FDD in the field, the agent should expect to ask
 - the **OFDD API key / Bearer token** if API auth is enabled
 - whether the Open-FDD host is a **Linux box on the OT LAN** (this is the likely default deployment shape)
 
-Those values should be treated as setup context, not tribal knowledge.
-They should be written into durable repo notes when appropriate, with secrets handled carefully.
+Those values should be treated as setup context, not tribal knowledge. They should be written into durable repo notes when appropriate, with secrets handled carefully.
 
 ## Why this doc exists
 

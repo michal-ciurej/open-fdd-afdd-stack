@@ -1,12 +1,12 @@
 ---
 title: DIY BACnet gateway RPC contract
-parent: BACnet verification
-nav_order: 3
+parent: BACnet
+nav_order: 4
 ---
 
-# DIY BACnet Gateway RPC Contract
+# DIY BACnet gateway RPC contract
 
-The DIY BACnet gateway at `:8080` is a JSON-RPC API, not a plain REST body-per-method API.
+The DIY BACnet gateway at **:8080** is a **JSON-RPC** API, not a plain REST body-per-method API.
 
 This matters because a naive POST like:
 
@@ -54,12 +54,14 @@ Use a JSON-RPC envelope:
 
 ## Why this matters for overnight verification
 
-A malformed request should be classified as:
-- tooling / API-contract mismatch
+A malformed request should be classified as **tooling / API-contract mismatch**.
 
 It should **not** be treated as proof that:
+
 - BACnet is down
 - the gateway is unreachable
 - Open-FDD ingest is broken
 
 Only after using the correct JSON-RPC contract should the overnight workflow make BACnet-side health judgments.
+
+See also [BACnet overview](overview) and Swagger at http://localhost:8080/docs when the stack is running.

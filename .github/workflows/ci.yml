@@ -1,0 +1,54 @@
+# AFDD stack: Python tests (openfdd_stack) + docs text build.
+# The rules engine is always resolved as the published open-fdd package from PyPI (not vendored in this repo).
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install stack + dev deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Verify open-fdd is installed from PyPI (site-packages)
+        run: |
+          pip show open-fdd
+          python - <<'PY'
+          import pathlib
+          import open_fdd
+          p = pathlib.Path(open_fdd.__file__).resolve()
+          s = str(p)
+          if "site-packages" not in s:
+              raise SystemExit(
+                  f"Expected open_fdd import from site-packages (PyPI wheel), got: {p}\n"
+                  "If you need an editable engine checkout, do that only locally — CI must match production."
+              )
+          print("OK:", p)
+          PY
+
+      - name: Build combined docs text (LLM context)
+        run: python scripts/build_docs_pdf.py --no-pdf
+
+      - name: Pytest (openfdd_stack)
+        run: pytest openfdd_stack/tests -v --tb=short
+        env:
+          OFDD_API_KEY: ""
+          OFDD_CADDY_INTERNAL_SECRET: ""

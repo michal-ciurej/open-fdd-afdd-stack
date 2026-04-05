@@ -1,158 +1,47 @@
 ---
-title: OpenClaw context bootstrap for Open-FDD work
+title: OpenClaw context bootstrap
 parent: Operations
-nav_order: 4
+nav_order: 3
 ---
 
-# OpenClaw context bootstrap for Open-FDD work
+# OpenClaw context bootstrap
 
-This note exists so future clones, fresh agent sessions, and alternate OpenClaw deployments can hit the ground running on Open-FDD work without depending on one machine's private local state.
+This page defines how to keep context durable and portable for future OpenClaw sessions and new machines.
 
-## What should be backed up to GitHub
+## Store in Git (durable)
 
-Back up **durable operating context**, not raw secrets.
+- Operating philosophy and sweep cadence.
+- Failure classification standards.
+- SPARQL/query patterns that generalize.
+- Operator playbooks and runbooks.
+- API workflow contracts and tool usage patterns.
 
-Good candidates:
-- sweep philosophy and operator logic
-- overnight workflow expectations
-- how to classify failures
-- current repo paths and test-bench conventions
-- dashboard expectations
-- data-model/SPARQL patterns that derive meaningful BACnet checks
-- climate-aware live-HVAC reasoning strategy
-- lessons learned from auth drift and launch-context drift
+## Keep local/private (do not commit)
 
-Do **not** push:
-- API keys
-- bearer tokens
-- raw auth stores
-- local SQLite databases with sensitive conversation history
-- device pairing secrets
-- copied `.env` secrets
+- API keys, bearer tokens, `.env` secrets.
+- Raw auth stores and private local databases.
+- Full raw transcript exports with sensitive state.
 
-## Important local context currently living under `C:\Users\ben\.openclaw`
+## Portability principle
 
-Useful local context exists in places like:
-- `workspace/memory/*.md`
-- `workspace/TOOLS.md`
-- `workspace/AGENTS.md`
-- `cron/jobs.json`
-- `cron/runs/*.jsonl`
-- `memory/main.sqlite`
+Same tools, any building: repo stores reusable process, while site-specific truth lives in the Open-FDD live model.
 
-Those local stores are helpful for reconstruction and continuity, but they are **not** all appropriate for direct GitHub backup.
+## Minimal bootstrap read list for fresh clones
 
-The safe pattern is:
-1. read the local context
-2. distill durable, reusable knowledge
-3. publish the distilled version into this repo's docs
-4. keep secrets and raw chat history local
+**OpenClaw + lab (files in repo — read in order on first session):**
 
-## Current durable context worth preserving
+1. `openclaw/HANDOFF_PROTOCOL.md` — mailbox handoff with `issues_log.md` and log files.
+2. `openclaw/SKILL.md` — agent behavior, bootstrap modes, MCP, security scope.
+3. `openclaw/references/testing_layers.md` — where pytest vs bench vs `bootstrap.sh` live.
+4. `openclaw/references/legacy_automated_testing.md` — redirect from deprecated **open-fdd-automated-testing** if anything still points there.
+5. `openclaw/references/session_status_summary.md` — **5-bullet** lab snapshot format when agents must not dump logs into provider chat.
 
-### 1) Integrity sweep cadence and stance
-- daytime recurring sweep cadence is now **20 minutes**, not 10
-- the sweep should behave like an intelligent building operator, not a dumb ping monitor
-- use the Open-FDD semantic model as the primary window into the system
+**Product and operations (published docs paths):**
 
-### 2) Source-of-truth order
-Prefer this order when deciding what to trust:
-1. live backend model via `/data-model/check` and `/data-model/sparql`
-2. running stack semantic model / launch context
-3. repo docs and local notes
+6. [OpenClaw integration](../openclaw_integration)
+7. [Open-FDD integrity sweep](openfdd_integrity_sweep)
+8. [Operator framework](operator_framework)
+9. [AI PR review playbook](../appendix/ai_pr_review_playbook)
 
-### 3) Environment resolution before trust
-Do not assume one static IP forever.
-Resolve from the **current repo/env/launcher context**:
-- frontend URL
-- backend URL
-- DIY BACnet server URL
-- auth source / shell context
+**AI data modeling (when the stack includes model/API):** [LLM workflow](../modeling/llm_workflow), [AI-assisted tagging](../modeling/ai_assisted_tagging), plus `GET /data-model/export` and `PUT /data-model/import` as in OpenClaw integration.
 
-### 4) What a good sweep must do
-A meaningful sweep should:
-1. confirm authenticated backend access
-2. query the current semantic model
-3. discover current sites/equipment/devices/points via SPARQL
-4. choose representative BACnet reads from the model
-5. compare model expectation vs live BACnet behavior
-6. classify drift clearly
-
-### 5) Failure classes to preserve
-Use these buckets consistently:
-- auth/config drift
-- graph/model drift
-- BACnet/device-state drift
-- testbench limitation
-- likely Open-FDD product behavior
-
-### 6) Operator-style live HVAC reasoning target
-When the same workflow later runs on a real building, the sweep should reason like a strong human operator:
-- use model location and local time
-- use outdoor-air sensors from the model
-- use recent outdoor trend context from Open-FDD when available
-- use Open-Meteo current/historical weather as a support signal
-- decide whether the building should broadly be making heat or cool
-- bias checks toward seasonally important plant/air/zone devices
-- compare commands vs feedback when possible
-- stay humble: use weather as a sanity input, not as proof by itself
-
-Examples:
-- if it is cold outside, representative heating equipment should broadly look capable of making heat
-- if it is hot outside, representative cooling equipment should broadly look capable of making cooling
-- if the building is unoccupied, focus more on protection/sanity and less on comfort optimization
-
-### 7) Overnight coordination rule
-During the dedicated **6 PM to 6 AM** overnight testing/review workflow:
-- suppress duplicate low-signal sweep chatter
-- let the richer overnight review do the deeper PR/log/docs/BACnet/FDD work
-- only surface genuinely new, high-signal alerts
-- if meaningful durable context changed, commit it and push it so future clones inherit it
-
-### 8) Dashboard expectations
-The dashboard should reflect:
-- `TEST BENCH` vs `LIVE HVAC`
-- why that mode was chosen
-- operator alert level
-- seasonal/time basis
-- weather basis
-- HVAC sanity summary
-- representative live sensor reads
-- action plan and findings
-
-### 9) Fake-device fault schedule context must be explicit
-On the current test bench, the fake BACnet devices intentionally inject deterministic faults.
-
-Important durable facts:
-- the shared schedule lives in `fake_bacnet_devices/fault_schedule.py`
-- schedule basis is **UTC minute-of-hour**, not process start time
-- UTC minutes `10-49` are the flatline window
-- UTC minutes `50-54` are the out-of-bounds window
-- the out-of-bounds marker is intentionally `180.0` on scheduled points
-
-That means a 180°F spike on points like `SA-T` or `ZoneTemp` is not automatically a product bug.
-The right next step is to compare:
-- current UTC minute
-- expected schedule mode from `fault_schedule.py`
-- live BACnet RPC reads
-- Open-FDD fault outputs and rolling-window expectations
-
-Future clones should use `scripts/monitor_fake_fault_schedule.py` instead of treating a raw spike as mysterious.
-The recurring integrity sweep and local dashboard summary should carry the schedule-aware interpretation forward so another machine can see whether a spike was expected without re-deriving the whole bench model from scratch.
-
-## Recommended backup discipline
-
-When local OpenClaw memory yields something future-you will need again:
-- convert it into docs, not raw transcript backup
-- prefer one clean durable write over many noisy scratch notes
-- commit the repo change the same day if it changes how the system should be operated
-
-## Minimal future-clone checklist
-
-A new clone/agent should be able to learn this repo by reading:
-- `docs/operations/openfdd_integrity_sweep.md`
-- `docs/operations/openclaw_context_bootstrap.md`
-- `docs/appendix/ai_pr_review_playbook.md`
-- dashboard local/progress structure
-
-That should be enough to start behaving intelligently even before local personal memory is restored.

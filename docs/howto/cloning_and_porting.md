@@ -1,12 +1,12 @@
 ---
 title: Cloning and porting
 parent: How-to guides
-nav_order: 1
+nav_order: 15
 ---
 
-# Cloning and Porting
+# Cloning and porting
 
-This repo should be portable to another lab, another workstation, or another Open-FDD deployment with minimal conceptual changes.
+The **open-fdd** repo should be portable to another lab, another workstation, or another Open-FDD deployment with minimal conceptual changes. Optional bench assets live under [`openclaw/README.md`](../../openclaw/README.md).
 
 ## Core portability idea
 
@@ -16,11 +16,11 @@ That means the repo carries the reusable process, while the live Open-FDD model 
 
 ## What should transfer cleanly
 
-- the test phases
-- the BACnet fake-device approach
+- the test phases (`./scripts/bootstrap.sh --test` and optional [`openclaw/bench/e2e/README.md`](../../openclaw/bench/e2e/README.md))
+- the BACnet fake-device approach ([`openclaw/bench/fake_bacnet_devices/README.md`](../../openclaw/bench/fake_bacnet_devices/README.md))
 - the overnight review discipline
-- the SPARQL validation set
-- the operator framework
+- the SPARQL validation set ([`openclaw/bench/sparql/README.md`](../../openclaw/bench/sparql/README.md))
+- the operator framework ([`config/ai/operator_framework.yaml`](../../config/ai/operator_framework.yaml))
 - the continuous context-backup loop
 - the idea of proving telemetry-to-fault correctness rather than only checking page loads
 
@@ -31,7 +31,7 @@ That means the repo carries the reusable process, while the live Open-FDD model 
 - API auth setup
 - site IDs / names
 - BACnet gateway hostnames or IPs
-- active Open-FDD rules directory
+- active Open-FDD rules directory (under `stack/`, mounted into containers)
 - Docker/container naming
 - LAN / OT network topology
 - the actual HVAC system, naming conventions, and semantic model shape
@@ -47,15 +47,16 @@ That means the repo carries the reusable process, while the live Open-FDD model 
    - BACnet devices
    - representative outdoor / plant / air / zone points
 4. Let the model decide what should be checked at that site.
-5. Keep repo docs generic; put site-specific truth into the Open-FDD model instead of hard-coding it into markdown.
+5. Keep repo docs generic; put site-specific truth into the Open-FDD model instead of hard-coding it into Markdown.
 
 ## Recommended first-pass deployment flow for a new building
 
 Use this order on a fresh site:
+
 - verify backend auth and reachability
 - run SPARQL/model sanity checks
 - discover representative operator-relevant points from the model
-- run the daytime smoke suite first
+- run the daytime smoke suite first ([`openclaw/bench/e2e/README.md`](../../openclaw/bench/e2e/README.md))
 - fix auth/model/BACnet issues found there before trusting the overnight 12-hour run
 - only then move into recurring integrity sweeps and overnight review
 
@@ -63,17 +64,19 @@ Use this order on a fresh site:
 
 If OpenClaw is cloned onto another machine for the **same current test bench**, the new clone should read these first:
 
-1. `README.md`
-2. `docs/operations/openclaw_context_bootstrap.md`
-3. `docs/operations/openfdd_integrity_sweep.md`
-4. `docs/bacnet/fault_verification.md`
-5. `fake_bacnet_devices/README.md`
-6. `docs/howto/fake_fault_schedule_monitoring.md`
+1. Root [`README.md`](../../README.md)
+2. [`openclaw/README.md`](../../openclaw/README.md)
+3. [OpenClaw context bootstrap](../operations/openclaw_context_bootstrap)
+4. [Open-FDD integrity sweep](../operations/openfdd_integrity_sweep)
+5. [BACnet-to-fault verification](../bacnet/fault_verification)
+6. [`openclaw/bench/fake_bacnet_devices/README.md`](../../openclaw/bench/fake_bacnet_devices/README.md)
+7. [Monitor the fake fault schedule](fake_fault_schedule_monitoring)
 
 And it should know these durable facts immediately:
+
 - the fake devices intentionally inject faults on a **UTC** schedule
 - the 180°F spike is expected only during the shared out-of-bounds window
-- the correct way to judge that spike is to compare live BACnet RPC reads against `fake_bacnet_devices/fault_schedule.py`
+- the correct way to judge that spike is to compare live BACnet RPC reads against `openclaw/bench/fake_bacnet_devices/fault_schedule.py`
 - the integrity sweep should classify graph drift, auth drift, BACnet drift, and product behavior separately
 - durable reasoning belongs in this repo, not only in local OpenClaw chat memory
 
@@ -81,9 +84,9 @@ And it should know these durable facts immediately:
 
 A clone of this repo should make it easy for another engineer to answer:
 
-- Is Open-FDD healthy here?
-- Is BACnet scraping working here?
-- Is the building model usable here?
+- Check whether Open-FDD is healthy.
+- Confirm BACnet scraping is working.
+- Verify the building model is usable.
 - Are faults being computed here?
 - Are regressions visible here before they affect a real deployment?
 
@@ -92,11 +95,13 @@ A clone of this repo should make it easy for another engineer to answer:
 Keep environment-specific values configurable and keep the verification logic reusable.
 
 In practice, deployment to another site usually looks like this:
+
 - Open-FDD runs on some other server (often a Linux box on the OT LAN)
-- the testing/tooling repo is cloned onto another machine
+- tooling is cloned onto another machine
 - the tooling is pointed at the target Open-FDD URL, auth, BACnet gateway, and rule/model context for that environment
 
 The tooling should therefore be robust to:
+
 - different LAN IP schemes
 - different Open-FDD hosts
 - different HVAC systems and point naming

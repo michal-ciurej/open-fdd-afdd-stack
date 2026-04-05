@@ -1,23 +1,22 @@
 ---
 title: Monitor the fake fault schedule
 parent: How-to guides
-nav_order: 3
+nav_order: 17
 ---
 
 # Monitor the fake fault schedule
 
-This page explains the right way to interpret spikes from the Open-FDD fake BACnet bench.
+This page explains the right way to interpret spikes from the Open-FDD **fake BACnet bench** ([`openclaw/bench/fake_bacnet_devices/README.md`](../../openclaw/bench/fake_bacnet_devices/README.md)).
 
 ## Why this matters
 
 On this bench, a value like **SA-T = 180°F** is not automatically a product bug.
 
-The fake BACnet devices intentionally inject deterministic faults so Open-FDD can be verified end to end.
-That behavior lives in:
+The fake BACnet devices intentionally inject deterministic faults so Open-FDD can be verified end to end. That behavior lives in:
 
-- `fake_bacnet_devices/fault_schedule.py`
-- `fake_bacnet_devices/fake_ahu_faults.py`
-- `fake_bacnet_devices/fake_vav_faults.py`
+- `openclaw/bench/fake_bacnet_devices/fault_schedule.py`
+- `openclaw/bench/fake_bacnet_devices/fake_ahu_faults.py`
+- `openclaw/bench/fake_bacnet_devices/fake_vav_faults.py`
 
 ## The shared UTC fault schedule
 
@@ -38,6 +37,7 @@ The current fake devices intentionally schedule faults on these points:
 - fake VAV: `ZoneTemp`
 
 That means the 180°F spike should be treated as:
+
 - **expected bench behavior** during UTC minutes **50-54**
 - **unexpected drift or misalignment** outside that window
 
@@ -46,10 +46,11 @@ That means the 180°F spike should be treated as:
 Use the repo helper:
 
 ```bash
-python scripts/monitor_fake_fault_schedule.py
+python openclaw/bench/scripts/monitor_fake_fault_schedule.py
 ```
 
 What it does:
+
 - loads the same `fault_schedule.py` module used by the fake devices
 - determines the current expected mode from UTC minute-of-hour
 - reads the scheduled BACnet points directly through the DIY BACnet JSON-RPC API
@@ -67,24 +68,31 @@ Expected windows: normal 0-9, flatline 10-49, bounds 50-54, normal 55-59
 - ZoneTemp: PASS value=180.000 | matches scheduled bounds value 180.0 F
 ```
 
+Configure the DIY BACnet gateway URL in the script or environment if it is not the default bench host.
+
 ## How to reason about anomalies
 
 ### Case 1: 180°F during UTC minutes 50-54
+
 Treat this as **expected testbench fault injection**, not an unexpected product failure.
 
 Next question:
+
 - did Open-FDD surface the expected `bad_sensor_flag` in the corresponding fault window?
 
 ### Case 2: 180°F outside UTC minutes 50-54
+
 Treat this as a likely anomaly in one of:
+
 - fake-device schedule alignment
 - fake-device runtime state
 - testbench orchestration / timebase drift
 - Open-FDD ingest lag or stale-value behavior
 
 ### Case 3: flatline window but value keeps changing
-During UTC minutes 10-49, scheduled points should stop moving.
-If they do not, that points more toward:
+
+During UTC minutes 10-49, scheduled points should stop moving. If they do not, that points more toward:
+
 - fake-device scheduling drift
 - device restart / process interruption
 - wrong host timezone / no UTC alignment on the Pi
@@ -92,6 +100,7 @@ If they do not, that points more toward:
 ## How this connects to Open-FDD verification
 
 The better verification chain is:
+
 1. use this monitor to confirm the fake BACnet source state
 2. use SPARQL to confirm the points are modeled and addressable
 3. use Open-FDD fault APIs or frontend fault views to verify the expected fault flags
@@ -102,9 +111,10 @@ That is much stronger than treating a single spike as mysterious.
 ## Clone note
 
 If OpenClaw is cloned onto another machine on the same bench, this page plus:
-- `fake_bacnet_devices/README.md`
-- `docs/bacnet/fault_verification.md`
-- `docs/operations/openclaw_context_bootstrap.md`
-- `scripts/monitor_fake_fault_schedule.py`
+
+- [`openclaw/bench/fake_bacnet_devices/README.md`](../../openclaw/bench/fake_bacnet_devices/README.md)
+- [BACnet-to-fault verification](../bacnet/fault_verification)
+- [OpenClaw context bootstrap](../operations/openclaw_context_bootstrap)
+- `openclaw/bench/scripts/monitor_fake_fault_schedule.py`
 
 should be enough to explain why the 180°F spike exists and how to monitor it correctly.

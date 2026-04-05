@@ -1,12 +1,16 @@
 ---
 title: Appendix
-nav_order: 6
+nav_order: 99
+has_children: true
 ---
 
 # Appendix
 
-Reference material and supporting playbooks.
+Technical deep dives and maintainer reference material.
 
-- [AI PR review playbook](ai_pr_review_playbook)
-- [Issue draft - graph drift after overnight fake-device activity](issue-draft-openfdd-graph-drift-2026-03-24)
-- [Issue draft - SPARQL parity mismatch on count-oriented queries](issue-draft-openfdd-parity-2026-03-24)
+| Page | Description |
+|------|-------------|
+| [API Reference](api_reference) | REST API at a glance: CRUD, config, data model, download, analytics, BACnet, faults, jobs. Full spec at Swagger /docs and /openapi.json. |
+| [Technical reference](technical_reference) | Directory structure, environment variables, unit tests, BACnet scrape, bootstrap, database schema, LLM tagging workflow. |
+| [Developer guide](developer_guide) | Front-end development, database schema (migrations, tables, cascade deletes), where to go next. |
+| [AI PR review playbook](ai_pr_review_playbook) | Review checklist focused on regressions, risks, and missing validation before merge. |

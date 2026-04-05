@@ -1,0 +1,13 @@
+# Host/container stats scraper — requires Docker socket + host /proc
+FROM python:3.14-slim
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY pyproject.toml README.md MANIFEST.in ./
+COPY openfdd_stack ./openfdd_stack
+RUN pip install --no-cache-dir "open-fdd[platform,monitoring]>=2.0.13" \
+ && pip install --no-cache-dir .
+
+CMD ["python", "-u", "-m", "openfdd_stack.platform.drivers.run_host_stats", "--loop"]

@@ -1,5 +1,21 @@
-title: Open-FDD Automated Testing Docs
-description: Model context, verification workflows, and operational documentation for the Open-FDD automated testing repo.
-theme: just-the-docs
-color_scheme: dark
-search_enabled: true
+title: "Open-FDD AFDD stack"
+description: "Docker AFDD platform — BACnet, TimescaleDB, Grafana, FastAPI (engine: open-fdd on PyPI)"
+baseurl: "/open-fdd-afdd-stack"
+remote_theme: just-the-docs/just-the-docs
+color_scheme: "light"
+
+plugins:
+  - jekyll-remote-theme
+  - jekyll-include-cache
+  - jekyll-seo-tag
+
+aux_links:
+  "AFDD stack (GitHub)": "https://github.com/bbartling/open-fdd-afdd-stack"
+  "Engine docs": "https://bbartling.github.io/open-fdd/"
+  "Engine (GitHub)": "https://github.com/bbartling/open-fdd"
+  "PyPI (open-fdd)": "https://pypi.org/project/open-fdd/"
+
+footer_content: "MIT License"
+
+# Optional: search
+search_enabled: false

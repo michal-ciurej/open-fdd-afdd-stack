@@ -1,0 +1,15 @@
+# Open-FDD CRUD API — sites, points, equipment (AFDD stack; engine from PyPI open-fdd)
+FROM python:3.14-slim
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY pyproject.toml README.md MANIFEST.in ./
+COPY openfdd_stack ./openfdd_stack
+RUN pip install --no-cache-dir "open-fdd[platform,brick,monitoring]>=2.0.13" \
+ && pip install --no-cache-dir .
+COPY pdf ./pdf
+
+EXPOSE 8000
+CMD ["uvicorn", "openfdd_stack.platform.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,14 +1,15 @@
 ---
 title: Usage budget and throttling
 parent: Operations
-nav_order: 7
+nav_order: 9
 ---
 
-# Usage Budget and Throttling
+# Usage budget and throttling
 
-This repo should behave responsibly when model/API budget is tight.
+Open-FDD automation and OpenClaw-assisted workflows should behave responsibly when model/API budget is tight.
 
 That applies to:
+
 - OpenClaw chat usage
 - Codex / OpenAI model budget
 - overnight review loops
@@ -21,6 +22,7 @@ That applies to:
 Do not let automation burn expensive model budget on low-value repetition.
 
 When usage pressure is high, the system should degrade gracefully:
+
 - keep the most operator-relevant checks
 - reduce frequency of expensive AI/browser work
 - preserve durable findings to GitHub/docs
@@ -29,7 +31,9 @@ When usage pressure is high, the system should degrade gracefully:
 ## Practical throttle ladder
 
 ### Level 0 — Normal
+
 Use the full intended workflow:
+
 - 20-minute integrity sweep
 - daytime smoke when requested
 - full overnight review
@@ -37,9 +41,11 @@ Use the full intended workflow:
 - docs/PDF rebuilds on meaningful changes
 
 ### Level 1 — Moderate conservation
+
 Use when model budget is healthy but burn rate is rising.
 
 Actions:
+
 - keep the 20-minute sweep concise
 - avoid repeating large narrative summaries in chat
 - batch docs updates into fewer larger commits
@@ -47,9 +53,11 @@ Actions:
 - avoid unnecessary weather fetches when test-bench mode is already obvious
 
 ### Level 2 — High conservation
+
 Use when account/session budget is tight or approaching a hard cap.
 
 Actions:
+
 - keep the 20-minute sweep to auth + graph + one or two model-derived BACnet checks
 - suppress low-signal chatter
 - avoid broad browser parity passes unless specifically needed for release confidence
@@ -58,9 +66,11 @@ Actions:
 - write the failure classification once, then work the fix
 
 ### Level 3 — Survival mode
+
 Use when usage is critically constrained or a weekly cap is effectively exhausted.
 
 Actions:
+
 - only run high-signal checks
 - prefer local/backend checks over browser/UI checks
 - skip optional weather/history enrichments
@@ -71,6 +81,7 @@ Actions:
 ## Priority order under throttling
 
 If budget is tight, preserve this order:
+
 1. auth verification
 2. backend reachability
 3. data-model / SPARQL integrity
@@ -83,20 +94,26 @@ If budget is tight, preserve this order:
 ## Applying this to the Open-FDD workflows
 
 ### Every-20-minute integrity sweep
+
 Under pressure:
+
 - keep it short
 - use model-derived checks only
 - do not repeat the same alert every cycle
 - if a failure is already known and unchanged, stay quiet unless the state materially worsens or recovers
 
 ### Daytime smoke
+
 Under pressure:
+
 - prefer targeted reruns instead of full reruns
 - fix the first blocker before repeating the whole suite
-- use the short-day BACnet profile
+- use the short-day BACnet profile ([`openclaw/bench/e2e/README.md`](../../openclaw/bench/e2e/README.md))
 
 ### Overnight review
+
 Under pressure:
+
 - keep the overnight run focused on evidence gathering and high-signal failures
 - avoid chat spam
 - distill durable lessons into docs once instead of narrating every small step
@@ -104,6 +121,7 @@ Under pressure:
 ## What can be inferred from usage tools
 
 Useful signals include:
+
 - session/model usage status
 - visible Codex/OpenAI usage dashboard state
 - repeated provider failures or hard-cap symptoms
@@ -116,6 +134,7 @@ The system should use those signals to reduce repeated model-heavy work.
 OpenClaw can adapt its own behavior, but it does not directly control provider billing/quotas.
 
 So the right design is:
+
 - observe usage pressure
 - throttle the workflow behavior
 - preserve the most valuable engineering checks

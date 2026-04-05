@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openfdd-afdd-stack"
+version = "0.1.0"
+description = "Open-FDD AFDD platform — Docker, FastAPI, BACnet scrapers, Grafana (uses open-fdd from PyPI)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "Ben Bartling", email = "ben.bartling@gmail.com" }]
+dependencies = [
+    # Engine + shared types/reports on PyPI; [platform] pulls API stack deps (FastAPI, DB drivers, etc.).
+    # Pin to latest published engine on PyPI; bump lower bound after each open-fdd release.
+    "open-fdd[platform,brick,bacnet,monitoring]>=2.0.13",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black[jupyter]",
+    "pre-commit",
+    "httpx",
+    "aiohttp",
+    "selenium>=4.0",
+    "webdriver-manager>=4.0",
+    "openai>=1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/bbartling/open-fdd-afdd-stack"
+Documentation = "https://bbartling.github.io/open-fdd-afdd-stack/"
+Repository = "https://github.com/bbartling/open-fdd-afdd-stack"
+Changelog = "https://github.com/bbartling/open-fdd-afdd-stack/releases"
+"Engine (PyPI)" = "https://pypi.org/project/open-fdd/"
+"Engine documentation" = "https://bbartling.github.io/open-fdd/"
+
+[tool.setuptools.packages.find]
+include = ["openfdd_stack*"]
+
+[tool.setuptools.package-data]
+openfdd_stack = ["platform/static/*"]
+
+[tool.black]
+line-length = 88
+target-version = ["py314"]
+extend-exclude = "openfdd_stack/platform/data_model_ttl\\.py|tools/graph_and_crud_test\\.py"
+
+[tool.pytest.ini_options]
+testpaths = ["openfdd_stack/tests"]
+pythonpath = ["."]
+filterwarnings = [
+    "ignore::DeprecationWarning:rdflib",
+    "ignore::DeprecationWarning:pyparsing",
+]

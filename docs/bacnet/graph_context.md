@@ -1,12 +1,12 @@
 ---
 title: BACnet graph context
-parent: BACnet verification
-nav_order: 1
+parent: BACnet
+nav_order: 2
 ---
 
-# BACnet Graph Context
+# BACnet graph context
 
-This document captures the BACnet-specific context that the automated testing repo should preserve for future clones, future labs, and future researchers.
+This document captures BACnet-specific context the **OpenClaw lab** and operators should preserve for future clones, labs, and researchers.
 
 The goal is simple: **do not rely on tribal knowledge**.
 
@@ -21,6 +21,7 @@ In live HVAC monitoring, the Open-FDD knowledge graph is not just metadata. It i
 - future optimization logic
 
 If we know, from the graph:
+
 - which BACnet device a point belongs to
 - which object identifier is being scraped
 - which Brick/equipment type the point belongs to
@@ -32,55 +33,39 @@ then we know much more than "the point exists". We know which fault rules should
 
 For BACnet-backed verification, the test harness should always be able to retrieve or verify:
 
-1. **BACnet device inventory**
-   - device instance
-   - device address
-   - device object presence in the graph
-
-2. **BACnet point addressing**
-   - object identifier
-   - point label / object-name alignment
-   - point-to-device membership
-
-3. **Equipment semantic context**
-   - AHU / VAV / zone / plant / building associations
-   - Brick class of the point
-   - whether the point is marked for polling
-
-4. **Rule relevance context**
-   - which YAML fault rules are active
-   - what `rule_input` mappings exist for the point/equipment
-   - what rolling-window parameters matter for that rule
-
-5. **Operational intent**
-   - whether the point is used for FDD only
-   - whether the point is useful for future optimization / supervisory control
-   - whether the point is operator-facing or only diagnostic
+1. **BACnet device inventory** — device instance, device address, device object presence in the graph
+2. **BACnet point addressing** — object identifier, point label / object-name alignment, point-to-device membership
+3. **Equipment semantic context** — AHU / VAV / zone / plant / building associations, Brick class of the point, whether the point is marked for polling
+4. **Rule relevance context** — which YAML fault rules are active, what `rule_input` mappings exist for the point/equipment, what rolling-window parameters matter for that rule
+5. **Operational intent** — whether the point is used for FDD only, useful for future optimization / supervisory control, operator-facing or only diagnostic
 
 ## Live system interpretation
 
 In a future live deployment, this BACnet graph context should support three increasingly valuable questions:
 
 ### 1. What is connected?
+
 - Which BACnet devices exist?
 - Which points are actually mapped?
 - Which points are being polled?
 
 ### 2. What kind of HVAC system is this?
+
 - Is the equipment an AHU, VAV, boiler, chiller, plant, or meter?
 - What topology relationships exist?
 - Which points matter for diagnostics vs operations?
 
 ### 3. What analysis should apply?
+
 - Which FDD rules should run?
 - Which optimization or supervisory algorithms are sensible here?
 - Which results are expected if the fake BACnet devices deliberately enter a fault state?
 
 This is the beginning of a machine-readable engineering context, not just a UI convenience.
 
-## Existing SPARQL assets in this repo
+## SPARQL assets in the repo
 
-Relevant reusable queries already exist in `sparql/`, especially:
+Relevant reusable queries live under [`openclaw/bench/sparql/README.md`](../../openclaw/bench/sparql/README.md), especially:
 
 - `04_bacnet_devices.sparql`
 - `08_bacnet_telemetry_points.sparql`
@@ -90,11 +75,10 @@ Relevant reusable queries already exist in `sparql/`, especially:
 - `19_hvac_equipment.sparql`
 - `21_points.sparql`
 
-## BACnet telemetry query already used by the repo
+## BACnet telemetry baseline query
 
-The repo already contains a useful baseline query in `sparql/08_bacnet_telemetry_points.sparql`.
+`openclaw/bench/sparql/08_bacnet_telemetry_points.sparql` returns:
 
-It returns:
 - `point_label`
 - `brick_class`
 - `unit`
@@ -104,36 +88,16 @@ It returns:
 
 That is a strong starting point for proving that BACnet addressing is present in the graph and matched to polling points.
 
-## Current live-environment status
+## Backend SPARQL and auth
 
-### 2026-03-22 snapshot
+Graph validation requires `POST /data-model/sparql` with a valid `OFDD_API_KEY` when API auth is enabled. Load the same secret the stack uses (`stack/.env`) in the shell or agent context that runs overnight checks.
 
-Attempted live Open-FDD API query:
-- `POST http://192.168.204.16:8000/data-model/sparql`
-- Result: `401 Missing or invalid Authorization header`
-
-Meaning at that time:
-- the live query path exists
-- this machine did not yet have the correct `OFDD_API_KEY` available for backend SPARQL access
-- the right next step was to load the same auth secret used by the Open-FDD stack so graph validation could run non-interactively
-
-### 2026-03-24 snapshot
-
-Authenticated backend access is now working again from the bench context.
-
-Observed behavior worth preserving for future clones:
-- `GET /data-model/check` succeeded and reported live graph metadata
-- `POST /data-model/sparql` succeeded with the same bench auth context
-- the current backend response shape was the simplified form `{"bindings": [...]}` rather than strict SPARQL JSON `{"results": {"bindings": [...]}}`
-
-That response-shape detail matters because a test script can falsely conclude that the graph is empty if it only looks for `results.bindings`.
+Some backends return a simplified shape `{"bindings": [...]}` rather than strict SPARQL JSON `{"results": {"bindings": [...]}}`. Test tooling should accept both.
 
 ## BACnet scraper / DIY gateway context
 
-The BACnet scraper gateway OpenAPI was reachable at:
-- `http://192.168.204.16:8080/openapi.json`
+The BACnet scraper gateway OpenAPI is typically at **http://localhost:8080** (Swagger `/docs`). Notable JSON-RPC capabilities include:
 
-Notable capabilities exposed there include:
 - `client_whois_range`
 - `client_point_discovery`
 - `client_read_property`
@@ -141,11 +105,11 @@ Notable capabilities exposed there include:
 - `client_supervisory_logic_checks`
 - `client_read_point_priority_array`
 
-This means the test repo can validate not only that Open-FDD has graph references, but also that the BACnet-side source system is queryable for independent verification.
+The bench can validate not only that Open-FDD has graph references, but also that the BACnet-side source system is queryable for independent verification.
 
 ## Engineering direction
 
-This repo should evolve toward a formal verification chain:
+Evolve toward a formal verification chain:
 
 1. fake BACnet device emits deterministic fault pattern
 2. BACnet gateway can independently read that device/point state
@@ -158,7 +122,4 @@ That chain is the real standard for trustworthy FDD validation.
 
 ## Where this context is saved
 
-This context is intentionally stored in the repo at:
-- `docs/bacnet/graph_context.md`
-
-Humans cloning the repo should be able to find it immediately, review it, and extend it without asking the original authors what was "meant."
+This page lives under **docs/bacnet/** so humans cloning the repo can find it immediately, review it, and extend it without asking the original authors what was "meant."
