@@ -1,26 +1,37 @@
 # Installing `open-fdd-lab` skill for OpenClaw
 
-Canonical skill file: **`openclaw/SKILL.md`** (this tree). If you are migrating from the old **open-fdd-automated-testing** repo, read **`legacy_automated_testing.md`** first so paths and expectations stay aligned.
+Canonical skill source: `openclaw/SKILL.md` in this repo.
+
+Install this skill when you want an OpenClaw instance to help with:
+- Open-FDD bench / deployment testing
+- AI-assisted data modeling
+- BRICK/SPARQL/BACnet validation
+- generic LAN health probing
+- OpenClaw-side context and testing-script maintenance for Open-FDD
+
+## Paths OpenClaw resolves
 
 OpenClaw resolves skills from:
-
-- `workspace/skills/<skill-name>/SKILL.md`, and
-- optional **`skills.load.extraDirs`** in `~/.openclaw/openclaw.json` (behavior depends on OpenClaw version).
+- `workspace/skills/<skill-name>/SKILL.md`
+- optional extra skill directories depending on OpenClaw version/config
 
 ## Option A — symlink into workspace skills
 
-From the machine that hosts `~/.openclaw/workspace`:
-
 ```bash
 mkdir -p ~/.openclaw/workspace/skills
-ln -sfn /path/to/open-fdd/openclaw ~/.openclaw/workspace/skills/open-fdd-lab
+ln -sfn /path/to/open-fdd-afdd-stack/openclaw ~/.openclaw/workspace/skills/open-fdd-lab
 ```
-
-Ensure `SKILL.md` is readable at `.../skills/open-fdd-lab/SKILL.md`. If the symlink points at `openclaw/`, that works because `SKILL.md` lives at the root of `openclaw/`.
 
 ## Option B — copy
 
-Copy the whole `open-fdd/openclaw/` directory into `skills/open-fdd-lab/` (heavy if you duplicate `bench/`); prefer symlink or a thin copy of `SKILL.md` + `references/` only.
+Copy the whole `openclaw/` directory into `skills/open-fdd-lab/`.
+
+If you want a thinner copy, keep at least:
+- `SKILL.md`
+- `README.md`
+- `HANDOFF_PROTOCOL.md`
+- `references/`
+- `scripts/`
 
 ## Verify
 
@@ -30,8 +41,14 @@ openclaw doctor
 openclaw skills list
 ```
 
-Fix path warnings per CLI output.
+## Recommended read order once installed
 
-## GitHub
+1. `SKILL.md`
+2. `README.md`
+3. `HANDOFF_PROTOCOL.md`
+4. `references/testing_layers.md`
+5. `references/generic_lan_testing.md`
 
-Skill source of truth is tracked under **https://github.com/bbartling/open-fdd** in `openclaw/`. Pull before long lab sessions.
+## Source of truth
+
+Track the skill in `open-fdd-afdd-stack/openclaw/` and keep updates versioned in git so new OpenClaw instances on other buildings can inherit the same context without needing direct SSH to the original bench.

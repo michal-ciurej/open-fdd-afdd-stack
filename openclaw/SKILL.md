@@ -1,90 +1,130 @@
 ---
 name: open-fdd-lab
-description: Testing-first Open-FDD lab skill: external bench validation, frontend/API parity, BRICK+BACnet verification, overnight triage, and issue filing for confirmed product defects.
-metadata: {"openclaw":{"homepage":"https://github.com/bbartling/open-fdd/tree/develop/openclaw"}}
-user-invocable: true
+description: Open-FDD / AFDD OpenClaw skill for testing-first bench work, AI-assisted data modeling, BRICK/SPARQL/BACnet validation, frontend/API parity checks, bootstrap-mode verification, and issue-quality defect triage in `open-fdd-afdd-stack/openclaw`. Use when validating a live Open-FDD deployment or bench, preparing AI-generated data-model payloads, running generic LAN health checks, classifying test failures, or maintaining the OpenClaw-side testing context/docs/scripts for Open-FDD projects.
 ---
 
-# Open-FDD OpenClaw skill (testing-first)
+# Open-FDD OpenClaw skill
 
-This skill exists to test and evaluate a running Open-FDD system like an expert commissioning-minded web application tester and BRICK/BACnet data-model analyst.
+Treat OpenClaw as a **tester, modeler, and evidence collector** for Open-FDD.
 
-Primary mission:
-- verify frontend workflows
-- verify backend/data-model behavior
-- verify BACnet integration and add-to-model flows
-- run overnight stability checks
-- classify failures
-- file high-quality bug reports for confirmed defects
-
-Do not default to clone-first or repo-first workflows.
+Default mission order:
+1. verify the live system that exists
+2. classify what failed
+3. distinguish bench/env/auth drift from product defects
+4. help with AI-assisted data modeling and validation
+5. edit repo-local OpenClaw docs/scripts only when explicitly asked
 
 ## Default posture
 
-Assume Open-FDD is an externally running bench/deployment under test.
+Assume Open-FDD is an externally running deployment, bench, or lab stack.
 
-Start with runtime discovery:
-1. active frontend URL
-2. active backend URL
-3. BACnet gateway target
-4. auth context (`OFDD_API_KEY` validity)
-5. model/SPARQL baseline behavior
+Do **not** assume the agent has:
+- SSH to the Open-FDD host
+- direct access to `stack/.env`
+- bearer tokens or plaintext app credentials
+- a colocated OpenClaw + Open-FDD setup
 
-Use UI behavior, API responses, SPARQL results, BACnet reads, and logs as primary evidence.
-Use repo source/docs as supporting context unless local edits are explicitly requested.
+When direct host access is unavailable, fall back to:
+- frontend observation
+- generic LAN curl probes
+- API responses from the reachable edge
+- exported/imported payload review
+- BRICK/SPARQL reasoning from available files or API output
+- clear requests to the human for missing secrets or host-only evidence
 
-## Current operational guardrails
+## Strong current use case: AI-assisted data modeling
 
-- Current `FORBIDDEN: Invalid API key` behavior should be treated as auth/runtime-context drift until proven otherwise.
-- Do not label auth drift as a confirmed product bug by default.
-- Keep issue `#92` active for likely frontend/API parity defect tracking after auth is healthy.
-- Do not delete or bury `#92` during cleanup work.
+Expect many OpenClaw sessions to help with:
+- generating or reviewing AI-produced site/equipment/point payloads
+- checking naming/tagging/topology quality
+- validating BRICK / RDF shape
+- checking BACnet references and read-path plausibility
+- comparing imported model intent vs live UI/API behavior
 
-## Testing layers (required order of thinking)
+Prefer:
+1. model shape sanity
+2. equipment / point relationship sanity
+3. BACnet reference sanity
+4. import/export parity
+5. live read proof when runtime access exists
 
-1. Frontend/web app workflows and visible errors
-2. Backend/API auth + data-model/SPARQL correctness
-3. BACnet add-to-model and reference/read integrity
-4. Overnight scrape/FDD/hot-reload stability
-5. Future live-HVAC operator checks (when explicitly requested)
+## Model Routing Policy
+
+When analyzing test results, classify each task before processing.
+
+### SIMPLE (use primary model)
+- Pass/fail test results
+- HTTP status code errors (`404`, `500`, timeout)
+- Missing UI elements or broken selectors
+- Test environment setup failures
+- Syntax errors or import failures
+
+### COMPLEX (use thinking model)
+- Unexpected behavior that passed but shouldn't have
+- Race conditions or timing-dependent failures
+- Security vulnerabilities
+- Performance degradation patterns
+- Failures that span multiple components or files
+
+Rules:
+- Default to SIMPLE unless the test result shows ambiguous or multi-layered behavior.
+- Always classify first, then process.
+- Never use the thinking model for a task that fits the SIMPLE list.
 
 ## Failure classification (required)
 
-Every meaningful failure must be classified as one of:
-- auth/launcher/env drift
+Classify each meaningful problem as one of:
+- auth / launcher / env drift
 - bench limitation
 - frontend/API parity bug
-- graph hygiene/model drift bug
+- graph hygiene / model drift bug
 - BACnet integration bug
 - likely real Open-FDD product defect
 
-File GitHub issues for confirmed product defects by default. Harness/runtime failures stay in `openclaw/issues_log.md` unless Ben explicitly requests issue tracking for harness debt too.
+Do not file auth drift or missing-credential situations as product bugs by default.
 
-## Security phases
+## Runtime-first evidence order
 
-Track security as phased product hardening:
-- auth robustness
-- Caddy/proxy boundaries
-- secrets handling
-- attack-surface reduction
-- roadmap-linked hardening tasks
+1. frontend / user-visible behavior
+2. edge/API behavior
+3. SPARQL / data-model correctness
+4. BACnet gateway / raw read proof
+5. logs and repo source as supporting evidence
 
-Do not blend security hardening notes into unrelated defect triage without clear labeling.
+## Bootstrap-mode discipline
 
-## Workflow constraints
+For any HTTP vs HTTPS confusion:
+- inspect the active mode before speculating
+- treat HTTP and self-signed TLS as separate states
+- do not infer current mode from port publishing alone
+- if bootstrap was just run, wait for the script’s final completion summary before testing
+- a slow frontend health gate is normal enough that early curl tests can mislead you
 
-- Do not create/manage a second Open-FDD clone as baseline workflow.
-- Do not treat coding changes as the primary goal.
-- Keep issue/evidence trail in `openclaw/issues_log.md`.
-- Use `openclaw/HANDOFF_PROTOCOL.md` for Cursor/OpenClaw handoff discipline.
-- In the current operating model: **Cursor = product engineer, OpenClaw = tester**.
-- When Cursor provides a commit SHA + issue IDs + acceptance criteria, retest the live bench against that SHA, do **no product-code edits**, and post evidence back to GitHub.
-- Healthy auth preflight is required before drawing frontend/API parity conclusions.
+## Generic LAN testing guidance
 
-## References to read first
+Prefer reusable host-agnostic checks over bench-specific hardcoding.
+
+Start with:
+- `openclaw/references/generic_lan_testing.md`
+- `openclaw/scripts/probe_openfdd_lan.sh`
+- `openclaw/scripts/probe_openfdd_lan.ps1`
+
+Use those before inventing one-off curl sequences.
+
+## OpenClaw/Open-FDD role split
+
+Default near-term split:
+- **OpenClaw** = tester, reproducer, model-quality reviewer, evidence collector
+- **human / Cursor / engineer** = product-code editor unless explicitly delegated
+
+OpenClaw may edit the `openclaw/` area when asked to improve testing context, prompts, scripts, or references.
+
+## Read in this order when doing real work
 
 1. `openclaw/HANDOFF_PROTOCOL.md`
 2. latest dated section in `openclaw/issues_log.md`
-3. `openclaw/references/testing_layers.md`
-4. `openclaw/references/long_run_lab_pass.md`
-5. `openclaw/references/api_throttle.md`
+3. `openclaw/README.md`
+4. `openclaw/references/testing_layers.md`
+5. `openclaw/references/generic_lan_testing.md`
+6. `openclaw/references/frontend_testing.md`
+7. `openclaw/references/long_run_lab_pass.md` when running longer test loops

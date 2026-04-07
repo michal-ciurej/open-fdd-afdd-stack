@@ -1,58 +1,106 @@
-# Where testing lives (OpenClaw lab vs product)
+# Where testing lives (OpenClaw vs product)
 
-Use this map so failures land in the **right bucket** in `issues_log.md` and GitHub issues.
+Use this map so failures land in the right bucket in `issues_log.md` and GitHub issues.
+
+## Model Routing Policy
+
+Classify the task before analyzing it.
+
+### SIMPLE (use primary model)
+- Pass/fail test results
+- HTTP status code errors (`404`, `500`, timeout)
+- Missing UI elements or broken selectors
+- Test environment setup failures
+- Syntax errors or import failures
+
+### COMPLEX (use thinking model)
+- Unexpected behavior that passed but shouldn't have
+- Race conditions or timing-dependent failures
+- Security vulnerabilities
+- Performance degradation patterns
+- Failures that span multiple components or files
+
+Rules:
+- Default to SIMPLE unless the test result shows ambiguous or multi-layered behavior.
+- Always classify first, then process.
+- Never use the thinking model for a task that fits the SIMPLE list.
+
+## First split: what access do you have?
+
+### Edge-only access
+Use when OpenClaw only has LAN/VPN/frontend reachability.
+
+Start with:
+- `openclaw/references/generic_lan_testing.md`
+- `openclaw/scripts/probe_openfdd_lan.sh`
+- `openclaw/scripts/probe_openfdd_lan.ps1`
+
+### Host-aware access
+Use when OpenClaw also has SSH, `.env`, docker logs, or local loopback access.
+
+Add:
+- `.env` mode inspection
+- `docker ps`
+- Caddy/API/frontend logs
+- loopback API checks
+- bootstrap phase verification
 
 ## Primary entrypoint (not under `openclaw/`)
 
 | What | Path / command |
 |------|----------------|
-| Stack + CI-style matrix | **`scripts/bootstrap.sh`** — full stack, **`--test`** (frontend in Docker + **host pytest** + Caddy), **`--mode collector|model|engine`**, **`--verify`**, optional **`--with-mcp-rag`**. |
+| Stack + CI-style matrix | `scripts/bootstrap.sh` — full stack, `--test`, `--mode collector|model|engine`, `--verify`, optional `--with-mcp-rag`. |
 
-**OpenClaw usually runs this first.** Host needs **`.venv`** + **`pip install -e ".[dev]"`** for backend pytest (see `openclaw/README.md`).
+OpenClaw usually starts here **when host access exists**.
 
-## Under `open-fdd/openclaw/` (lab / bench)
+## Under `open-fdd-afdd-stack/openclaw/`
 
 | Location | Role | When it fails, log as… |
 |----------|------|-------------------------|
-| **`openclaw/scripts/`** | Small helpers (`capture_bootstrap_log.sh`, …) | area: **bootstrap** / **tooling** |
-| **`openclaw/bench/e2e/`** | Heavy Python: `1_e2e_frontend_selenium.py`, `2_sparql_crud_and_frontend_test.py`, `3_long_term_bacnet_scrape_test.py`, `4_hot_reload_test.py`, **`automated_suite.py`** | area: **e2e**, **sparql**, **bacnet**, **hot-reload** — cite log file |
-| **`openclaw/bench/scripts/`** | e.g. **`monitor_fake_fault_schedule.py`** | area: **bacnet** / **bench** |
-| **`openclaw/bench/fake_bacnet_devices/`** | Fake devices + **`fault_schedule.py`** | area: **fake_bacnet** |
-| **`openclaw/windows/`** | `.cmd` overnight/daytime wrappers | area: **windows_bench** |
-| **`openclaw/bench/sparql/`** | `.sparql` fixtures (manual / semi-auto) | area: **sparql** / **graph** |
+| `openclaw/scripts/` | Small helpers and generic LAN probes | area: `bootstrap` / `tooling` / `edge-probe` |
+| `openclaw/bench/e2e/` | Heavy Python: Selenium, SPARQL, BACnet, hot-reload, AI payload tests | area: `e2e`, `sparql`, `bacnet`, `hot-reload`, `ai-modeling` |
+| `openclaw/bench/scripts/` | bench-side helper utilities | area: `bench` / `bacnet` |
+| `openclaw/bench/fake_bacnet_devices/` | fake devices and schedules | area: `fake_bacnet` |
+| `openclaw/windows/` | Windows bench wrappers | area: `windows_bench` |
+| `openclaw/bench/sparql/` | SPARQL fixtures | area: `sparql` / `graph` |
+| `openclaw/references/` | stable guidance for OpenClaw sessions | area: `context` |
 
-## Product / CI backend (pytest)
+## AI-assisted data modeling lives here too
+
+When the task is model-centric rather than stack-centric, prioritize:
+- `openclaw/bench/e2e/5_ai_data_model_payload_test.py`
+- `openclaw/bench/e2e/ai_modeling_pass.py`
+- `openclaw/bench/fixtures/`
+- `openclaw/bench/sparql/`
+
+Log these as `ai-modeling`, `graph`, or `bacnet-reference` rather than lumping them into generic frontend failure.
+
+## Product / CI backend
 
 | What | Path |
 |------|------|
-| API/platform tests | **`open_fdd/tests/`** (+ paths in **`pyproject.toml`**) |
-| Run | **`pytest`** or **`./scripts/bootstrap.sh --test`** (uses host `.venv` python) |
+| API/platform tests | `open_fdd/tests/` (+ paths in `pyproject.toml`) |
+| Run | `pytest` or `./scripts/bootstrap.sh --test` |
 
-Log as area: **backend** / **platform** with test node id.
+Log as area: `backend` / `platform` with test node id.
 
-## Docs
+## What to write in `issues_log.md`
 
-| What | Path |
-|------|------|
-| Lab layout | **`openclaw/README.md`** |
-| Broader plan | **`docs/operations/testing_plan.md`** |
+Each bullet should capture:
+- date
+- access level: host-aware or edge-only
+- area
+- symptom
+- command/script/prompt used
+- log path if any
+- suspected cause
+- GitHub issue if filed
 
-## What to write in `issues_log.md` (durable after browser closes)
+Separate OpenClaw/operator mistakes from Open-FDD product bugs.
 
-Each bullet should help **you** and **Cursor** the next day:
+## Current durable lessons
 
-- **date**, **area** (from table above), **symptom**, **command or script**, **log path** under `openclaw/logs/…`, **suspected cause**, **GitHub issue** if filed.
-- Separate **OpenClaw/agent mistakes** (wrong `cd`, no venv) from **Open-FDD product bugs** (API 500, wrong fault).
-
-## What belongs in GitHub Issues (bbartling/open-fdd)
-
-- Regressions in **product** behavior, security notes, doc bugs worth tracking.
-- Keep **`issues_log.md`** as the **fast lab trail**; promote stable items to Issues.
-- For frontend/API SPARQL parity drafts, follow **`openclaw/references/parity_issue_checklist.md`** first so auth drift and graph-churn drift do not get mislabeled as product bugs.
-
-## Current known issue state (2026-03-27)
-
-- **#95** UI wording/guidance: OpenClaw retest against `cf343ca` passed on the live bench; close recommended.
-- **#93** import/materialization: original symptom no longer reproduces on `cf343ca`; close recommended.
-- **#92** count-sensitive parity: tighter retest showed `07_count_triples.sparql` is currently **graph-churn-sensitive** on the live bench; keep open, but re-scope around parity under unstable graph state.
-- Separate from the above, the bench has shown **graph hygiene/runtime drift**: rising orphan blank nodes, fluctuating triple counts, and duplicate partial BACnet references even while auth and raw BACnet reads remain healthy.
+- Do not confuse missing auth with product failure.
+- Do not confuse loopback-only direct ports in TLS mode with API outage.
+- After bootstrap, wait for the final summary before treating the state as settled.
+- In new-building or remote cases, expect OpenClaw to spend more time in AI-assisted data-model review and edge-only probing than in SSH-heavy bench operations.
