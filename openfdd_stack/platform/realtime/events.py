@@ -7,6 +7,7 @@ from typing import Any, Optional
 TOPIC_CRUD_SITE = "crud.site"
 TOPIC_CRUD_EQUIPMENT = "crud.equipment"
 TOPIC_CRUD_POINT = "crud.point"
+TOPIC_CRUD_ENERGY_CALC = "crud.energy_calc"
 TOPIC_CONFIG_UPDATED = "config.updated"
 TOPIC_GRAPH_UPDATED = "graph.updated"
 TOPIC_BACNET_DISCOVERY = "bacnet.discovery"

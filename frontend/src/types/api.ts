@@ -346,3 +346,63 @@ export interface FaultResultsSampleResponse {
   count: number;
 }
 
+/** GET /energy-calculations/calc-types — field metadata for the Energy Engineering UI. */
+export interface EnergyCalcFieldSpec {
+  key: string;
+  label: string;
+  type: string;
+  min?: number;
+  max?: number;
+  default?: number | string;
+  options?: string[];
+}
+
+export interface EnergyCalcTypePublic {
+  id: string;
+  label: string;
+  summary: string;
+  category: string;
+  fields: EnergyCalcFieldSpec[];
+}
+
+export interface EnergyCalculation {
+  id: string;
+  site_id: string;
+  equipment_id: string | null;
+  external_id: string;
+  name: string;
+  description: string | null;
+  calc_type: string;
+  parameters: Record<string, unknown>;
+  point_bindings: Record<string, unknown>;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EnergyPreviewResult {
+  calc_type: string;
+  annual_kwh_saved: number | null;
+  annual_therms_saved: number | null;
+  annual_mmbtu_saved: number | null;
+  annual_cost_saved_usd: number | null;
+  peak_kw_reduced: number | null;
+  simple_payback_years: number | null;
+  confidence_score: number | null;
+  missing_inputs: string[];
+  assumptions_used: string[];
+  notes: string;
+}
+
+export interface EnergyCalculationCreateBody {
+  site_id: string;
+  equipment_id?: string | null;
+  external_id: string;
+  name: string;
+  description?: string | null;
+  calc_type: string;
+  parameters?: Record<string, unknown>;
+  point_bindings?: Record<string, unknown>;
+  enabled?: boolean;
+}
+

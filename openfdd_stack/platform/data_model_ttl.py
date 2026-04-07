@@ -153,6 +153,14 @@ def build_ttl_from_db(site_id: UUID | None = None) -> str:
                 (site_ids,),
             )
             points_rows = cur.fetchall()
+            cur.execute(
+                """SELECT id, site_id, equipment_id, external_id, name, description, calc_type,
+                          parameters, point_bindings, enabled
+                   FROM energy_calculations WHERE site_id = ANY(%s::uuid[])
+                   ORDER BY site_id, external_id""",
+                (site_ids,),
+            )
+            energy_rows = cur.fetchall()
 
     lines = [_prefixes()]
     eq_by_site: dict[str, list[dict]] = {}
@@ -168,6 +176,10 @@ def build_ttl_from_db(site_id: UUID | None = None) -> str:
             pts_by_eq.setdefault(str(eid), []).append(p)
         else:
             pts_orphan.setdefault(sid, []).append(p)
+
+    ec_by_site: dict[str, list[dict]] = {}
+    for ec in energy_rows:
+        ec_by_site.setdefault(str(ec["site_id"]), []).append(ec)
 
     for site in sites:
         sid = str(site["id"])
@@ -218,7 +230,39 @@ def build_ttl_from_db(site_id: UUID | None = None) -> str:
                 _append_point(lines, p, oref)
             lines.append("")
 
+        for ec in ec_by_site.get(sid, []):
+            _append_energy_calculation(lines, ec, sref)
+
     return "\n".join(lines)
+
+
+def _append_energy_calculation(
+    lines: list[str], ec: dict[str, Any], site_ref: str
+) -> None:
+    """Emit FDD energy / savings calc spec for SPARQL and knowledge-graph export."""
+    eid = str(ec["id"]).replace("-", "_")
+    uri = f":ec_{eid}"
+    label = _escape((ec.get("name") or ec.get("external_id") or "calc"))
+    lines.append(f"{uri} a ofdd:EnergyCalculation ;")
+    lines.append(f'    rdfs:label "{label}" ;')
+    lines.append(f'    ofdd:calcExternalId "{_escape(str(ec.get("external_id") or ""))}" ;')
+    lines.append(f'    ofdd:calcType "{_escape(str(ec.get("calc_type") or ""))}" ;')
+    lines.append(f"    ofdd:calcEnabled {'true' if ec.get('enabled', True) else 'false'} ;")
+    desc = ec.get("description")
+    if desc is not None and str(desc).strip():
+        lines.append(f'    rdfs:comment "{_escape(str(desc).strip())}" ;')
+    params = ec.get("parameters") if isinstance(ec.get("parameters"), dict) else {}
+    pj = json.dumps(params, separators=(",", ":"), sort_keys=True)
+    lines.append(f'    ofdd:calcParameters "{_escape(pj)}" ;')
+    binds = ec.get("point_bindings") if isinstance(ec.get("point_bindings"), dict) else {}
+    bj = json.dumps(binds, separators=(",", ":"), sort_keys=True)
+    lines.append(f'    ofdd:calcPointBindings "{_escape(bj)}" ;')
+    eq_id = ec.get("equipment_id")
+    if eq_id:
+        eref = f":eq_{str(eq_id).replace('-', '_')}"
+        lines.append(f"    ofdd:forEquipment {eref} ;")
+    lines.append(f"    brick:isPartOf {site_ref} .")
+    lines.append("")
 
 
 def _append_equipment_engineering(

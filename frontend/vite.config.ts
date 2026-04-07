@@ -23,6 +23,7 @@ const apiRoutes = [
   "/jobs",
   "/bacnet",
   "/analytics",
+  "/energy-calculations",
   "/health",
   "/docs",
   "/redoc",

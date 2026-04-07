@@ -20,6 +20,7 @@ from openfdd_stack.platform.api import (
     config as config_router,
     data_model,
     download,
+    energy_calculations,
     entities,
     faults,
     jobs as jobs_router,
@@ -199,6 +200,7 @@ app.include_router(config_router.router)
 app.include_router(auth_routes.router)
 app.include_router(sites.router)
 app.include_router(points.router)
+app.include_router(energy_calculations.router)
 app.include_router(equipment.router)
 app.include_router(data_model.router)
 app.include_router(download.router)

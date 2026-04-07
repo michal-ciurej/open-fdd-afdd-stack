@@ -12,10 +12,10 @@ import { FaultsPage } from "@/components/pages/FaultsPage";
 import { SystemResourcesPage } from "@/components/pages/SystemResourcesPage";
 import { BacnetToolsPage } from "@/components/pages/BacnetToolsPage";
 import { DataModelPage } from "@/components/pages/DataModelPage";
-import { DataModelEngineeringPage } from "@/components/pages/DataModelEngineeringPage";
+import { EnergyEngineeringPage } from "@/components/pages/EnergyEngineeringPage";
 import { DataModelTestingPage } from "@/components/pages/DataModelTestingPage";
 import { PlotsPage } from "@/components/pages/PlotsPage";
-import { DiagnosticsPage } from "@/components/pages/DiagnosticsPage";
+import { AnalyticsPage } from "@/components/pages/AnalyticsPage";
 import { WeatherDataPage } from "@/components/pages/WeatherDataPage";
 import { useWebSocket } from "@/hooks/use-websocket";
 import {
@@ -125,10 +125,12 @@ function AppRoutes() {
           <Route path="faults" element={<FaultsPage />} />
           <Route path="plots" element={<PlotsPage />} />
           <Route path="weather" element={<WeatherDataPage />} />
-          <Route path="diagnostics" element={<DiagnosticsPage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="diagnostics" element={<Navigate to="/analytics" replace />} />
           <Route path="system" element={<SystemResourcesPage />} />
           <Route path="data-model" element={<DataModelPage />} />
-          <Route path="data-model-engineering" element={<DataModelEngineeringPage />} />
+          <Route path="energy-engineering" element={<EnergyEngineeringPage />} />
+          <Route path="data-model-engineering" element={<Navigate to="/energy-engineering" replace />} />
           <Route path="data-model-testing" element={<DataModelTestingPage />} />
         </Route>
         <Route

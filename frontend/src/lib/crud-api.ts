@@ -3,6 +3,10 @@ import type {
   DataModelExportRow,
   DataModelImportBody,
   DataModelImportResponse,
+  EnergyCalculation,
+  EnergyCalculationCreateBody,
+  EnergyCalcTypePublic,
+  EnergyPreviewResult,
   PlatformConfig,
   Point,
   PointPatchBody,
@@ -153,6 +157,42 @@ export function dataModelReset() {
 
 export function dataModelCheck() {
   return apiFetch<DataModelCheckResponse>("/data-model/check");
+}
+
+export function listEnergyCalcTypes() {
+  return apiFetch<{ calc_types: EnergyCalcTypePublic[] }>("/energy-calculations/calc-types");
+}
+
+export function listEnergyCalculations(siteId: string, equipmentId?: string) {
+  const p = new URLSearchParams();
+  p.set("site_id", siteId);
+  if (equipmentId) p.set("equipment_id", equipmentId);
+  return apiFetch<EnergyCalculation[]>(`/energy-calculations?${p.toString()}`);
+}
+
+export function previewEnergyCalculation(
+  calc_type: string,
+  parameters: Record<string, unknown>,
+) {
+  return apiFetch<EnergyPreviewResult>("/energy-calculations/preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ calc_type, parameters }),
+  });
+}
+
+export function createEnergyCalculation(body: EnergyCalculationCreateBody) {
+  return apiFetch<EnergyCalculation>("/energy-calculations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteEnergyCalculation(id: string) {
+  return apiFetch<{ status: string }>(`/energy-calculations/${id}`, {
+    method: "DELETE",
+  });
 }
 
 export function bacnetWhoisRange(body: WhoIsRangeBody) {

@@ -8,9 +8,10 @@ import pytest
 from openfdd_stack.platform.data_model_ttl import build_ttl_from_db, _escape, _prefixes
 
 
-def _mock_cursor(sites, equipment, points):
+def _mock_cursor(sites, equipment, points, energy_rows=None):
     cursor = MagicMock()
-    fetch_results = [sites, equipment, points]
+    er = [] if energy_rows is None else energy_rows
+    fetch_results = [sites, equipment, points, er]
     cursor.fetchall.side_effect = fetch_results
     return cursor
 
@@ -286,3 +287,33 @@ def test_build_ttl_includes_engineering_extension_and_s223_topology():
     assert "ofdd:designCFM" in ttl
     assert "s223:hasConnectionPoint" in ttl
     assert "s223:Duct" in ttl
+
+
+def test_build_ttl_includes_energy_calculation():
+    site_id = uuid4()
+    ec_id = uuid4()
+    sites = [{"id": site_id, "name": "Energy Site"}]
+    equipment = []
+    points = []
+    energy = [
+        {
+            "id": ec_id,
+            "site_id": site_id,
+            "equipment_id": None,
+            "external_id": "oa_heat_1",
+            "name": "Excess OA heat",
+            "description": "Site-specific spec",
+            "calc_type": "oa_heating_sensible",
+            "parameters": {"cfm_excess": 1000},
+            "point_bindings": {"cfm": "OA_FLOW"},
+            "enabled": True,
+        }
+    ]
+    cursor = _mock_cursor(sites, equipment, points, energy)
+    conn = _mock_conn(cursor)
+    with patch("openfdd_stack.platform.data_model_ttl.get_conn", return_value=conn):
+        ttl = build_ttl_from_db()
+    assert "ofdd:EnergyCalculation" in ttl
+    assert "oa_heat_1" in ttl
+    assert "oa_heating_sensible" in ttl
+    assert "brick:isPartOf" in ttl
