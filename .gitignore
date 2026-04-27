@@ -28,6 +28,8 @@ __pycache__/
 
 .claude/
 /.claude
+/claude
+
 
 # Distribution / packaging
 .Python
