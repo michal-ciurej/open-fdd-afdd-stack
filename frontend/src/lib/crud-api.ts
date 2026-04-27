@@ -380,3 +380,152 @@ export function syncRuleDefinitions() {
     method: "POST",
   });
 }
+
+// ---------------------------------------------------------------------------
+// Niagara per-site endpoints + scan + sync
+// ---------------------------------------------------------------------------
+
+export interface NiagaraEndpoint {
+  site_id: string;
+  base_url: string;
+  username: string;
+  ssl_verify: boolean;
+  enabled: boolean;
+  last_scan_ts?: string | null;
+  last_sync_ts?: string | null;
+}
+
+export interface NiagaraEndpointUpsertBody {
+  base_url: string;
+  username: string;
+  password: string;
+  ssl_verify: boolean;
+  enabled: boolean;
+}
+
+export interface NiagaraScanPoint {
+  id: string;
+  external_id: string;
+  equipment_id: string | null;
+  equipment_name: string | null;
+  niagara_nav_ord: string | null;
+  niagara_tags: Record<string, unknown> | null;
+  niagara_history_path: string | null;
+}
+
+export function listNiagaraEndpoints() {
+  return apiFetch<NiagaraEndpoint[]>("/niagara/endpoints");
+}
+
+export function getNiagaraEndpoint(siteId: string) {
+  return apiFetch<NiagaraEndpoint>(`/niagara/endpoints/${encodeURIComponent(siteId)}`);
+}
+
+export function putNiagaraEndpoint(siteId: string, body: NiagaraEndpointUpsertBody) {
+  return apiFetch<NiagaraEndpoint>(`/niagara/endpoints/${encodeURIComponent(siteId)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteNiagaraEndpoint(siteId: string) {
+  return apiFetch<void>(`/niagara/endpoints/${encodeURIComponent(siteId)}`, {
+    method: "DELETE",
+  });
+}
+
+export function testNiagaraEndpoint(siteId: string) {
+  return apiFetch<{ ok: boolean; status_code: number | null; error: string | null }>(
+    `/niagara/endpoints/${encodeURIComponent(siteId)}/test`,
+    { method: "POST" },
+  );
+}
+
+export function startNiagaraScan(siteId: string) {
+  return apiFetch<{ job_id: string; status: string }>(
+    `/niagara/endpoints/${encodeURIComponent(siteId)}/scan`,
+    { method: "POST" },
+  );
+}
+
+export function startNiagaraSync(siteId: string, timeWindow = "lastweek") {
+  return apiFetch<{ job_id: string; status: string }>(
+    `/niagara/endpoints/${encodeURIComponent(siteId)}/sync`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ time_window: timeWindow }),
+    },
+  );
+}
+
+export function listNiagaraPoints(siteId: string) {
+  return apiFetch<{ count: number; points: NiagaraScanPoint[] }>(
+    `/niagara/endpoints/${encodeURIComponent(siteId)}/points`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// IQVision per-site endpoints + scan + sync
+// Mirrors the Niagara API shape. Points are grouped by the BQL Device column
+// instead of the nav ORD folder twice removed. Point rows share the
+// niagara_* metadata columns on the backend.
+// ---------------------------------------------------------------------------
+
+export type IQVisionEndpoint = NiagaraEndpoint;
+export type IQVisionEndpointUpsertBody = NiagaraEndpointUpsertBody;
+export type IQVisionScanPoint = NiagaraScanPoint;
+
+export function listIQVisionEndpoints() {
+  return apiFetch<IQVisionEndpoint[]>("/iqvision/endpoints");
+}
+
+export function getIQVisionEndpoint(siteId: string) {
+  return apiFetch<IQVisionEndpoint>(`/iqvision/endpoints/${encodeURIComponent(siteId)}`);
+}
+
+export function putIQVisionEndpoint(siteId: string, body: IQVisionEndpointUpsertBody) {
+  return apiFetch<IQVisionEndpoint>(`/iqvision/endpoints/${encodeURIComponent(siteId)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteIQVisionEndpoint(siteId: string) {
+  return apiFetch<void>(`/iqvision/endpoints/${encodeURIComponent(siteId)}`, {
+    method: "DELETE",
+  });
+}
+
+export function testIQVisionEndpoint(siteId: string) {
+  return apiFetch<{ ok: boolean; status_code: number | null; error: string | null }>(
+    `/iqvision/endpoints/${encodeURIComponent(siteId)}/test`,
+    { method: "POST" },
+  );
+}
+
+export function startIQVisionScan(siteId: string) {
+  return apiFetch<{ job_id: string; status: string }>(
+    `/iqvision/endpoints/${encodeURIComponent(siteId)}/scan`,
+    { method: "POST" },
+  );
+}
+
+export function startIQVisionSync(siteId: string, timeWindow = "lastweek") {
+  return apiFetch<{ job_id: string; status: string }>(
+    `/iqvision/endpoints/${encodeURIComponent(siteId)}/sync`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ time_window: timeWindow }),
+    },
+  );
+}
+
+export function listIQVisionPoints(siteId: string) {
+  return apiFetch<{ count: number; points: IQVisionScanPoint[] }>(
+    `/iqvision/endpoints/${encodeURIComponent(siteId)}/points`,
+  );
+}

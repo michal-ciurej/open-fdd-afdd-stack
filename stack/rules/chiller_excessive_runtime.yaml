@@ -1,0 +1,19 @@
+# Chiller running for an excessive portion of a rolling 24 h window.
+# Assumes 5-minute sampling: 288 samples/day; alarm when >= 264 samples (~22 h) ON in last 276 samples.
+# Adjust rolling_samples / max_runtime_samples to match your sampling interval.
+name: chiller_excessive_runtime
+description: Chiller runtime exceeds rolling daily threshold (24x7 load or failed sequence)
+type: expression
+flag: chiller_excessive_runtime_flag
+equipment_type: [Chiller]
+
+inputs:
+  Chiller_Status:
+    brick: Chiller_Status
+
+params:
+  rolling_samples: 276
+  max_runtime_samples: 264
+
+expression: |
+  Chiller_Status.rolling(window=rolling_samples).sum() > max_runtime_samples

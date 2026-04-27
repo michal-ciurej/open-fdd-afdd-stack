@@ -2,8 +2,9 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useSiteContext } from "@/contexts/site-context";
 import { usePoints, useEquipment } from "@/hooks/use-sites";
+import { useTimeseriesLatest } from "@/hooks/use-timeseries-latest";
 import { useFaultDefinitions, useFaultTimeseries, useFaultState } from "@/hooks/use-faults";
-import type { FaultDefinition } from "@/types/api";
+import type { FaultDefinition, Equipment, Point } from "@/types/api";
 import { DateRangeSelect } from "@/components/site/DateRangeSelect";
 import type { DatePreset } from "@/components/site/DateRangeSelect";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +16,7 @@ import {
   pickFaultBucket,
   type ParsedCsv,
 } from "@/lib/plots-csv";
-import { ChartLine, Download, RefreshCw } from "lucide-react";
+import { ChartLine, ChevronDown, Download, RefreshCw } from "lucide-react";
 
 function presetRange(preset: DatePreset): { start: string; end: string } {
   const end = new Date();
@@ -55,6 +56,17 @@ const PLOT_COLORS = [
 type PlotMode = "lines" | "points" | "both";
 function toDateOnly(iso: string): string {
   return iso.slice(0, 10);
+}
+
+function equipmentLabel(eq: Equipment): string {
+  if (eq.equipment_type && eq.equipment_type !== eq.name) {
+    return `${eq.name} (${eq.equipment_type})`;
+  }
+  return eq.name;
+}
+
+function pointLabel(p: Point): string {
+  return p.object_name ?? p.external_id;
 }
 
 function PlotlyCanvas({
@@ -102,20 +114,116 @@ function PlotlyCanvas({
   return <div ref={ref} className="h-[62vh] min-h-[420px] w-full rounded-lg border border-border/60 bg-card" />;
 }
 
+interface EquipmentComboboxProps {
+  options: Equipment[];
+  selectedId: string;
+  onChange: (id: string) => void;
+  disabled?: boolean;
+}
+
+function EquipmentCombobox({ options, selectedId, onChange, disabled }: EquipmentComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const selected = options.find((o) => o.id === selectedId) ?? null;
+  const lower = search.toLowerCase();
+  const filtered = options.filter((eq) => {
+    if (!search) return true;
+    return (
+      eq.name.toLowerCase().includes(lower) ||
+      (eq.equipment_type?.toLowerCase().includes(lower) ?? false) ||
+      (eq.description?.toLowerCase().includes(lower) ?? false)
+    );
+  });
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        disabled={disabled}
+        className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-border/60 bg-background px-3 text-left text-sm transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="truncate">
+          {selected ? equipmentLabel(selected) : options.length === 0 ? "No equipment available" : "Select equipment\u2026"}
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 z-50 mt-1.5 w-full min-w-[18rem] rounded-xl border border-border bg-card shadow-xl">
+          <div className="border-b border-border p-2">
+            <input
+              type="text"
+              placeholder="Search equipment by name or type\u2026"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              autoFocus
+            />
+          </div>
+          <div className="max-h-72 overflow-y-auto p-1.5">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-center text-sm text-muted-foreground">No matches.</div>
+            ) : (
+              filtered.map((eq) => {
+                const active = eq.id === selectedId;
+                return (
+                  <button
+                    key={eq.id}
+                    type="button"
+                    onClick={() => {
+                      onChange(eq.id);
+                      setOpen(false);
+                      setSearch("");
+                    }}
+                    className={`flex w-full flex-col items-start gap-0.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-muted/60 ${active ? "bg-muted/80" : ""}`}
+                  >
+                    <span className="truncate font-medium">{eq.name}</span>
+                    {eq.equipment_type && (
+                      <span className="truncate text-xs text-muted-foreground">{eq.equipment_type}</span>
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PlotsPage() {
   const { selectedSiteId } = useSiteContext();
   const [searchParams, setSearchParams] = useSearchParams();
-  const urlPlotDevice = searchParams.get("device") ?? "";
+  const urlPlotEquipment = searchParams.get("equipment") ?? "";
   const urlPlotFault = searchParams.get("fault") ?? "";
   const { data: points = [], isLoading: ptsLoading } = usePoints(selectedSiteId ?? undefined);
   const { data: equipment = [], isLoading: eqLoading } = useEquipment(selectedSiteId ?? undefined);
+  const { data: latestList = [] } = useTimeseriesLatest(selectedSiteId ?? undefined);
   const { data: faultState = [] } = useFaultState(selectedSiteId ?? undefined);
   const { data: faultDefinitions = [] } = useFaultDefinitions();
-  const pollingPoints = useMemo(() => points.filter((p) => p.polling), [points]);
+
+  const historyPointIds = useMemo(
+    () => new Set(latestList.map((r) => r.point_id)),
+    [latestList],
+  );
 
   const [plotMode, setPlotMode] = useState<PlotMode>("lines");
   const [showFaultOverlays, setShowFaultOverlays] = useState(true);
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>("");
   const [selectedPointIds, setSelectedPointIds] = useState<string[]>([]);
   const [selectedFaultId, setSelectedFaultId] = useState<string>("");
   const [loadingCsv, setLoadingCsv] = useState(false);
@@ -133,7 +241,7 @@ export function PlotsPage() {
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
-          next.delete("device");
+          next.delete("equipment");
           next.delete("fault");
           return next;
         },
@@ -159,50 +267,41 @@ export function PlotsPage() {
     return presetRange(preset);
   }, [preset, customStart, customEnd]);
 
-  const deviceOptions = useMemo(() => {
-    const map = new Map<string, { label: string }>();
-    for (const p of pollingPoints) {
-      if (!p.bacnet_device_id) continue;
-      const eq = equipment.find((e) => e.id === p.equipment_id);
-      const label = eq ? `${p.bacnet_device_id} - ${eq.name}` : p.bacnet_device_id;
-      map.set(p.bacnet_device_id, { label });
+  const pointsByEquipmentId = useMemo(() => {
+    const m = new Map<string, Point[]>();
+    for (const p of points) {
+      if (!p.equipment_id) continue;
+      const arr = m.get(p.equipment_id) ?? [];
+      arr.push(p);
+      m.set(p.equipment_id, arr);
     }
-    return Array.from(map.entries())
-      .map(([id, v]) => ({ id, label: v.label }))
-      .sort((a, b) => a.id.localeCompare(b.id));
-  }, [pollingPoints, equipment]);
+    return m;
+  }, [points]);
 
-  const pointsForDevice = useMemo(
-    () => pollingPoints.filter((p) => p.bacnet_device_id === selectedDeviceId),
-    [pollingPoints, selectedDeviceId],
-  );
+  /** Equipment with at least one point attached — nothing to plot otherwise. */
+  const equipmentOptions = useMemo(() => {
+    return equipment
+      .filter((eq) => (pointsByEquipmentId.get(eq.id)?.length ?? 0) > 0)
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [equipment, pointsByEquipmentId]);
 
-  /** All equipment IDs tied to the selected BACnet device (one device can span multiple equipment records). */
-  const selectedDeviceEquipmentIds = useMemo(() => {
-    if (!selectedDeviceId) return new Set<string>();
-    const ids = new Set<string>();
-    for (const p of pollingPoints) {
-      if (p.bacnet_device_id !== selectedDeviceId) continue;
-      if (p.equipment_id) ids.add(p.equipment_id);
-    }
-    return ids;
-  }, [pollingPoints, selectedDeviceId]);
+  const pointsForEquipment = useMemo(() => {
+    if (!selectedEquipmentId) return [] as Point[];
+    const arr = pointsByEquipmentId.get(selectedEquipmentId) ?? [];
+    return arr.slice().sort((a, b) => pointLabel(a).localeCompare(pointLabel(b)));
+  }, [pointsByEquipmentId, selectedEquipmentId]);
 
-  const faultIdsForDevice = useMemo(() => {
-    if (!selectedDeviceId) return [];
+  const faultIdsForEquipment = useMemo(() => {
+    if (!selectedEquipmentId) return [] as string[];
     const set = new Set<string>();
     for (const f of faultState) {
+      if (f.equipment_id !== selectedEquipmentId) continue;
       const fid = String(f.fault_id ?? "");
-      if (!fid) continue;
-      const onEquipment =
-        f.equipment_id != null &&
-        f.equipment_id !== "" &&
-        selectedDeviceEquipmentIds.has(f.equipment_id);
-      const onBacnet = String(f.bacnet_device_id ?? "") === selectedDeviceId;
-      if (onEquipment || onBacnet) set.add(fid);
+      if (fid) set.add(fid);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [faultState, selectedDeviceId, selectedDeviceEquipmentIds]);
+  }, [faultState, selectedEquipmentId]);
 
   const faultDefById = useMemo(() => {
     const m = new Map<string, FaultDefinition>();
@@ -220,16 +319,19 @@ export function PlotsPage() {
     [faultDefById],
   );
 
-  const pointIdsForExport = selectedPointIds.length > 0 ? selectedPointIds : pointsForDevice.map((p) => p.id);
+  const pointIdsForExport =
+    selectedPointIds.length > 0
+      ? selectedPointIds
+      : pointsForEquipment.filter((p) => historyPointIds.has(p.id)).map((p) => p.id);
+
   const pointSelectionKey = useMemo(() => {
-    const ids = selectedPointIds.length > 0 ? selectedPointIds : pointsForDevice.map((p) => p.id);
-    return [...ids].sort().join("\0");
-  }, [selectedPointIds, pointsForDevice]);
+    return [...pointIdsForExport].sort().join("\0");
+  }, [pointIdsForExport]);
+
   const faultBucket = pickFaultBucket(start, end);
-  /** Equipment rows tied to the selected BACnet device — backend must filter fault_results, not only site + fault_id. */
   const equipmentIdsForFaultOverlay = useMemo(
-    () => Array.from(selectedDeviceEquipmentIds).sort(),
-    [selectedDeviceEquipmentIds],
+    () => (selectedEquipmentId ? [selectedEquipmentId] : []),
+    [selectedEquipmentId],
   );
   const { data: faultData } = useFaultTimeseries(selectedSiteId ?? undefined, start, end, faultBucket, {
     enabled: !!(
@@ -254,7 +356,7 @@ export function PlotsPage() {
   useEffect(() => {
     setParsedCsv(null);
     setYColumns([]);
-  }, [selectedSiteId, selectedDeviceId, start, end, pointSelectionKey]);
+  }, [selectedSiteId, selectedEquipmentId, start, end, pointSelectionKey]);
 
   const loadOpenFddCsv = useCallback(async () => {
     if (!selectedSiteId) return;
@@ -275,6 +377,11 @@ export function PlotsPage() {
     }
   }, [selectedSiteId, start, end, pointIdsForExport, onCsvLoaded]);
 
+  const selectedEquipment = useMemo(
+    () => equipmentOptions.find((e) => e.id === selectedEquipmentId) ?? null,
+    [equipmentOptions, selectedEquipmentId],
+  );
+
   const downloadExcelCsv = useCallback(async () => {
     if (!selectedSiteId || pointIdsForExport.length === 0) return;
     setDownloadingCsv(true);
@@ -282,6 +389,9 @@ export function PlotsPage() {
     try {
       const startD = toDateOnly(start);
       const endD = toDateOnly(end);
+      const eqSlug = selectedEquipment
+        ? selectedEquipment.name.replace(/[^a-zA-Z0-9._-]+/g, "_")
+        : "equipment";
       await downloadTimeseriesCsv(
         {
           site_id: selectedSiteId,
@@ -290,14 +400,14 @@ export function PlotsPage() {
           format: "wide",
           point_ids: pointIdsForExport,
         },
-        `openfdd_plots_device-${selectedDeviceId}_${startD}_${endD}.csv`,
+        `openfdd_plots_${eqSlug}_${startD}_${endD}.csv`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to download CSV.");
     } finally {
       setDownloadingCsv(false);
     }
-  }, [selectedSiteId, start, end, pointIdsForExport, selectedDeviceId]);
+  }, [selectedSiteId, start, end, pointIdsForExport, selectedEquipment]);
 
   const effectiveCsv = useMemo(() => {
     if (!parsedCsv || !selectedFaultId) return parsedCsv;
@@ -361,57 +471,64 @@ export function PlotsPage() {
   ]);
 
   useEffect(() => {
-    if (deviceOptions.length === 0) {
-      if (selectedDeviceId) setSelectedDeviceId("");
+    if (equipmentOptions.length === 0) {
+      if (selectedEquipmentId) setSelectedEquipmentId("");
       return;
     }
-    if (urlPlotDevice && deviceOptions.some((o) => o.id === urlPlotDevice)) {
-      if (selectedDeviceId !== urlPlotDevice) setSelectedDeviceId(urlPlotDevice);
+    if (urlPlotEquipment && equipmentOptions.some((o) => o.id === urlPlotEquipment)) {
+      if (selectedEquipmentId !== urlPlotEquipment) setSelectedEquipmentId(urlPlotEquipment);
       return;
     }
-    const stillValid = deviceOptions.some((o) => o.id === selectedDeviceId);
-    if (!stillValid || !selectedDeviceId) {
-      setSelectedDeviceId(deviceOptions[0].id);
+    const stillValid = equipmentOptions.some((o) => o.id === selectedEquipmentId);
+    if (!stillValid || !selectedEquipmentId) {
+      setSelectedEquipmentId(equipmentOptions[0].id);
     }
-  }, [selectedDeviceId, deviceOptions, urlPlotDevice]);
+  }, [selectedEquipmentId, equipmentOptions, urlPlotEquipment]);
 
-  const prevPointSeedDeviceIdRef = useRef<string>("");
+  const prevPointSeedEquipmentIdRef = useRef<string>("");
 
   useEffect(() => {
-    if (!selectedDeviceId) {
-      prevPointSeedDeviceIdRef.current = "";
+    if (!selectedEquipmentId) {
+      prevPointSeedEquipmentIdRef.current = "";
       return;
     }
-    const forDevice = pollingPoints.filter((p) => p.bacnet_device_id === selectedDeviceId);
-    const defaults = forDevice.slice(0, 4).map((p) => p.id);
-    const deviceChanged = prevPointSeedDeviceIdRef.current !== selectedDeviceId;
-    if (deviceChanged) {
-      prevPointSeedDeviceIdRef.current = selectedDeviceId;
-      setSelectedPointIds(defaults);
+    const forEquipment = pointsForEquipment;
+    const withHistory = forEquipment.filter((p) => historyPointIds.has(p.id));
+    const seed = (withHistory.length > 0 ? withHistory : forEquipment).slice(0, 4).map((p) => p.id);
+    const equipmentChanged = prevPointSeedEquipmentIdRef.current !== selectedEquipmentId;
+    if (equipmentChanged) {
+      prevPointSeedEquipmentIdRef.current = selectedEquipmentId;
+      setSelectedPointIds(seed);
       return;
     }
     setSelectedPointIds((prev) => {
-      const valid = prev.filter((id) => forDevice.some((p) => p.id === id));
+      const valid = prev.filter((id) => forEquipment.some((p) => p.id === id));
       if (valid.length !== prev.length) {
-        return valid.length > 0 ? valid : defaults;
+        return valid.length > 0 ? valid : seed;
       }
       return prev;
     });
-  }, [selectedDeviceId, pollingPoints]);
+  }, [selectedEquipmentId, pointsForEquipment, historyPointIds]);
 
   useEffect(() => {
-    if (faultIdsForDevice.length === 0) {
+    if (faultIdsForEquipment.length === 0) {
       setSelectedFaultId("");
       return;
     }
-    if (urlPlotFault && faultIdsForDevice.includes(urlPlotFault)) {
+    if (urlPlotFault && faultIdsForEquipment.includes(urlPlotFault)) {
       if (selectedFaultId !== urlPlotFault) setSelectedFaultId(urlPlotFault);
       return;
     }
-    if (!faultIdsForDevice.includes(selectedFaultId)) {
-      setSelectedFaultId(faultIdsForDevice[0]);
+    if (!faultIdsForEquipment.includes(selectedFaultId)) {
+      setSelectedFaultId(faultIdsForEquipment[0]);
     }
-  }, [faultIdsForDevice, selectedFaultId, urlPlotFault]);
+  }, [faultIdsForEquipment, selectedFaultId, urlPlotFault]);
+
+  const togglePoint = useCallback((id: string) => {
+    setSelectedPointIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }, []);
 
   if (!selectedSiteId) {
     return (
@@ -440,7 +557,7 @@ export function PlotsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Plots</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Plot BACnet device trends with fault overlays.
+            Plot equipment trends with fault overlays.
           </p>
         </div>
       </div>
@@ -477,65 +594,79 @@ export function PlotsPage() {
       <div className="rounded-lg border border-border/60 bg-card p-4">
         <div className="grid gap-3 md:grid-cols-3">
           <div>
-            <label
-              htmlFor="plots-device-select"
-              className="mb-1 block text-xs font-medium text-muted-foreground"
-            >
-              BACnet device instance ID
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Equipment
             </label>
-            <select
-              id="plots-device-select"
-              value={selectedDeviceId}
-              onChange={(e) => {
-                const id = e.target.value;
-                setSelectedDeviceId(id);
+            <EquipmentCombobox
+              options={equipmentOptions}
+              selectedId={selectedEquipmentId}
+              onChange={(id) => {
+                setSelectedEquipmentId(id);
                 setSearchParams(
                   (prev) => {
                     const next = new URLSearchParams(prev);
-                    if (id) next.set("device", id);
-                    else next.delete("device");
+                    if (id) next.set("equipment", id);
+                    else next.delete("equipment");
                     next.delete("fault");
                     return next;
                   },
                   { replace: true },
                 );
               }}
-              className="h-9 w-full rounded-lg border border-border/60 bg-background px-3 text-sm"
-            >
-              {deviceOptions.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
+              disabled={equipmentOptions.length === 0}
+            />
           </div>
           <div>
-            <label
-              htmlFor="plots-points-select"
-              className="mb-1 block text-xs font-medium text-muted-foreground"
-            >
-              Points (for selected device)
-            </label>
-            <select
-              id="plots-points-select"
-              multiple
-              value={selectedPointIds}
-              onChange={(e) => setSelectedPointIds(Array.from(e.target.selectedOptions).map((o) => o.value))}
-              className="h-28 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
-            >
-              {pointsForDevice.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.object_name ?? p.external_id}
-                </option>
-              ))}
-            </select>
+            <div className="mb-1 flex items-center justify-between">
+              <label className="block text-xs font-medium text-muted-foreground">
+                Points (for selected equipment)
+              </label>
+              {pointsForEquipment.length > 0 && (
+                <span className="text-[11px] text-muted-foreground">
+                  <span className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-500 align-middle" />
+                  has history
+                </span>
+              )}
+            </div>
+            <div className="h-28 w-full overflow-y-auto rounded-lg border border-border/60 bg-background px-1 py-1 text-sm">
+              {pointsForEquipment.length === 0 ? (
+                <div className="px-2 py-2 text-xs text-muted-foreground">
+                  {selectedEquipmentId ? "No points on this equipment." : "Select equipment to list points."}
+                </div>
+              ) : (
+                pointsForEquipment.map((p) => {
+                  const hasHistory = historyPointIds.has(p.id);
+                  const checked = selectedPointIds.includes(p.id);
+                  return (
+                    <label
+                      key={p.id}
+                      className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/60 ${
+                        hasHistory ? "bg-emerald-500/10 text-foreground" : "text-muted-foreground"
+                      }`}
+                      title={hasHistory ? "Has timeseries history" : "No timeseries history yet"}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => togglePoint(p.id)}
+                        className="h-3.5 w-3.5 accent-primary"
+                      />
+                      {hasHistory && (
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                      )}
+                      <span className="truncate">{pointLabel(p)}</span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
           </div>
           <div>
             <label
               htmlFor="plots-faults-select"
               className="mb-1 block text-xs font-medium text-muted-foreground"
             >
-              Faults (for selected device)
+              Faults (for selected equipment)
             </label>
             <select
               id="plots-faults-select"
@@ -554,17 +685,17 @@ export function PlotsPage() {
                 );
               }}
               className="h-9 w-full rounded-lg border border-border/60 bg-background px-3 text-sm"
-              disabled={faultIdsForDevice.length === 0}
+              disabled={faultIdsForEquipment.length === 0}
               title={
-                faultIdsForDevice.length === 0
-                  ? "No fault state rows for this BACnet device yet. Run FDD or pick another device."
+                faultIdsForEquipment.length === 0
+                  ? "No fault state rows for this equipment yet. Run FDD or pick another equipment."
                   : undefined
               }
             >
-              {faultIdsForDevice.length === 0 ? (
-                <option value="">No faults linked to this device</option>
+              {faultIdsForEquipment.length === 0 ? (
+                <option value="">No faults linked to this equipment</option>
               ) : (
-                faultIdsForDevice.map((faultId) => (
+                faultIdsForEquipment.map((faultId) => (
                   <option key={faultId} value={faultId}>
                     {faultOptionLabel(faultId)}
                   </option>
@@ -573,18 +704,17 @@ export function PlotsPage() {
             </select>
           </div>
         </div>
-        {selectedDeviceId && faultIdsForDevice.length === 0 && (
+        {selectedEquipmentId && faultIdsForEquipment.length === 0 && (
           <p className="mt-2 text-xs text-muted-foreground">
-            Faults listed here come from fault state for this BACnet device (equipment link or matching{" "}
-            <span className="font-mono">bacnet_device_id</span>). If the list is empty, run an FDD job or confirm
-            faults are evaluated for points on this device.
+            Faults listed here come from fault state for the selected equipment. If the list is empty,
+            run an FDD job or confirm faults are evaluated for points on this equipment.
           </p>
         )}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={loadOpenFddCsv}
-            disabled={loadingCsv || !selectedDeviceId || pointIdsForExport.length === 0}
+            disabled={loadingCsv || !selectedEquipmentId || pointIdsForExport.length === 0}
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
           >
             <RefreshCw className="h-4 w-4" />
@@ -593,7 +723,7 @@ export function PlotsPage() {
           <button
             type="button"
             onClick={() => void downloadExcelCsv()}
-            disabled={downloadingCsv || !selectedDeviceId || pointIdsForExport.length === 0}
+            disabled={downloadingCsv || !selectedEquipmentId || pointIdsForExport.length === 0}
             className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background px-4 py-2 text-sm font-medium disabled:opacity-50"
             title="UTF-8 with BOM, wide format: timestamp column plus one column per point (ISO UTC). Excel-ready."
           >
@@ -601,7 +731,8 @@ export function PlotsPage() {
             {downloadingCsv ? "Downloading..." : "Download CSV"}
           </button>
           <span className="text-xs text-muted-foreground">
-            Timestamp is fixed to `timestamp`; fault data is joined automatically when available. CSV download matches the selected device, points, and date range (same as Load); opens cleanly in Excel.
+            Timestamp is fixed to `timestamp`; fault data is joined automatically when available. If no
+            points are checked, all points with history for this equipment are loaded.
           </span>
         </div>
       </div>
@@ -646,13 +777,13 @@ export function PlotsPage() {
         {traces.length > 0 ? (
           <PlotlyCanvas
             traces={traces}
-            title="Open-FDD Trends"
+            title="3MSE FDD Trends"
           />
         ) : (
           <div className="flex h-[50vh] min-h-[360px] items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2">
               <ChartLine className="h-4 w-4" />
-              Select a BACnet device, choose points, then load data to plot.
+              Select equipment, pick points with history, then load data to plot.
             </span>
           </div>
         )}

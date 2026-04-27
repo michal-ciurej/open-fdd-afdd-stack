@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, NavLink, useSearchParams } from "react-router-dom";
+import { NavLink, useSearchParams } from "react-router-dom";
 import {
   LayoutDashboard,
   Settings,
@@ -14,8 +14,7 @@ import {
   Sun,
   Moon,
   ChevronUp,
-  LogOut,
-  Radio,
+  PlugZap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useCapabilities, useHealth } from "@/hooks/use-fdd-status";
@@ -26,10 +25,10 @@ import { timeAgo } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { to: "/", label: "Overview", icon: LayoutDashboard, end: true },
-  { to: "/config", label: "OpenFDD Config", icon: Settings, end: false },
-  { to: "/bacnet-tools", label: "BACnet tools", icon: Radio, end: false },
-  { to: "/data-model", label: "Data Model BRICK", icon: Database, end: false },
-  { to: "/energy-engineering", label: "Energy Engineering", icon: Zap, end: false },
+  { to: "/config", label: "3MSE FDD Config", icon: Settings, end: false },
+  { to: "/site-configuration", label: "Site Configuration", icon: PlugZap, end: false },
+  { to: "/data-model", label: "Data Modelling", icon: Database, end: false },
+  { to: "/energy-engineering", label: "Energy Analysis", icon: Zap, end: false },
   { to: "/data-model-testing", label: "Data Model Testing", icon: Search, end: false },
   { to: "/points", label: "Points", icon: CircleDot, end: false },
   { to: "/faults", label: "Faults", icon: AlertTriangle, end: false },
@@ -79,7 +78,7 @@ export function Sidebar() {
       {/* Branding */}
       <div className="flex items-center gap-2.5 border-border/60 px-5 py-4">
         <span className="text-lg font-semibold tracking-tight text-foreground">
-          Open-FDD
+          3MSE FDD
         </span>
         {capabilities && (
           <Badge variant="outline" className="text-[10px]">
@@ -116,16 +115,6 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
-
-      <div className="border-t border-border/60 px-3 py-2">
-        <Link
-          to="/logout"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors duration-150 hover:bg-muted/40 hover:text-foreground"
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          <span>Sign out</span>
-        </Link>
-      </div>
 
       {/* Theme selector */}
       <div className="border-t border-border/60 px-5 py-3">

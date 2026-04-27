@@ -1,0 +1,19 @@
+# Pump commanded on by BMS but status feedback (current switch / VFD run) reports off.
+# Catches tripped motor, open breaker, failed VFD, broken CS, bad DI wiring.
+name: pump_cmd_no_status
+description: Pump commanded on but status feedback reports off
+type: expression
+flag: pump_cmd_no_status_flag
+equipment_type: [Pump]
+
+inputs:
+  Pump_Command:
+    brick: Pump_Command
+  Pump_Status:
+    brick: Pump_Status
+
+params:
+  rolling_window: 3
+
+expression: |
+  (normalize_cmd(Pump_Command) > 0.5) & (normalize_cmd(Pump_Status) < 0.5)

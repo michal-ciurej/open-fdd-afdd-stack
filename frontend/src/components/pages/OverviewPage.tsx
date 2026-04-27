@@ -2,83 +2,12 @@ import { useSiteContext } from "@/contexts/site-context";
 import { SiteCard } from "@/components/dashboard/SiteCard";
 import { FddStatusBanner } from "@/components/dashboard/FddStatusBanner";
 import { FaultList } from "@/components/dashboard/FaultList";
+import { DataQueryWidget } from "@/components/dashboard/DataQueryWidget";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useSites, useAllEquipment, useAllPoints, useEquipment, usePoints } from "@/hooks/use-sites";
 import { useActiveFaults, useFaultDefinitions, useSiteFaults } from "@/hooks/use-faults";
-import { useCapabilities } from "@/hooks/use-fdd-status";
-
-const DOCS_SITE = "https://bbartling.github.io/open-fdd";
-const DOCS_PDF_ONLINE =
-  "https://github.com/bbartling/open-fdd/blob/master/pdf/open-fdd-docs.pdf";
-
-/** Help links for external agents; Open-FDD does not call LLMs from the UI. */
-function ModelContextCard() {
-  const { data: capabilities } = useCapabilities();
-
-  const linkCls =
-    "text-primary underline-offset-2 hover:underline font-medium break-words";
-
-  return (
-    <Card className="mt-6">
-      <CardContent className="pt-6 space-y-3">
-        <div>
-          <h2 className="text-sm font-medium text-muted-foreground">
-            External agents &amp; documentation
-          </h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Use your own OpenAI-compatible stack with the API. Full HTTP details and agent workflows are in the published docs —
-            start here:
-          </p>
-          <ul className="mt-2 list-disc pl-4 text-xs text-muted-foreground space-y-1">
-            <li>
-              <a href={DOCS_SITE} className={linkCls} target="_blank" rel="noopener noreferrer">
-                Documentation (GitHub Pages)
-              </a>{" "}
-              — quick start, stack, reference
-            </li>
-            <li>
-              <a href={DOCS_PDF_ONLINE} className={linkCls} target="_blank" rel="noopener noreferrer">
-                Documentation PDF
-              </a>{" "}
-              — offline / print-friendly (in a clone:{" "}
-              <code className="rounded bg-muted px-1 text-[11px]">pdf/open-fdd-docs.pdf</code>)
-            </li>
-            <li>
-              <a
-                href={`${DOCS_SITE}/modeling/llm_workflow#copy-paste-prompt-template-recommended`}
-                className={linkCls}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                LLM prompt (copy/paste template)
-              </a>{" "}
-              — same section as{" "}
-              <a href={`${DOCS_SITE}/modeling/llm_workflow`} className={linkCls} target="_blank" rel="noopener noreferrer">
-                LLM workflow
-              </a>{" "}
-              (no trailing slash on that path)
-            </li>
-            <li>
-              <a href={`${DOCS_SITE}/openclaw_integration`} className={linkCls} target="_blank" rel="noopener noreferrer">
-                Open‑Claw / external agent integration
-              </a>{" "}
-              — model context, MCP manifest, export/import
-            </li>
-          </ul>
-        </div>
-        {capabilities && (
-          <p className="text-xs text-muted-foreground">
-            API <span className="font-medium">v{capabilities.version}</span> — built-in{" "}
-            <code className="rounded bg-muted px-1">ai_available</code> is{" "}
-            <span className="font-medium">{String(capabilities.ai_available)}</span>; use external tooling and the links above.
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 function AllSitesView() {
   const { setSelectedSiteId } = useSiteContext();
@@ -222,7 +151,7 @@ export function OverviewPage() {
     return (
       <>
         <SiteSummaryView siteId={selectedSiteId} />
-        <ModelContextCard />
+        <DataQueryWidget siteId={selectedSiteId} />
       </>
     );
   }
@@ -230,7 +159,7 @@ export function OverviewPage() {
   return (
     <>
       <AllSitesView />
-      <ModelContextCard />
+      <DataQueryWidget siteId={undefined} />
     </>
   );
 }

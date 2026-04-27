@@ -7,8 +7,12 @@ from typing import Any, Callable, Optional
 
 from openfdd_stack.platform.realtime import (
     emit,
-    TOPIC_BACNET_DISCOVERY,
+    #TOPIC_BACNET_DISCOVERY,
     TOPIC_FDD_RUN,
+    TOPIC_NIAGARA_SYNC,
+    TOPIC_NIAGARA_SCAN,
+    TOPIC_IQVISION_SYNC,
+    TOPIC_IQVISION_SCAN,
 )
 
 _JOB_STORE: dict[str, dict] = {}
@@ -147,6 +151,142 @@ def run_bacnet_discovery_job(
     except Exception as e:
         set_job_failed(job_id, str(e))
         emit(TOPIC_BACNET_DISCOVERY + ".failed", {"job_id": job_id, "error": str(e)})
+
+
+def run_niagara_sync_job(
+    job_id: str,
+    site_id: str,
+    time_window: str = "lastweek",
+) -> None:
+    """Run Niagara history sync for one site in a background thread; emit events."""
+    from openfdd_stack.platform.drivers.niagara import run_niagara_sync
+
+    emit(
+        TOPIC_NIAGARA_SYNC + ".started",
+        {"job_id": job_id, "site_id": site_id, "time_window": time_window},
+    )
+    set_job_running(job_id)
+    try:
+        result = run_niagara_sync(site_id=site_id, time_window=time_window)
+        set_job_finished(job_id, result)
+        emit(
+            TOPIC_NIAGARA_SYNC + ".finished",
+            {
+                "job_id": job_id,
+                "site_id": site_id,
+                "rows_inserted": result["rows_inserted"],
+                "points_ok": result["points_ok"],
+                "errors": result["errors"],
+            },
+        )
+    except Exception as exc:
+        set_job_failed(job_id, str(exc))
+        emit(
+            TOPIC_NIAGARA_SYNC + ".failed",
+            {"job_id": job_id, "site_id": site_id, "error": str(exc)},
+        )
+
+
+def run_niagara_scan_job(job_id: str, site_id: str) -> None:
+    """Scan a Niagara station for control points; emit events."""
+    from openfdd_stack.platform.drivers.niagara import scan_niagara_station
+
+    emit(TOPIC_NIAGARA_SCAN + ".started", {"job_id": job_id, "site_id": site_id})
+    set_job_running(job_id)
+    try:
+        result = scan_niagara_station(site_id=site_id)
+        if not result.get("ok"):
+            set_job_failed(job_id, result.get("error") or "Scan failed")
+            emit(
+                TOPIC_NIAGARA_SCAN + ".failed",
+                {"job_id": job_id, "site_id": site_id, "error": result.get("error")},
+            )
+            return
+        set_job_finished(job_id, result)
+        emit(
+            TOPIC_NIAGARA_SCAN + ".finished",
+            {
+                "job_id": job_id,
+                "site_id": site_id,
+                "rows_seen": result["rows_seen"],
+                "points_upserted": result["points_upserted"],
+                "equipment_upserted": result["equipment_upserted"],
+            },
+        )
+    except Exception as exc:
+        set_job_failed(job_id, str(exc))
+        emit(
+            TOPIC_NIAGARA_SCAN + ".failed",
+            {"job_id": job_id, "site_id": site_id, "error": str(exc)},
+        )
+
+
+def run_iqvision_sync_job(
+    job_id: str,
+    site_id: str,
+    time_window: str = "lastweek",
+) -> None:
+    """Run IQVision history sync for one site in a background thread; emit events."""
+    from openfdd_stack.platform.drivers.iqvision import run_iqvision_sync
+
+    emit(
+        TOPIC_IQVISION_SYNC + ".started",
+        {"job_id": job_id, "site_id": site_id, "time_window": time_window},
+    )
+    set_job_running(job_id)
+    try:
+        result = run_iqvision_sync(site_id=site_id, time_window=time_window)
+        set_job_finished(job_id, result)
+        emit(
+            TOPIC_IQVISION_SYNC + ".finished",
+            {
+                "job_id": job_id,
+                "site_id": site_id,
+                "rows_inserted": result["rows_inserted"],
+                "points_ok": result["points_ok"],
+                "errors": result["errors"],
+            },
+        )
+    except Exception as exc:
+        set_job_failed(job_id, str(exc))
+        emit(
+            TOPIC_IQVISION_SYNC + ".failed",
+            {"job_id": job_id, "site_id": site_id, "error": str(exc)},
+        )
+
+
+def run_iqvision_scan_job(job_id: str, site_id: str) -> None:
+    """Scan an IQVision station for control points; emit events."""
+    from openfdd_stack.platform.drivers.iqvision import scan_iqvision_station
+
+    emit(TOPIC_IQVISION_SCAN + ".started", {"job_id": job_id, "site_id": site_id})
+    set_job_running(job_id)
+    try:
+        result = scan_iqvision_station(site_id=site_id)
+        if not result.get("ok"):
+            set_job_failed(job_id, result.get("error") or "Scan failed")
+            emit(
+                TOPIC_IQVISION_SCAN + ".failed",
+                {"job_id": job_id, "site_id": site_id, "error": result.get("error")},
+            )
+            return
+        set_job_finished(job_id, result)
+        emit(
+            TOPIC_IQVISION_SCAN + ".finished",
+            {
+                "job_id": job_id,
+                "site_id": site_id,
+                "rows_seen": result["rows_seen"],
+                "points_upserted": result["points_upserted"],
+                "equipment_upserted": result["equipment_upserted"],
+            },
+        )
+    except Exception as exc:
+        set_job_failed(job_id, str(exc))
+        emit(
+            TOPIC_IQVISION_SCAN + ".failed",
+            {"job_id": job_id, "site_id": site_id, "error": str(exc)},
+        )
 
 
 def run_fdd_job(job_id: str) -> None:

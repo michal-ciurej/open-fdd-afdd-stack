@@ -1045,6 +1045,9 @@ def import_data_model(body: DataModelImportBody):
                     if row.description is not None:
                         updates.append("description = %s")
                         params.append(row.description)
+                    if row.object_name is not None:
+                        updates.append("object_name = %s")
+                        params.append(row.object_name)
                     if row.polling is not None:
                         updates.append("polling = %s")
                         params.append(row.polling)

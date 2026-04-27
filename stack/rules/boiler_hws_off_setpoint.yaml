@@ -1,0 +1,21 @@
+# Boiler commanded on but HW supply temperature persistently far from setpoint.
+name: boiler_hws_off_setpoint
+description: HW supply temp off setpoint while boiler is running
+type: expression
+flag: boiler_hws_off_sp_flag
+equipment_type: [Boiler]
+
+inputs:
+  Hot_Water_Supply_Temperature_Sensor:
+    brick: Hot_Water_Supply_Temperature_Sensor
+  Hot_Water_Supply_Temperature_Setpoint:
+    brick: Hot_Water_Supply_Temperature_Setpoint
+  Boiler_Status:
+    brick: Boiler_Status
+
+params:
+  hws_err: 5.0              # °F tolerance — boilers respond slowly
+  rolling_window: 18        # ~1.5 h at 5-min sampling
+
+expression: |
+  (np.abs(Hot_Water_Supply_Temperature_Sensor - Hot_Water_Supply_Temperature_Setpoint) > hws_err) & (normalize_cmd(Boiler_Status) > 0)

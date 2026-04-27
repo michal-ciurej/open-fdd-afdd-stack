@@ -1,0 +1,22 @@
+# Chiller commanded on but CHW supply temperature persistently far from setpoint.
+# Isolates a control / capacity problem from a piping / bypass problem.
+name: chiller_chws_off_setpoint
+description: CHW supply temp off setpoint while chiller is running
+type: expression
+flag: chiller_chws_off_sp_flag
+equipment_type: [Chiller]
+
+inputs:
+  Chilled_Water_Supply_Temperature_Sensor:
+    brick: Chilled_Water_Supply_Temperature_Sensor
+  Chilled_Water_Supply_Temperature_Setpoint:
+    brick: Chilled_Water_Supply_Temperature_Setpoint
+  Chiller_Status:
+    brick: Chiller_Status
+
+params:
+  chws_err: 3.0             # °F tolerance either side of SP
+  rolling_window: 12        # give 1 h for chiller to stabilise
+
+expression: |
+  (np.abs(Chilled_Water_Supply_Temperature_Sensor - Chilled_Water_Supply_Temperature_Setpoint) > chws_err) & (normalize_cmd(Chiller_Status) > 0)

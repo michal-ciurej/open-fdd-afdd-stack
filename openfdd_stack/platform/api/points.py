@@ -15,8 +15,8 @@ router = APIRouter(prefix="/points", tags=["points"])
 
 _COLS = (
     "id, site_id, external_id, brick_type, fdd_input, unit, description, equipment_id, "
-    "bacnet_device_id, object_identifier, object_name, COALESCE(polling, true) AS polling, "
-    "modbus_config, created_at"
+    "bacnet_device_id, object_identifier, object_name, niagara_history_path, "
+    "COALESCE(polling, true) AS polling, modbus_config, created_at"
 )
 
 
@@ -51,8 +51,8 @@ def list_points(
 
 _RETURNS = (
     "RETURNING id, site_id, external_id, brick_type, fdd_input, unit, description, equipment_id, "
-    "bacnet_device_id, object_identifier, object_name, COALESCE(polling, true) AS polling, "
-    "modbus_config, created_at"
+    "bacnet_device_id, object_identifier, object_name, niagara_history_path, "
+    "COALESCE(polling, true) AS polling, modbus_config, created_at"
 )
 
 
@@ -72,8 +72,8 @@ def create_point(body: PointCreate):
             mc = Json(body.modbus_config) if body.modbus_config is not None else None
             try:
                 cur.execute(
-                    f"""INSERT INTO points (site_id, external_id, brick_type, fdd_input, unit, description, equipment_id, bacnet_device_id, object_identifier, object_name, polling, modbus_config)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    f"""INSERT INTO points (site_id, external_id, brick_type, fdd_input, unit, description, equipment_id, bacnet_device_id, object_identifier, object_name, niagara_history_path, polling, modbus_config)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                        {_RETURNS}""",
                     (
                         str(body.site_id),
@@ -86,6 +86,7 @@ def create_point(body: PointCreate):
                         body.bacnet_device_id,
                         body.object_identifier,
                         body.object_name,
+                        body.niagara_history_path,
                         polling,
                         mc,
                     ),
@@ -158,6 +159,9 @@ def update_point(point_id: UUID, body: PointUpdate):
     if "object_name" in data:
         updates.append("object_name = %s")
         params.append(data["object_name"])
+    if "niagara_history_path" in data:
+        updates.append("niagara_history_path = %s")
+        params.append(data["niagara_history_path"])
     if "polling" in data:
         updates.append("polling = %s")
         params.append(data["polling"])

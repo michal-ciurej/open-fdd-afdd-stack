@@ -35,7 +35,7 @@ export function useAllEquipment() {
 export function usePoints(siteId: string | undefined) {
   return useQuery<Point[]>({
     queryKey: ["points", siteId],
-    queryFn: () => apiFetch<Point[]>(`/points?site_id=${siteId}`),
+    queryFn: () => apiFetch<Point[]>(`/points?site_id=${siteId}&limit=10000`),
     enabled: !!siteId,
   });
 }

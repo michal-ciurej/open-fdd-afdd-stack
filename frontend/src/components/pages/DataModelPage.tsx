@@ -180,10 +180,10 @@ export function DataModelPage() {
         Build your Brick + BACnet data model from here: export JSON for AI tagging, import tagged points, browse equipment, and
         run SPARQL. On{" "}
         <Link
-          to={{ pathname: "/bacnet-tools", search: location.search }}
+          to={{ pathname: "/site-configuration", search: location.search }}
           className="font-medium text-primary underline-offset-4 hover:underline"
         >
-          BACnet tools
+          Site Configuration
         </Link>
         , create a <strong>site</strong> (Step 1) and run <strong>discovery</strong> (Step 2) before you rely on export/import.
       </p>
@@ -192,10 +192,10 @@ export function DataModelPage() {
         <p className="mb-6 text-sm text-muted-foreground" data-testid="data-model-no-sites-banner">
           No sites in the model yet. Create one on{" "}
           <Link
-            to={{ pathname: "/bacnet-tools", search: location.search }}
+            to={{ pathname: "/site-configuration", search: location.search }}
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
-            BACnet tools
+            Site Configuration
           </Link>{" "}
           under <strong>Step 1 — Sites</strong>, then use <strong>Step 2 — BACnet discovery</strong> to add devices to the graph.
         </p>
@@ -217,10 +217,10 @@ export function DataModelPage() {
             <li>
               <strong>Sites + BACnet discovery</strong> — On{" "}
               <Link
-                to={{ pathname: "/bacnet-tools", search: location.search }}
+                to={{ pathname: "/site-configuration", search: location.search }}
                 className="font-medium text-primary underline-offset-4 hover:underline"
               >
-                BACnet tools
+                Site Configuration
               </Link>
               : <strong>Step 1 — Sites</strong> (create a site if needed), then <strong>Step 2 — BACnet discovery</strong> (Who-Is,
               point discovery, <strong>Add to data model</strong>). Optional read/write tools on that page are not required for

@@ -1,0 +1,25 @@
+# FCU: supply/discharge air temp above setpoint while cooling valve fully open.
+# Indicates undersized or failed cooling source (fouled coil, high CHW temp, low flow).
+name: fcu_cooling_not_tracking
+description: FCU SAT above setpoint with cooling valve fully open (cooling unable to meet load)
+type: expression
+flag: fcu_cooling_not_tracking_flag
+equipment_type: [FCU]
+
+inputs:
+  Supply_Air_Temperature_Sensor:
+    brick: Supply_Air_Temperature_Sensor
+  Supply_Air_Temperature_Setpoint:
+    brick: Supply_Air_Temperature_Setpoint
+  Cooling_Valve_Command:
+    brick: Cooling_Valve_Command
+  Supply_Fan_Command:
+    brick: Supply_Fan_Command
+
+params:
+  supply_err_thres: 2.0
+  vlv_full_open: 0.95
+  rolling_window: 6
+
+expression: |
+  (Supply_Air_Temperature_Sensor > Supply_Air_Temperature_Setpoint + supply_err_thres) & (normalize_cmd(Cooling_Valve_Command) > vlv_full_open) & (normalize_cmd(Supply_Fan_Command) > 0)

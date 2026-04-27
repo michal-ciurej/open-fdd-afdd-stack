@@ -1,9 +1,22 @@
 """Open-FDD CRUD API — data model, sites, points, equipment."""
 
 import importlib.metadata
+import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
+
+# Uvicorn's default config only attaches handlers to its own loggers and leaves
+# the root logger at WARNING. That silently swallows every logger.info(...)
+# from our modules (drivers, api routes). Configure root here so INFO logs from
+# `openfdd_stack.*` and `open_fdd.*` reach stderr. OFDD_LOG_LEVEL lets ops bump
+# to DEBUG without a rebuild.
+_log_level = os.environ.get("OFDD_LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=_log_level,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
@@ -26,6 +39,8 @@ from openfdd_stack.platform.api import (
     jobs as jobs_router,
     mcp_bridge,
     model_context,
+    niagara as niagara_router,
+    iqvision as iqvision_router,
     points,
     equipment,
     rules as rules_router,
@@ -100,6 +115,14 @@ app = FastAPI(
         {
             "name": "BACnet",
             "description": "Proxy to diy-bacnet-server (server_hello, whois_range, point_discovery, point_discovery_to_graph). Backend hits the gateway; use same host or OT LAN URL. When the gateway uses BACNET_RPC_API_KEY, set OFDD_BACNET_SERVER_API_KEY in stack/.env (bootstrap generates it with OFDD_API_KEY). point_discovery_to_graph updates the in-memory graph and SPARQL.",
+        },
+        {
+            "name": "Niagara",
+            "description": "Niagara 4 station scan + history sync via ORD-embedded BQL URLs. One Niagara endpoint per site (stored in site_niagara_endpoints). PUT /niagara/endpoints/{site_id} to configure credentials; POST /niagara/endpoints/{site_id}/scan to discover control points (groups points into equipment by the nav ORD folder twice removed); POST /niagara/endpoints/{site_id}/sync to pull timeseries using a Niagara bqltime window (default lastweek). Points are linked to history streams by the n:history tag parsed from the scan.",
+        },
+        {
+            "name": "IQVision",
+            "description": "IQVision station scan + history sync. Same ORD/BQL shape as Niagara; differs only in equipment grouping — points are grouped by the BQL Device column (proxyExt.device.displayName) instead of the nav ORD folder twice removed. One IQVision endpoint per site (stored in site_iqvision_endpoints).",
         },
     ],
 )
@@ -211,6 +234,8 @@ app.include_router(faults.router)
 app.include_router(rules_router.router)
 app.include_router(jobs_router.router)
 app.include_router(bacnet.router)
+app.include_router(niagara_router.router)
+app.include_router(iqvision_router.router)
 app.include_router(run_fdd.router)
 app.include_router(ws_router)
 app.include_router(model_context.router)

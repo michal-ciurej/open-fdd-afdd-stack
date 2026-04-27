@@ -1,0 +1,22 @@
+# FCU: zone temperature drifting far from setpoint while unit is running.
+# Catches controls hunting, undersized coils, envelope/occupancy issues.
+name: fcu_zone_setpoint_drift
+description: Zone temp far from setpoint while FCU fan is commanded on
+type: expression
+flag: fcu_zone_setpoint_drift_flag
+equipment_type: [FCU]
+
+inputs:
+  Zone_Temperature_Sensor:
+    brick: Zone_Temperature_Sensor
+  Zone_Temperature_Setpoint:
+    brick: Zone_Temperature_Setpoint
+  Supply_Fan_Command:
+    brick: Supply_Fan_Command
+
+params:
+  drift_band: 3.0           # °F either side of SP
+  rolling_window: 12        # ~1 h at 5-min sampling — zone inertia is slow
+
+expression: |
+  (np.abs(Zone_Temperature_Sensor - Zone_Temperature_Setpoint) > drift_band) & (normalize_cmd(Supply_Fan_Command) > 0)

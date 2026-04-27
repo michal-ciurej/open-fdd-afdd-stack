@@ -12,6 +12,10 @@ from openfdd_stack.platform.realtime.events import (
     TOPIC_FAULT_RAISED,
     TOPIC_FAULT_CLEARED,
     TOPIC_BACNET_WRITE,
+    TOPIC_NIAGARA_SYNC,
+    TOPIC_NIAGARA_SCAN,
+    TOPIC_IQVISION_SYNC,
+    TOPIC_IQVISION_SCAN,
     emit,
 )
 from openfdd_stack.platform.realtime.hub import get_hub
@@ -30,4 +34,8 @@ __all__ = [
     "TOPIC_FAULT_RAISED",
     "TOPIC_FAULT_CLEARED",
     "TOPIC_BACNET_WRITE",
+    "TOPIC_NIAGARA_SYNC",
+    "TOPIC_NIAGARA_SCAN",
+    "TOPIC_IQVISION_SYNC",
+    "TOPIC_IQVISION_SCAN",
 ]

@@ -1,20 +1,4 @@
-import {
-  clearAuthTokens,
-  getAccessToken,
-  setAccessToken,
-} from "@/lib/auth";
-
-let refreshPromise: Promise<string | null> | null = null;
-/** Avoid dozens of parallel 403s each scheduling a full page navigation. */
-let loginRedirectScheduled = false;
-
-function scheduleLoginRedirect(): void {
-  if (typeof window === "undefined" || loginRedirectScheduled) return;
-  const path = window.location.pathname;
-  if (path === "/login" || path === "/logout") return;
-  loginRedirectScheduled = true;
-  window.location.assign("/login");
-}
+import { getAccessToken } from "@/lib/auth";
 const apiBase = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(
   /\/$/,
   "",
@@ -193,77 +177,11 @@ export async function apiFetchBlob(path: string, init?: RequestInit): Promise<Bl
   return response.blob();
 }
 
-async function refreshAccessToken(): Promise<string | null> {
-  if (refreshPromise) return refreshPromise;
-  refreshPromise = (async () => {
-    try {
-      const resp = await fetch(buildUrl("/auth/refresh"), {
-        method: "POST",
-        credentials: defaultApiCredentials,
-      });
-      if (!resp.ok) {
-        clearAuthTokens();
-        return null;
-      }
-      const body = (await resp.json()) as { access_token?: string };
-      if (!body.access_token) {
-        clearAuthTokens();
-        return null;
-      }
-      setAccessToken(body.access_token);
-      return body.access_token;
-    } catch {
-      clearAuthTokens();
-      return null;
-    } finally {
-      refreshPromise = null;
-    }
-  })();
-  return refreshPromise;
-}
-
 /**
- * API middleware returns 401 only when the Authorization header is missing.
- * Expired or otherwise invalid JWTs still send Bearer ... but fail validation → 403 "Invalid auth token".
- * Without handling 403, the UI never calls /auth/refresh and BACnet (and other) calls look stuck on 403.
+ * Executes a fetch request, forwarding any SSO token stored by the auth module.
+ * Auth enforcement is handled by the surrounding application (SSO); this client
+ * does not redirect on 401/403.
  */
-async function responseIndicatesAuthRetryable(response: Response): Promise<boolean> {
-  if (response.status === 401) {
-    return true;
-  }
-  if (response.status !== 403) {
-    return false;
-  }
-  const ct = response.headers.get("content-type") ?? "";
-  if (!ct.includes("application/json")) {
-    return false;
-  }
-  try {
-    const payload = (await response.clone().json()) as {
-      error?: { message?: string; code?: string };
-    };
-    const msg = String(payload.error?.message ?? "").trim();
-    return msg === "Invalid auth token";
-  } catch {
-    return false;
-  }
-}
-
 async function fetchWithAuthRetry(run: () => Promise<Response>): Promise<Response> {
-  let response = await run();
-  if (!getAccessToken()) {
-    return response;
-  }
-  if (!(await responseIndicatesAuthRetryable(response))) {
-    return response;
-  }
-  const refreshed = await refreshAccessToken();
-  if (!refreshed) {
-    // Refresh failed (e.g. API restarted → in-memory refresh store empty). Tokens were cleared;
-    // force navigation so we are not stuck inside RequireAuth with a blank shell of errors.
-    scheduleLoginRedirect();
-    return response;
-  }
-  response = await run();
-  return response;
+  return run();
 }

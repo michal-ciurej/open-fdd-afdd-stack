@@ -1,0 +1,18 @@
+# Boiler commanded on by BMS but status feedback reports off (or vice versa) for sustained period.
+name: boiler_command_status_mismatch
+description: Boiler command vs. status feedback disagree
+type: expression
+flag: boiler_cmd_status_mismatch_flag
+equipment_type: [Boiler]
+
+inputs:
+  Boiler_Command:
+    brick: Boiler_Command
+  Boiler_Status:
+    brick: Boiler_Status
+
+params:
+  rolling_window: 3
+
+expression: |
+  ((normalize_cmd(Boiler_Command) > 0.5) & (normalize_cmd(Boiler_Status) < 0.5)) | ((normalize_cmd(Boiler_Command) < 0.5) & (normalize_cmd(Boiler_Status) > 0.5))
