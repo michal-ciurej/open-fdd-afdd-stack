@@ -1,0 +1,25 @@
+# Cooling tower: condenser water supply temperature above setpoint while tower fan is at max.
+# Tower is capacity-limited — ambient wet-bulb too high, dirty fill, scaled sump,
+# fan belt slipping, or setpoint reset too aggressive.
+name: cooling_tower_cws_high_at_max_fan
+description: CWS temp above setpoint with cooling tower fan at full speed
+type: expression
+flag: cooling_tower_cws_high_flag
+equipment_type: [Cooling_Tower]
+
+inputs:
+  Condenser_Water_Supply_Temperature_Sensor:
+    brick: Condenser_Water_Supply_Temperature_Sensor
+  Condenser_Water_Supply_Temperature_Setpoint:
+    brick: Condenser_Water_Supply_Temperature_Setpoint
+  Cooling_Tower_Fan_Speed_Command:
+    brick: Cooling_Tower_Fan_Speed_Command
+
+params:
+  cws_margin: 2.5
+  fan_hi_frac: 0.93
+  fan_near_hi: 0.06
+  rolling_window: 12
+
+expression: |
+  (Condenser_Water_Supply_Temperature_Sensor > Condenser_Water_Supply_Temperature_Setpoint + cws_margin) & (normalize_cmd(Cooling_Tower_Fan_Speed_Command) >= fan_hi_frac - fan_near_hi)

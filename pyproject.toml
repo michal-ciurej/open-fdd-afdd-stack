@@ -9,7 +9,7 @@ description = "Open-FDD AFDD platform — Docker, FastAPI, BACnet scrapers, Graf
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9"
-authors = [{ name = "Ben Bartling", email = "ben.bartling@gmail.com" }]
+authors = [{ name = "Michal Ciurej", email = "mike.ciurej@email.com" }]
 dependencies = [
     # Pin to latest published engine on PyPI; bump lower bound after each open-fdd release.
     "open-fdd>=2.0.13",

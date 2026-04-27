@@ -15,6 +15,10 @@ TOPIC_BACNET_WRITE = "bacnet.write"
 TOPIC_FDD_RUN = "fdd.run"
 TOPIC_FAULT_RAISED = "fault.raised"
 TOPIC_FAULT_CLEARED = "fault.cleared"
+TOPIC_NIAGARA_SYNC = "niagara.sync"
+TOPIC_NIAGARA_SCAN = "niagara.scan"
+TOPIC_IQVISION_SYNC = "iqvision.sync"
+TOPIC_IQVISION_SCAN = "iqvision.scan"
 
 
 def _ts() -> str:

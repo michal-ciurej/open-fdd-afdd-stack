@@ -186,7 +186,7 @@ export function ConfigPage() {
   if (isLoading || !config) {
     return (
       <div>
-        <h1 className="mb-6 text-2xl font-semibold tracking-tight">OpenFDD Config</h1>
+        <h1 className="mb-6 text-2xl font-semibold tracking-tight">System Config</h1>
         <div className="h-72 animate-pulse rounded-2xl bg-muted/50" />
       </div>
     );
@@ -196,7 +196,7 @@ export function ConfigPage() {
     <div>
       <h1 className="mb-6 flex items-center gap-2 text-2xl font-semibold tracking-tight">
         <Settings className="h-7 w-7" />
-        OpenFDD Config
+        System Config
       </h1>
       <p className="mb-6 text-sm text-muted-foreground">
         Platform settings stored in the knowledge graph. Changes take effect on the next FDD run or scraper cycle.

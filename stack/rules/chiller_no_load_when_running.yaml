@@ -1,0 +1,22 @@
+# Chiller running but CHW supply/return delta-T near zero → flow without load, bypass open,
+# or sensors miswired. Expected evaporator delta-T is typically 8–12°F at full load.
+name: chiller_no_load_when_running
+description: Chiller status ON but CHW evaporator delta-T below minimum expected
+type: expression
+flag: chiller_no_load_flag
+equipment_type: [Chiller]
+
+inputs:
+  Chilled_Water_Supply_Temperature_Sensor:
+    brick: Chilled_Water_Supply_Temperature_Sensor
+  Chilled_Water_Return_Temperature_Sensor:
+    brick: Chilled_Water_Return_Temperature_Sensor
+  Chiller_Status:
+    brick: Chiller_Status
+
+params:
+  min_evap_dt: 2.0          # °F — below this, chiller is doing no useful work
+  rolling_window: 12        # ~1 h at 5-min sampling
+
+expression: |
+  ((Chilled_Water_Return_Temperature_Sensor - Chilled_Water_Supply_Temperature_Sensor) < min_evap_dt) & (normalize_cmd(Chiller_Status) > 0)

@@ -122,8 +122,7 @@ export function PointsPage() {
     <div>
       <h1 className="mb-2 text-2xl font-semibold tracking-tight">Points</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        Polling (data model) indicates whether the BACnet scraper polls this point; last value and time come from
-        timeseries. Right-click a point for Poll true, Poll false, or Delete. BACnet discovery is on the Data model page.
+        Replicating Niagara's polling point situation but with auto historising. each point has a last value which comes from the latest entry into its history. Right-click a point for Poll true, Poll false, or Delete. BACnet discovery is on the Data model page.
       </p>
       {selectedSiteId ? <SitePointsView siteId={selectedSiteId} /> : <AllPointsView />}
     </div>

@@ -70,6 +70,11 @@ class PointCreate(BaseModel):
     bacnet_device_id: Optional[str] = Field(None, max_length=64)
     object_identifier: Optional[str] = Field(None, max_length=128)
     object_name: Optional[str] = Field(None, max_length=256)
+    niagara_history_path: Optional[str] = Field(
+        None,
+        max_length=512,
+        description="Niagara history path used in BQL FROM clause, e.g. /StationName/AHU1/SupplyAirTemp. When set, the Niagara sync job will pull history for this point.",
+    )
     polling: Optional[bool] = Field(
         True,
         description="If true, BACnet / Modbus scraper polls this point when applicable; set false to exclude.",
@@ -97,6 +102,7 @@ class PointUpdate(BaseModel):
     bacnet_device_id: Optional[str] = Field(None, max_length=64)
     object_identifier: Optional[str] = Field(None, max_length=128)
     object_name: Optional[str] = Field(None, max_length=256)
+    niagara_history_path: Optional[str] = Field(None, max_length=512)
     polling: Optional[bool] = None
     modbus_config: Optional[dict[str, Any]] = None
 
@@ -120,6 +126,7 @@ class PointRead(BaseModel):
     bacnet_device_id: Optional[str] = None
     object_identifier: Optional[str] = None
     object_name: Optional[str] = None
+    niagara_history_path: Optional[str] = None
     polling: bool = True
     modbus_config: Optional[dict[str, Any]] = None
     created_at: datetime

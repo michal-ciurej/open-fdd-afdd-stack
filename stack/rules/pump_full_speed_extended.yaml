@@ -1,0 +1,19 @@
+# Pump at full speed for an extended rolling window — loop is not being satisfied,
+# DP reset is hitting floor, or there's a hidden load. Uses rolling min like the cookbook's
+# "zone damper full open" pattern.
+name: pump_full_speed_extended
+description: Pump speed pegged at full for a sustained rolling window
+type: expression
+flag: pump_full_speed_extended_flag
+equipment_type: [Pump]
+
+inputs:
+  Pump_Speed_Command:
+    brick: Pump_Speed_Command
+
+params:
+  full_speed: 0.97
+  roll_samples: 60          # ~5 h at 5-min sampling
+
+expression: |
+  (normalize_cmd(Pump_Speed_Command) > full_speed) & (normalize_cmd(Pump_Speed_Command).rolling(roll_samples).min() > full_speed)

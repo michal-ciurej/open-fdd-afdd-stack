@@ -1,0 +1,19 @@
+# FCU: both heating and cooling valves open at the same time. Energy waste / bad sequence.
+name: fcu_simultaneous_heat_cool
+description: FCU heating and cooling valves open simultaneously
+type: expression
+flag: fcu_simultaneous_heat_cool_flag
+equipment_type: [FCU]
+
+inputs:
+  Heating_Valve_Command:
+    brick: Heating_Valve_Command
+  Cooling_Valve_Command:
+    brick: Cooling_Valve_Command
+
+params:
+  vlv_open: 0.05   # treat anything above 5% as "open"
+  rolling_window: 3
+
+expression: |
+  (normalize_cmd(Heating_Valve_Command) > vlv_open) & (normalize_cmd(Cooling_Valve_Command) > vlv_open)

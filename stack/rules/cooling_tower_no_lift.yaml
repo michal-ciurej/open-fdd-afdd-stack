@@ -1,0 +1,24 @@
+# Cooling tower fan running but delta-T between entering (return) and leaving (supply)
+# condenser water is near zero. Indicates blocked fill / distribution, frozen sump,
+# miswired sensors, or tower bypass open.
+name: cooling_tower_no_lift
+description: Tower fan ON but condenser water return/supply delta-T below expected
+type: expression
+flag: cooling_tower_no_lift_flag
+equipment_type: [Cooling_Tower]
+
+inputs:
+  Condenser_Water_Supply_Temperature_Sensor:
+    brick: Condenser_Water_Supply_Temperature_Sensor
+  Condenser_Water_Return_Temperature_Sensor:
+    brick: Condenser_Water_Return_Temperature_Sensor
+  Cooling_Tower_Fan_Speed_Command:
+    brick: Cooling_Tower_Fan_Speed_Command
+
+params:
+  min_tower_dt: 2.0         # °F — tower should drop CW by more than this at any meaningful fan speed
+  fan_on: 0.1
+  rolling_window: 12
+
+expression: |
+  ((Condenser_Water_Return_Temperature_Sensor - Condenser_Water_Supply_Temperature_Sensor) < min_tower_dt) & (normalize_cmd(Cooling_Tower_Fan_Speed_Command) > fan_on)

@@ -1,0 +1,25 @@
+# CHW/HW pump: differential pressure below setpoint while pump is at (or near) full speed.
+# Straight from the cookbook's "Differential Pressure at Max Pump Speed" recipe.
+# Indicates blocked strainer, air-bound pump, broken coupling, undersized pump, or DP sensor fault.
+name: pump_dp_low_at_max_speed
+description: Loop DP below setpoint with pump speed command at maximum
+type: expression
+flag: pump_dp_low_at_max_flag
+equipment_type: [Pump]
+
+inputs:
+  Differential_Pressure_Sensor:
+    brick: Differential_Pressure_Sensor
+  Differential_Pressure_Setpoint:
+    brick: Differential_Pressure_Setpoint
+  Pump_Speed_Command:
+    brick: Pump_Speed_Command
+
+params:
+  dp_margin: 2.2            # psi / kPa — adjust to loop units
+  pmp_hi_frac: 0.93
+  pmp_near_hi: 0.06
+  rolling_window: 6
+
+expression: |
+  (Differential_Pressure_Sensor < Differential_Pressure_Setpoint - dp_margin) & (normalize_cmd(Pump_Speed_Command) >= pmp_hi_frac - pmp_near_hi)

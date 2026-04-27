@@ -4,7 +4,6 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Network, Loader2, Wrench, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BacnetDiscoveryPanel } from "@/components/site/BacnetDiscoveryPanel";
-import { SitesSetupCard } from "@/components/site/SitesSetupCard";
 import { ModbusClientPanel } from "@/components/bacnet/ModbusClientPanel";
 import {
   bacnetGateways,
@@ -259,11 +258,8 @@ export function BacnetToolsPage() {
 
   return (
     <div>
-      <h1 className="mb-2 text-2xl font-semibold tracking-tight" data-testid="bacnet-tools-heading">
-        BACnet tools
-      </h1>
-      <p className="mb-6 max-w-3xl text-sm text-muted-foreground">
-        Start with <strong>Step 1 — Sites</strong>, then either <strong>Step 2 — BACnet discovery</strong> or the{" "}
+      <p className="mb-4 max-w-3xl text-sm text-muted-foreground">
+        Direct <strong>BACnet</strong> and <strong>Modbus</strong> gateway tools. Use the{" "}
         <strong>Modbus client</strong> tab for Modbus TCP via the same gateway. The gateway API key stays on the server. When you
         are ready to export JSON, import tagged points, or run SPARQL, use the{" "}
         <Link to="/data-model" className="font-medium text-primary underline-offset-4 hover:underline">
@@ -275,8 +271,6 @@ export function BacnetToolsPage() {
       {gateways.length > 0 && (
         <GatewaySelect gateways={gateways} value={gateway} onChange={setGateway} />
       )}
-
-      <SitesSetupCard className="mb-6" />
 
       <div className="mb-4 flex flex-wrap gap-2 border-b border-border/60 pb-3" role="tablist" aria-label="Gateway tool sections">
         <button

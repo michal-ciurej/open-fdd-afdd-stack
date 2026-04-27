@@ -1,0 +1,19 @@
+# Chiller commanded on by BMS but status feedback reports off (or vice versa) for sustained period.
+# Catches failed starters, local/remote switch in wrong position, broken DO or DI, comms issue.
+name: chiller_command_status_mismatch
+description: Chiller command vs. status feedback disagree
+type: expression
+flag: chiller_cmd_status_mismatch_flag
+equipment_type: [Chiller]
+
+inputs:
+  Chiller_Command:
+    brick: Chiller_Command
+  Chiller_Status:
+    brick: Chiller_Status
+
+params:
+  rolling_window: 3         # ignore start/stop transients (≈ 15 min at 5-min sampling)
+
+expression: |
+  ((normalize_cmd(Chiller_Command) > 0.5) & (normalize_cmd(Chiller_Status) < 0.5)) | ((normalize_cmd(Chiller_Command) < 0.5) & (normalize_cmd(Chiller_Status) > 0.5))

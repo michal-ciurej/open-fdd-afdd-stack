@@ -1,0 +1,25 @@
+# FCU: supply/discharge air temp below setpoint while heating valve fully open.
+# Indicates undersized or failed heating source (coil fouled, low HW temp, air bypass).
+name: fcu_heating_not_tracking
+description: FCU SAT below setpoint with heating valve fully open (heating unable to meet load)
+type: expression
+flag: fcu_heating_not_tracking_flag
+equipment_type: [FCU]
+
+inputs:
+  Supply_Air_Temperature_Sensor:
+    brick: Supply_Air_Temperature_Sensor
+  Supply_Air_Temperature_Setpoint:
+    brick: Supply_Air_Temperature_Setpoint
+  Heating_Valve_Command:
+    brick: Heating_Valve_Command
+  Supply_Fan_Command:
+    brick: Supply_Fan_Command
+
+params:
+  supply_err_thres: 2.0     # °F below SP considered a miss
+  vlv_full_open: 0.95
+  rolling_window: 6         # e.g. 30 min with 5-min data — avoid transient alarms
+
+expression: |
+  (Supply_Air_Temperature_Sensor < Supply_Air_Temperature_Setpoint - supply_err_thres) & (normalize_cmd(Heating_Valve_Command) > vlv_full_open) & (normalize_cmd(Supply_Fan_Command) > 0)
