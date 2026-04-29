@@ -333,7 +333,7 @@ export function DataQueryWidget({ siteId }: DataQueryWidgetProps) {
   const canLoad = !!selectedEquipmentId && selectedPointIds.length > 0 && !loading;
 
   return (
-    <Card className="mt-6 overflow-hidden">
+    <Card tone="glass" className="mt-6 overflow-hidden">
       <div className="flex flex-col gap-4 p-4 lg:flex-row">
         <div className="flex w-full flex-col gap-3 lg:w-72 lg:shrink-0">
           <div>

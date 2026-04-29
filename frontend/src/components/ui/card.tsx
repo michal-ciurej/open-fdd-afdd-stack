@@ -1,19 +1,33 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-2xl border border-border/60 bg-card text-card-foreground shadow-sm shadow-black/[0.03]",
-      className,
-    )}
-    {...props}
-  />
-));
+/**
+ * Card tones:
+ * - "flat" (default): solid surface, premium gradient stroke + soft elevation. No backdrop-blur.
+ *   Use everywhere by default — performant on tables, charts, and dense data screens.
+ * - "glass": semi-transparent surface with backdrop-blur. GPU-expensive; opt in only for
+ *   hero/overview surfaces (Overview page) where it reads as premium and density is low.
+ * - "elevated": same as flat but with stronger shadow — for primary call-to-action cards.
+ */
+type CardTone = "flat" | "glass" | "elevated";
+
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  tone?: CardTone;
+}
+
+const toneClasses: Record<CardTone, string> = {
+  flat: "bg-card text-card-foreground rounded-2xl gradient-stroke shadow-[var(--shadow-elev-sm)]",
+  glass:
+    "bg-card/65 text-card-foreground rounded-2xl gradient-stroke shadow-[var(--shadow-elev-md)] backdrop-blur-xl backdrop-saturate-150",
+  elevated:
+    "bg-card text-card-foreground rounded-2xl gradient-stroke shadow-[var(--shadow-elev-lg)]",
+};
+
+const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ className, tone = "flat", ...props }, ref) => (
+    <div ref={ref} className={cn(toneClasses[tone], className)} {...props} />
+  ),
+);
 Card.displayName = "Card";
 
 const CardHeader = React.forwardRef<
@@ -64,3 +78,4 @@ const CardContent = React.forwardRef<
 CardContent.displayName = "CardContent";
 
 export { Card, CardHeader, CardTitle, CardDescription, CardContent };
+export type { CardProps, CardTone };

@@ -4,7 +4,7 @@ name: fcu_zone_setpoint_drift
 description: Zone temp far from setpoint while FCU fan is commanded on
 type: expression
 flag: fcu_zone_setpoint_drift_flag
-equipment_type: [FCU]
+equipment_type: [Fan_Coil_Unit]
 
 inputs:
   Zone_Temperature_Sensor:

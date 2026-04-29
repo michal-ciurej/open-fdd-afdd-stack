@@ -597,11 +597,18 @@ def _get_endpoint_for_site(site_id: str) -> Optional[dict]:
 
 
 def _upsert_equipment(cur, site_id: str, name: str) -> str:
-    """Upsert equipment by (site_id, name); return its id."""
+    """Upsert equipment by (site_id, name); return its id.
+
+    New rows get ``equipment_type='Equipment'`` (Brick 1.4 generic) instead of
+    NULL. This keeps the TTL writer's ``a brick:{etype}`` valid out of the box,
+    and lets the AI-assisted tagging workflow refine the class later. We do
+    NOT overwrite an existing equipment_type — operators (or the LLM) may have
+    already classified the row, and station scans should be idempotent.
+    """
     cur.execute(
         """
-        INSERT INTO equipment (site_id, name)
-        VALUES (%s, %s)
+        INSERT INTO equipment (site_id, name, equipment_type)
+        VALUES (%s, %s, 'Equipment')
         ON CONFLICT (site_id, name) DO UPDATE SET name = EXCLUDED.name
         RETURNING id
         """,

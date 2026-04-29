@@ -316,15 +316,44 @@ def run_fdd_loop(
         get_equipment_types_from_ttl(str(ttl_path)) if ttl_path.exists() else []
     )
 
+    _log.info(
+        "FDD run start: site_id=%s rules_dir=%s ttl=%s (exists=%s) lookback_days=%d",
+        site_id or "<all>",
+        rules_path,
+        ttl_path,
+        ttl_path.exists(),
+        lookback,
+    )
+    _log.info(
+        "TTL equipment_types (%d): %s | column_map keys=%d",
+        len(equipment_types),
+        equipment_types or "<empty — no rules with equipment_type filter will run>",
+        len(column_map),
+    )
+
     # Load rules every run (hot reload for rule tuning)
     all_rules = load_rules_from_dir(rules_path)
     _sync_fault_definitions_from_rules(all_rules)
-    rules = [
-        r
-        for r in all_rules
-        if not r.get("equipment_type")
-        or any(et in equipment_types for et in r.get("equipment_type", []))
-    ]
+    rules = []
+    dropped: list[tuple[str, list[str]]] = []
+    for r in all_rules:
+        rule_eq_types = r.get("equipment_type") or []
+        if not rule_eq_types or any(et in equipment_types for et in rule_eq_types):
+            rules.append(r)
+        else:
+            dropped.append((r.get("flag") or r.get("name") or "?", list(rule_eq_types)))
+    _log.info(
+        "Rules: %d loaded, %d after equipment_type filter, %d dropped",
+        len(all_rules),
+        len(rules),
+        len(dropped),
+    )
+    if dropped:
+        _log.info(
+            "Rules dropped (equipment_type not in TTL): %s",
+            ", ".join(f"{flag}{eq_types}" for flag, eq_types in dropped[:20])
+            + (f", … and {len(dropped) - 20} more" if len(dropped) > 20 else ""),
+        )
     runner = RuleRunner(rules=rules)
     strict = bool(getattr(settings, "fdd_strict_rules", False))
 
@@ -348,6 +377,9 @@ def run_fdd_loop(
 
     all_results: list[FDDResult] = []
     sites_processed = 0
+    equipment_evaluated = 0
+    equipment_skipped: dict[str, int] = {"no_data": 0, "insufficient_rows": 0}
+    _log.info("FDD run iterating %d site(s)", len(site_rows))
     try:
         for row in site_rows:
             sid = str(row["id"])
@@ -360,15 +392,35 @@ def run_fdd_loop(
                         (sid,),
                     )
                     equipment_rows = cur.fetchall()
+            _log.info(
+                "Site %s (%s): %d equipment row(s)",
+                site_name,
+                sid,
+                len(equipment_rows),
+            )
             ran_equipment = False
             for eq_row in equipment_rows:
                 eq_name = eq_row["name"] or str(eq_row["id"])
                 df = load_timeseries_for_equipment(
                     sid, eq_name, start_ts, end_ts, column_map
                 )
-                if df is None or len(df) < 6:
+                if df is None:
+                    equipment_skipped["no_data"] += 1
+                    _log.info(
+                        "  equipment %s: skipped (no points or no readings in lookback window)",
+                        eq_name,
+                    )
+                    continue
+                if len(df) < 6:
+                    equipment_skipped["insufficient_rows"] += 1
+                    _log.info(
+                        "  equipment %s: skipped (only %d row(s); need >=6)",
+                        eq_name,
+                        len(df),
+                    )
                     continue
                 ran_equipment = True
+                equipment_evaluated += 1
                 res = runner.run(
                     df,
                     **_fdd_runner_run_kwargs(
@@ -377,6 +429,13 @@ def run_fdd_loop(
                 )
                 results = results_from_runner_output(
                     res, sid, eq_name, timestamp_col="timestamp"
+                )
+                _log.info(
+                    "  equipment %s: ran %d rule(s) on %d row(s) → %d fault row(s)",
+                    eq_name,
+                    len(rules),
+                    len(df),
+                    len(results),
                 )
                 all_results.extend(results)
             # Fallback: site-level run when no equipment had enough data
@@ -393,7 +452,20 @@ def run_fdd_loop(
                     results = results_from_runner_output(
                         res, sid, site_name, timestamp_col="timestamp"
                     )
+                    _log.info(
+                        "Site %s: site-level fallback ran %d rule(s) on %d row(s) → %d fault row(s)",
+                        site_name,
+                        len(rules),
+                        len(df),
+                        len(results),
+                    )
                     all_results.extend(results)
+                else:
+                    _log.info(
+                        "Site %s: no equipment had data and site-level fallback found %s",
+                        site_name,
+                        "no readings" if df is None else f"only {len(df)} row(s)",
+                    )
             elif ran_equipment:
                 sites_processed += 1
 
@@ -413,6 +485,15 @@ def run_fdd_loop(
                     exc_info=_log.isEnabledFor(logging.DEBUG),
                 )
 
+        _log.info(
+            "FDD run done: sites_processed=%d equipment_evaluated=%d "
+            "skipped(no_data=%d, insufficient_rows=%d) faults_written=%d",
+            sites_processed,
+            equipment_evaluated,
+            equipment_skipped["no_data"],
+            equipment_skipped["insufficient_rows"],
+            len(all_results),
+        )
         _write_fdd_run_log(
             run_ts=datetime.now(timezone.utc),
             status="ok",

@@ -251,6 +251,214 @@ def test_data_model_export_includes_equipment_engineering_metadata():
     assert data[0]["equipment_metadata"]["unknown_custom"]["x"] == 1
 
 
+def _mock_conn_with_fetchall_sequence(*fetchall_batches):
+    """Single mock connection whose cursor.fetchall returns each batch in sequence.
+
+    Used when one route opens one connection but issues several SELECTs against
+    the same cursor (the structured-export equipment helper does two SELECTs:
+    equipment list, then per-equipment point aggregation).
+    """
+    cursor = MagicMock()
+    cursor.execute.return_value = None
+    cursor.rowcount = 1
+    cursor.fetchall.side_effect = list(fetchall_batches)
+    conn = MagicMock()
+    conn.__enter__ = MagicMock(return_value=conn)
+    conn.__exit__ = MagicMock(return_value=None)
+    conn.cursor.return_value.__enter__ = MagicMock(return_value=cursor)
+    conn.cursor.return_value.__exit__ = MagicMock(return_value=None)
+    return conn
+
+
+def test_data_model_export_structured_returns_equipment_array_with_member_bricks():
+    """`?shape=structured` returns `{equipment, points}` so the LLM can tag
+    equipment_type once per equipment using member_brick_types as context,
+    instead of inferring it from a flat point list."""
+    site_id = uuid4()
+    equipment_id = uuid4()
+    point_id = uuid4()
+    point_rows = [
+        {
+            "id": point_id,
+            "site_id": site_id,
+            "site_name": "Lime Street",
+            "external_id": "fcu1.cooling_valve_cmd",
+            "equipment_id": equipment_id,
+            "equipment_name": "(011) 3-FCU-01",
+            "equipment_metadata": {},
+            "brick_type": "Cooling_Valve_Command",
+            "fdd_input": None,
+            "unit": "%",
+            "bacnet_device_id": None,
+            "object_identifier": None,
+            "object_name": None,
+            "polling": True,
+        }
+    ]
+    equipment_rows = [
+        {
+            "equipment_id": equipment_id,
+            "equipment_name": "(011) 3-FCU-01",
+            "equipment_type": None,
+            "site_id": site_id,
+            "site_name": "Lime Street",
+            "feeds_equipment_id": None,
+            "fed_by_equipment_id": None,
+            "equipment_metadata": {},
+        }
+    ]
+    point_agg_rows = [
+        {
+            "equipment_id": str(equipment_id),
+            "point_count": 3,
+            "bricks": [
+                "Cooling_Valve_Command",
+                "Heating_Valve_Command",
+                "Fan_Enable_Command",
+            ],
+        }
+    ]
+    # Connection sequence (?site_id=<uuid> short-circuits _resolve_site_filter,
+    # and an empty BACnet TTL means parse_bacnet_ttl_to_discovery returns []):
+    #   1. _build_unified_export → default_site_name SELECT (uses fetchone — value ignored
+    #      by assertions; the MagicMock default is harmless because the prefill is only
+    #      used for BACnet-only rows, which we don't generate here).
+    #   2. _build_unified_export → DB-only points SELECT (fetchall returns point_rows).
+    #   3. _build_equipment_export → equipment SELECT + per-equipment aggregation
+    #      on the same cursor (two fetchall calls).
+    conns = [
+        _mock_conn_with_fetchall_sequence([]),
+        _mock_conn_with_fetchall_sequence(point_rows),
+        _mock_conn_with_fetchall_sequence(equipment_rows, point_agg_rows),
+    ]
+    conns_iter = iter(conns)
+    with (
+        patch(
+            "openfdd_stack.platform.api.data_model.serialize_to_ttl",
+            return_value="@prefix brick: <https://brickschema.org/schema/Brick#> .\n",
+        ),
+        patch(
+            "openfdd_stack.platform.api.data_model.get_conn",
+            side_effect=lambda: next(conns_iter),
+        ),
+    ):
+        r = client.get(f"/data-model/export?shape=structured&site_id={site_id}")
+    assert r.status_code == 200
+    body = r.json()
+    assert "equipment" in body and "points" in body
+    assert len(body["equipment"]) == 1
+    eq = body["equipment"][0]
+    assert eq["equipment_id"] == str(equipment_id)
+    assert eq["equipment_name"] == "(011) 3-FCU-01"
+    assert eq["equipment_type"] is None  # untagged — LLM fills this
+    assert eq["point_count"] == 3
+    assert eq["member_brick_types"] == sorted(
+        ["Cooling_Valve_Command", "Heating_Valve_Command", "Fan_Enable_Command"]
+    )
+    assert len(body["points"]) == 1
+
+
+def test_data_model_export_default_shape_unchanged():
+    """Without ?shape=, the response stays a flat list — back-compat for older clients."""
+    with (
+        patch(
+            "openfdd_stack.platform.api.data_model.serialize_to_ttl",
+            return_value="@prefix brick: <https://brickschema.org/schema/Brick#> .\n",
+        ),
+        patch(
+            "openfdd_stack.platform.api.data_model.get_conn",
+            side_effect=_mock_get_conn_sequence([], []),
+        ),
+    ):
+        r = client.get("/data-model/export")
+    assert r.status_code == 200
+    assert isinstance(r.json(), list)
+
+
+def test_data_model_import_rejects_unknown_equipment_type_in_equipment_array():
+    """`PUT /data-model/import` rejects unknown equipment_type at the body
+    validator before any DB write so the LLM tagging round-trip surfaces typos
+    as 422 (with the allowlist in the message) rather than poisoning the row."""
+    r = client.put(
+        "/data-model/import",
+        json={
+            "points": [],
+            "equipment": [
+                {
+                    "equipment_id": str(uuid4()),
+                    "equipment_type": "TotallyMadeUpClass",
+                }
+            ],
+        },
+    )
+    assert r.status_code == 422
+
+
+def test_data_model_import_normalizes_alias_in_equipment_array():
+    """An LLM that produces `FCU` (Brick 1.3 short-form) survives import — the
+    server rewrites it to the Brick 1.4 long form silently."""
+    eq_id = uuid4()
+    site_id = uuid4()
+    cursor = MagicMock()
+    cursor.execute.return_value = None
+    cursor.rowcount = 1
+    cursor.fetchall.side_effect = [
+        [{"id": site_id}],  # SELECT id FROM sites
+    ]
+    cursor.fetchone.side_effect = [
+        {"metadata": {}},  # _upsert_equipment_metadata SELECT
+    ]
+    conn = MagicMock()
+    conn.__enter__ = MagicMock(return_value=conn)
+    conn.__exit__ = MagicMock(return_value=None)
+    conn.cursor.return_value.__enter__ = MagicMock(return_value=cursor)
+    conn.cursor.return_value.__exit__ = MagicMock(return_value=None)
+    conn.commit = MagicMock()
+    with (
+        patch(
+            "openfdd_stack.platform.api.data_model.get_conn",
+            side_effect=lambda: conn,
+        ),
+        patch("openfdd_stack.platform.api.data_model.sync_ttl_to_file"),
+    ):
+        r = client.put(
+            "/data-model/import",
+            json={
+                "points": [],
+                "equipment": [
+                    {
+                        "equipment_id": str(eq_id),
+                        "equipment_type": "FCU",
+                    }
+                ],
+            },
+        )
+    assert r.status_code == 200
+    # Find the UPDATE equipment SET equipment_type = %s ... call and confirm the
+    # value passed in was the canonical long-form, not the alias.
+    update_calls = [
+        c for c in cursor.execute.call_args_list if c.args and "equipment SET" in c.args[0]
+    ]
+    assert update_calls, "expected an UPDATE equipment SET equipment_type call"
+    params = update_calls[0].args[1]
+    assert "Fan_Coil_Unit" in params
+    assert "FCU" not in params
+
+
+def test_vocabulary_endpoint_lists_brick_14_classes_and_aliases():
+    """GET /data-model/vocabulary is the single source of truth shipped to the
+    frontend allowlist and the AI tagging prompt."""
+    r = client.get("/data-model/vocabulary")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["brick_version"] == "1.4"
+    assert "Fan_Coil_Unit" in body["equipment_classes"]
+    assert "Equipment" in body["equipment_classes"]
+    assert "Site" in body["non_equipment_classes"]
+    assert body["aliases"]["FCU"] == "Fan_Coil_Unit"
+    assert body["aliases"]["VAV"] == "Variable_Air_Volume_Box"
+
+
 def test_data_model_ttl_generated_from_db():
     site_id = uuid4()
     sites = [{"id": site_id, "name": "Default"}]

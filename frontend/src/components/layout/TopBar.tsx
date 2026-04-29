@@ -32,7 +32,7 @@ export function TopBar() {
     : "Weather is fetched by the standalone scraper every N hours.";
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border/60 bg-card/80 px-6 backdrop-blur-lg">
+    <header className="relative z-30 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border/60 bg-card/80 px-6 backdrop-blur-lg">
       <SiteSelector />
       <div className="flex items-center gap-4 text-sm text-muted-foreground">
         {lastRun ? (

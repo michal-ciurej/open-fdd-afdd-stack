@@ -5,7 +5,7 @@ const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  <div className="w-full overflow-auto rounded-xl border border-border/60">
+  <div className="relative w-full overflow-auto rounded-xl gradient-stroke shadow-[var(--shadow-elev-sm)] bg-card">
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-sm", className)}
@@ -21,7 +21,10 @@ const TableHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <thead
     ref={ref}
-    className={cn("bg-muted/40 [&_tr]:border-b", className)}
+    className={cn(
+      "bg-gradient-to-b from-muted/60 to-muted/30 [&_tr]:border-b [&_tr]:border-border/60",
+      className,
+    )}
     {...props}
   />
 ));
@@ -46,7 +49,11 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b border-border/40 transition-colors hover:bg-muted/30",
+      "relative border-b border-border/40 transition-colors hover:bg-primary/[0.04]",
+      "before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-[2px]",
+      "before:bg-gradient-to-b before:from-primary/0 before:via-primary/0 before:to-primary/0",
+      "hover:before:from-primary/60 hover:before:via-primary/40 hover:before:to-primary/0",
+      "before:transition-colors",
       className,
     )}
     {...props}

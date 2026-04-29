@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from openfdd_stack.platform.brick_vocabulary import normalize_or_raise
+
 
 def _validate_modbus_config_common(v: Any) -> Any:
     """Shared validation for PointCreate / PointUpdate ``modbus_config``."""
@@ -132,11 +134,30 @@ class PointRead(BaseModel):
     created_at: datetime
 
 
+def _validate_equipment_type_field(v: Any) -> Any:
+    """Normalize and validate ``equipment_type`` against the Brick 1.4 allowlist.
+
+    Aliases (FCU, brick:Cooling-Tower, "Fan Coil Unit", …) are silently rewritten
+    so older clients keep working. Anything not in the allowlist after
+    normalization raises a 422 listing the accepted values — the message is
+    consumed by the LLM in the AI-assisted tagging workflow when it sends an
+    unrecognized class.
+    """
+    return normalize_or_raise(v)
+
+
 class EquipmentCreate(BaseModel):
     site_id: UUID
     name: str = Field(..., min_length=1, max_length=128)
     description: Optional[str] = None
-    equipment_type: Optional[str] = None
+    equipment_type: Optional[str] = Field(
+        None,
+        description=(
+            "Brick 1.4 equipment class (long-form, e.g. ``Fan_Coil_Unit``, ``Chiller``). "
+            "Aliases are normalized: ``FCU`` → ``Fan_Coil_Unit``, ``brick:Cooling-Tower`` → "
+            "``Cooling_Tower``, etc. See GET /data-model/vocabulary."
+        ),
+    )
     metadata_: Optional[dict] = Field(None, alias="metadata")
     feeds_equipment_id: Optional[UUID] = Field(
         None, description="Brick: this equipment feeds that one."
@@ -145,14 +166,30 @@ class EquipmentCreate(BaseModel):
         None, description="Brick: this equipment is fed by that one."
     )
 
+    @field_validator("equipment_type")
+    @classmethod
+    def _validate_equipment_type(cls, v: Any) -> Any:
+        return _validate_equipment_type_field(v)
+
 
 class EquipmentUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=128)
     description: Optional[str] = None
-    equipment_type: Optional[str] = None
+    equipment_type: Optional[str] = Field(
+        None,
+        description=(
+            "Brick 1.4 equipment class (long-form). Aliases are normalized; see "
+            "GET /data-model/vocabulary for the canonical list."
+        ),
+    )
     metadata_: Optional[dict] = Field(None, alias="metadata")
     feeds_equipment_id: Optional[UUID] = None
     fed_by_equipment_id: Optional[UUID] = None
+
+    @field_validator("equipment_type")
+    @classmethod
+    def _validate_equipment_type(cls, v: Any) -> Any:
+        return _validate_equipment_type_field(v)
 
 
 class EquipmentRead(BaseModel):

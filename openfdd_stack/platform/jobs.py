@@ -1,5 +1,6 @@
 """In-memory job store and background execution for BACnet discovery and FDD run."""
 
+import logging
 import threading
 import uuid
 from datetime import datetime, timezone
@@ -14,6 +15,19 @@ from openfdd_stack.platform.realtime import (
     TOPIC_IQVISION_SYNC,
     TOPIC_IQVISION_SCAN,
 )
+
+_log = logging.getLogger(__name__)
+
+
+def _refresh_ttl_after_data_change(source: str) -> None:
+    """Rebuild data_model.ttl from DB so the FDD loop sees new equipment/points
+    on the next run instead of waiting for the 5-min background graph_sync."""
+    try:
+        from openfdd_stack.platform.data_model_ttl import sync_ttl_to_file
+
+        sync_ttl_to_file()
+    except Exception:
+        _log.warning("sync_ttl_to_file failed after %s", source, exc_info=True)
 
 _JOB_STORE: dict[str, dict] = {}
 _LOCK = threading.Lock()
@@ -168,6 +182,7 @@ def run_niagara_sync_job(
     set_job_running(job_id)
     try:
         result = run_niagara_sync(site_id=site_id, time_window=time_window)
+        _refresh_ttl_after_data_change("niagara sync")
         set_job_finished(job_id, result)
         emit(
             TOPIC_NIAGARA_SYNC + ".finished",
@@ -202,6 +217,7 @@ def run_niagara_scan_job(job_id: str, site_id: str) -> None:
                 {"job_id": job_id, "site_id": site_id, "error": result.get("error")},
             )
             return
+        _refresh_ttl_after_data_change("niagara scan")
         set_job_finished(job_id, result)
         emit(
             TOPIC_NIAGARA_SCAN + ".finished",
@@ -236,6 +252,7 @@ def run_iqvision_sync_job(
     set_job_running(job_id)
     try:
         result = run_iqvision_sync(site_id=site_id, time_window=time_window)
+        _refresh_ttl_after_data_change("iqvision sync")
         set_job_finished(job_id, result)
         emit(
             TOPIC_IQVISION_SYNC + ".finished",
@@ -270,6 +287,7 @@ def run_iqvision_scan_job(job_id: str, site_id: str) -> None:
                 {"job_id": job_id, "site_id": site_id, "error": result.get("error")},
             )
             return
+        _refresh_ttl_after_data_change("iqvision scan")
         set_job_finished(job_id, result)
         emit(
             TOPIC_IQVISION_SCAN + ".finished",

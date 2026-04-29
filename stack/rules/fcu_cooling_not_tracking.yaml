@@ -4,7 +4,7 @@ name: fcu_cooling_not_tracking
 description: FCU SAT above setpoint with cooling valve fully open (cooling unable to meet load)
 type: expression
 flag: fcu_cooling_not_tracking_flag
-equipment_type: [FCU]
+equipment_type: [Fan_Coil_Unit]
 
 inputs:
   Supply_Air_Temperature_Sensor:

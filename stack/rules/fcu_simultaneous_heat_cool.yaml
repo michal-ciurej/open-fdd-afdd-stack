@@ -3,7 +3,7 @@ name: fcu_simultaneous_heat_cool
 description: FCU heating and cooling valves open simultaneously
 type: expression
 flag: fcu_simultaneous_heat_cool_flag
-equipment_type: [FCU]
+equipment_type: [Fan_Coil_Unit]
 
 inputs:
   Heating_Valve_Command:

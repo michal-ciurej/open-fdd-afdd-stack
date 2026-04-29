@@ -5,7 +5,7 @@ name: fcu_coil_no_effect
 description: FCU fan and valve on but no air-side temperature effect across coil
 type: expression
 flag: fcu_coil_no_effect_flag
-equipment_type: [FCU]
+equipment_type: [Fan_Coil_Unit]
 
 inputs:
   Supply_Air_Temperature_Sensor:

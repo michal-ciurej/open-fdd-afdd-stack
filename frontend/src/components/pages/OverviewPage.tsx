@@ -98,7 +98,7 @@ function SiteSummaryView({ siteId }: { siteId: string }) {
       </div>
 
       <div className="grid gap-5 sm:grid-cols-3">
-        <Card>
+        <Card tone="glass">
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">Equipment</p>
             <p className="mt-1 text-3xl font-semibold tabular-nums">
@@ -106,7 +106,7 @@ function SiteSummaryView({ siteId }: { siteId: string }) {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card tone="glass">
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">Points</p>
             <p className="mt-1 text-3xl font-semibold tabular-nums">
@@ -114,7 +114,7 @@ function SiteSummaryView({ siteId }: { siteId: string }) {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card tone="glass">
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">Active Faults</p>
             <p className={`mt-1 text-3xl font-semibold tabular-nums ${faultCount > 0 ? "text-destructive" : "text-success"}`}>
@@ -129,7 +129,7 @@ function SiteSummaryView({ siteId }: { siteId: string }) {
           <h2 className="mb-3 text-sm font-medium text-muted-foreground">
             Active Faults
           </h2>
-          <Card>
+          <Card tone="glass">
             <CardContent className="pt-4">
               <FaultList
                 faults={faults}

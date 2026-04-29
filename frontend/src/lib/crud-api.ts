@@ -381,6 +381,13 @@ export function syncRuleDefinitions() {
   });
 }
 
+/** POST /run-fdd — touch trigger file so fdd-loop runs immediately. */
+export function triggerFddRun() {
+  return apiFetch<{ status: string; path: string }>("/run-fdd", {
+    method: "POST",
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Niagara per-site endpoints + scan + sync
 // ---------------------------------------------------------------------------

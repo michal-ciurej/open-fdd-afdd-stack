@@ -115,6 +115,47 @@ def test_build_ttl_point_with_modbus_config():
     assert "meter_kW" in ttl
 
 
+def test_build_ttl_coerces_unknown_equipment_type_to_brick_equipment():
+    """Stale rows from before the migration (or a manual SQL edit) might still
+    carry an invalid equipment_type. The TTL writer must coerce to brick:Equipment
+    rather than emit `brick:TotallyMadeUpClass`, which is not a real Brick IRI."""
+    site_id = uuid4()
+    eq_id = uuid4()
+    sites = [{"id": site_id, "name": "Coerced"}]
+    equipment = [
+        {
+            "id": eq_id,
+            "site_id": site_id,
+            "name": "Mystery-1",
+            "equipment_type": "TotallyMadeUpClass",
+        }
+    ]
+    cursor = _mock_cursor(sites, equipment, [])
+    conn = _mock_conn(cursor)
+    with patch("openfdd_stack.platform.data_model_ttl.get_conn", return_value=conn):
+        ttl = build_ttl_from_db()
+    assert "brick:TotallyMadeUpClass" not in ttl
+    assert "a brick:Equipment" in ttl
+
+
+def test_build_ttl_normalizes_alias_equipment_type():
+    """`FCU` flows through `coerce_to_brick_class` to `Fan_Coil_Unit` so the
+    rules selector (which compares strings) sees the canonical form."""
+    site_id = uuid4()
+    eq_id = uuid4()
+    sites = [{"id": site_id, "name": "Alias"}]
+    equipment = [
+        {"id": eq_id, "site_id": site_id, "name": "FCU-7", "equipment_type": "FCU"}
+    ]
+    cursor = _mock_cursor(sites, equipment, [])
+    conn = _mock_conn(cursor)
+    with patch("openfdd_stack.platform.data_model_ttl.get_conn", return_value=conn):
+        ttl = build_ttl_from_db()
+    assert "brick:Fan_Coil_Unit" in ttl
+    # ofdd:equipmentType literal also gets the canonical form.
+    assert 'ofdd:equipmentType "Fan_Coil_Unit"' in ttl
+
+
 def test_build_ttl_site_with_equipment_and_points():
     site_id = uuid4()
     eq_id = uuid4()
@@ -140,7 +181,10 @@ def test_build_ttl_site_with_equipment_and_points():
         ttl = build_ttl_from_db()
     assert "brick:Site" in ttl
     assert "Building A" in ttl
-    assert "brick:AHU" in ttl
+    # `AHU` is a Brick 1.3 short-form alias; the TTL writer normalizes it to the
+    # canonical Brick 1.4 long-form so the emitted IRI is real.
+    assert "brick:Air_Handling_Unit" in ttl
+    assert "brick:AHU " not in ttl  # trailing space avoids matching the long form
     assert "AHU-1" in ttl
     assert "DAP-P" in ttl
     assert "Supply_Air_Static_Pressure_Sensor" in ttl
@@ -237,7 +281,8 @@ def test_build_ttl_one_subject_per_entity_no_duplicate_uris():
         ttl = build_ttl_from_db()
     # Each entity has a unique subject (:site_<uuid>, :eq_<uuid>, :pt_<uuid>); count type declarations
     assert ttl.count("a brick:Site") == 2
-    assert ttl.count("a brick:AHU") == 1
+    # `AHU` normalizes to `Air_Handling_Unit` via the Brick 1.4 vocabulary.
+    assert ttl.count("a brick:Air_Handling_Unit") == 1
     assert ttl.count("a brick:Point") == 1
     # Site URIs must be distinct (no duplicate site subjects)
     s1_ref = f":site_{str(site_id1).replace('-', '_')}"

@@ -21,6 +21,7 @@ from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
+from openfdd_stack.platform.brick_vocabulary import coerce_to_brick_class
 from openfdd_stack.platform.config import get_platform_settings
 from openfdd_stack.platform.database import get_conn
 
@@ -200,7 +201,18 @@ def build_ttl_from_db(site_id: UUID | None = None) -> str:
             eid = str(e["id"])
             eref = f":eq_{eid.replace('-', '_')}"
             ename = _escape(e["name"])
-            etype = (e.get("equipment_type") or "Equipment").replace(" ", "_")
+            raw_type = e.get("equipment_type")
+            # Belt-and-braces: API validators reject unknown classes on write,
+            # but a stale row from before the migration (or a manual SQL edit)
+            # could still contain something invalid. Coerce to the Brick 1.4
+            # allowlist so the emitted IRI is always real, and log when we did.
+            etype = coerce_to_brick_class(raw_type, fallback="Equipment")
+            if raw_type and etype != raw_type:
+                logger.warning(
+                    "equipment %s has equipment_type=%r not in Brick 1.4 allowlist; "
+                    "coerced to brick:%s in TTL (run the migration to fix)",
+                    eid, raw_type, etype,
+                )
             lines.append(f"{eref} a brick:{etype} ;")
             lines.append(f'    rdfs:label "{ename}" ;')
             lines.append(f"    brick:isPartOf {sref} ;")

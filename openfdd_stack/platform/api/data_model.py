@@ -12,15 +12,21 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from uuid import UUID
 
 import psycopg2
 from psycopg2.extras import Json
 from fastapi import APIRouter, Body, File, HTTPException, Query, UploadFile
 from fastapi.responses import PlainTextResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from openfdd_stack.platform.brick_vocabulary import (
+    BRICK_14_ALIASES,
+    BRICK_14_EQUIPMENT_CLASSES,
+    BRICK_14_NON_EQUIPMENT_CLASSES,
+    normalize_or_raise,
+)
 from openfdd_stack.platform.config import get_platform_settings
 from openfdd_stack.platform.database import get_conn
 from openfdd_stack.platform.modbus_point_config import normalize_modbus_config
@@ -153,6 +159,112 @@ class UnifiedExportRow(BaseModel):
     modbus_config: dict | None = Field(
         None,
         description="When set, point is read via Modbus TCP (diy gateway /modbus/read_registers); same scrape interval as BACnet.",
+    )
+
+
+class EquipmentExportRow(BaseModel):
+    """One equipment row in the structured data-model export.
+
+    Carries enough context for an LLM (or operator) to assign ``equipment_type``
+    in one pass without re-scanning the points array — ``member_brick_types``
+    summarizes the bricks present on this equipment's points. Mirrors the
+    fields that ``EquipmentImportRow`` accepts on import so the JSON
+    round-trips through the LLM tagging workflow.
+    """
+
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "equipment_id": "0b19765e-a39f-4324-ab03-62eb3751e8ff",
+            "equipment_name": "(011) 3-FCU-01",
+            "equipment_type": None,
+            "site_id": "7dda587d-213b-4467-ad3e-475e21762e1c",
+            "site_name": "52 Lime Street",
+            "feeds_equipment_id": None,
+            "fed_by_equipment_id": None,
+            "equipment_metadata": {},
+            "engineering": None,
+            "point_count": 23,
+            "member_brick_types": [
+                "Cooling_Valve_Command",
+                "Fan_Enable_Command",
+                "Heating_Valve_Command",
+                "Supply_Air_Temperature_Sensor",
+            ],
+        }
+    })
+
+    equipment_id: str = Field(..., description="Equipment UUID; pass back unchanged on import.")
+    equipment_name: str
+    equipment_type: str | None = Field(
+        None,
+        description=(
+            "Brick 1.4 equipment class, long form (e.g. ``Fan_Coil_Unit``, ``Chiller``). "
+            "null when untagged. Tag value MUST come from the Brick 1.4 allowlist — see "
+            "GET /data-model/vocabulary or BRICK_14_EQUIPMENT_CLASSES in brick_vocabulary.py. "
+            "Aliases like ``FCU`` / ``VAV`` / ``brick:Cooling-Tower`` are normalized on import."
+        ),
+    )
+    site_id: str | None = None
+    site_name: str | None = None
+    feeds_equipment_id: str | None = None
+    fed_by_equipment_id: str | None = None
+    equipment_metadata: dict | None = None
+    engineering: dict | None = Field(
+        None,
+        description="Convenience mirror of equipment_metadata.engineering for LLM workflows.",
+    )
+    point_count: int = Field(
+        0, description="Number of points currently linked to this equipment."
+    )
+    member_brick_types: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Distinct ``brick_type`` values across this equipment's points (sorted, "
+            "may be empty when no points are tagged yet). Use this to choose "
+            "``equipment_type`` without re-scanning the points array — e.g. an "
+            "equipment carrying ``Heating_Valve_Command`` + ``Cooling_Valve_Command`` + "
+            "``Fan_Enable_Command`` is unambiguously a ``Fan_Coil_Unit``."
+        ),
+    )
+
+
+class StructuredExport(BaseModel):
+    """Structured data-model export: ``{equipment, points}`` — symmetric with the
+    body accepted by ``PUT /data-model/import`` so the JSON can round-trip through
+    an LLM tagging step. Use ``GET /data-model/export?shape=structured`` to fetch.
+    """
+
+    equipment: list[EquipmentExportRow] = Field(
+        default_factory=list,
+        description="One row per equipment in scope. Tag ``equipment_type`` here.",
+    )
+    points: list[UnifiedExportRow] = Field(
+        default_factory=list,
+        description="Same shape as ``GET /data-model/export`` (default). Tag ``brick_type`` / ``rule_input`` here.",
+    )
+
+
+class VocabularyResponse(BaseModel):
+    """Brick 1.4 vocabulary served as the single source of truth across the stack
+    (TTL writer, API validators, frontend allowlist, AI-assisted tagging prompt).
+    """
+
+    brick_version: str = "1.4"
+    equipment_classes: list[str] = Field(
+        ...,
+        description="Canonical Brick 1.4 long-form classes accepted as ``equipment_type``.",
+    )
+    non_equipment_classes: list[str] = Field(
+        ...,
+        description="Top-level classes used in SPARQL but never assigned as equipment_type (Site, Building, …).",
+    )
+    aliases: dict[str, str] = Field(
+        ...,
+        description=(
+            "Legacy/short-form → canonical mappings applied silently on import "
+            "(case-insensitive on the left side). Send any of these and the server "
+            "rewrites them to the canonical form."
+        ),
     )
 
 
@@ -350,11 +462,117 @@ def _build_unified_export(site_id: str | None = None) -> list[UnifiedExportRow]:
     return out
 
 
+def _build_equipment_export(site_id: str | None = None) -> list[EquipmentExportRow]:
+    """Equipment rows + member brick types for AI-assisted ``equipment_type`` tagging.
+
+    The flat point export omits per-equipment fields, so the LLM had nothing to
+    read or modify when tagging equipment_type. This helper aggregates the
+    equipment table once, with the distinct ``brick_type`` set of each equipment's
+    points alongside, so the LLM can pick a Brick 1.4 class in one pass.
+
+    Site filtering follows the same UUID-or-name-or-description convention as
+    ``_build_unified_export`` so ``?site_id=`` behaves identically across both.
+    """
+    _site_id = _resolve_site_filter(site_id) if (site_id and site_id.strip()) else None
+    if site_id and site_id.strip() and _site_id is None:
+        raise HTTPException(404, f"No site found for name/description: {site_id!r}")
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            base_cols = (
+                "e.id AS equipment_id, e.name AS equipment_name, e.equipment_type, "
+                "e.site_id, s.name AS site_name, e.feeds_equipment_id, e.fed_by_equipment_id, "
+                "e.metadata AS equipment_metadata"
+            )
+            if _site_id:
+                cur.execute(
+                    f"""
+                    SELECT {base_cols}
+                    FROM equipment e
+                    LEFT JOIN sites s ON s.id = e.site_id
+                    WHERE e.site_id = %s
+                    ORDER BY e.name
+                    """,
+                    (str(_site_id),),
+                )
+            else:
+                cur.execute(
+                    f"""
+                    SELECT {base_cols}
+                    FROM equipment e
+                    LEFT JOIN sites s ON s.id = e.site_id
+                    ORDER BY e.site_id, e.name
+                    """
+                )
+            equipment_rows = cur.fetchall()
+
+            agg: dict[str, dict] = {}
+            if equipment_rows:
+                eq_ids = [str(r["equipment_id"]) for r in equipment_rows]
+                # array_agg with FILTER skips NULL brick_types so untagged points
+                # don't pollute the member set; COUNT(*) still includes them.
+                cur.execute(
+                    """
+                    SELECT equipment_id::text AS equipment_id,
+                           COUNT(*) AS point_count,
+                           array_agg(DISTINCT brick_type) FILTER (WHERE brick_type IS NOT NULL) AS bricks
+                    FROM points
+                    WHERE equipment_id = ANY(%s::uuid[])
+                    GROUP BY equipment_id
+                    """,
+                    (eq_ids,),
+                )
+                for r in cur.fetchall():
+                    agg[str(r["equipment_id"])] = r
+
+    out: list[EquipmentExportRow] = []
+    for r in equipment_rows:
+        eq_id_str = str(r["equipment_id"])
+        a = agg.get(eq_id_str) or {}
+        meta_raw = r.get("equipment_metadata")
+        meta = meta_raw if isinstance(meta_raw, dict) else None
+        engineering = (
+            meta.get("engineering")
+            if isinstance(meta, dict) and isinstance(meta.get("engineering"), dict)
+            else None
+        )
+        bricks_raw = a.get("bricks") or []
+        member_bricks = sorted(b for b in bricks_raw if b)
+        out.append(
+            EquipmentExportRow(
+                equipment_id=eq_id_str,
+                equipment_name=r.get("equipment_name") or "",
+                equipment_type=r.get("equipment_type"),
+                site_id=str(r["site_id"]) if r.get("site_id") else None,
+                site_name=r.get("site_name"),
+                feeds_equipment_id=(
+                    str(r["feeds_equipment_id"]) if r.get("feeds_equipment_id") else None
+                ),
+                fed_by_equipment_id=(
+                    str(r["fed_by_equipment_id"]) if r.get("fed_by_equipment_id") else None
+                ),
+                equipment_metadata=meta,
+                engineering=engineering,
+                point_count=int(a.get("point_count") or 0),
+                member_brick_types=member_bricks,
+            )
+        )
+    return out
+
+
 @router.get(
     "/export",
-    response_model=list[UnifiedExportRow],
+    # response_model is None so the same route can return either the legacy
+    # list[UnifiedExportRow] (shape=flat, default) or a StructuredExport
+    # (shape=structured) without FastAPI rejecting one of the two.
+    response_model=None,
     summary="Export data model as JSON (BACnet + DB points for LLM tagging)",
-    response_description="One list: BACnet discovery and DB points. Use ?bacnet_only=true to restrict to rows with bacnet_device_id. Rows with point_id null are unimported (polling=false by default). Send to LLM for Brick tagging then PUT /data-model/import.",
+    response_description=(
+        "Default ``shape=flat``: list of point/discovery rows (back-compat). "
+        "``shape=structured``: ``{equipment: [...], points: [...]}`` — same equipment carries "
+        "``equipment_type`` (Brick 1.4 long-form) and ``member_brick_types`` so the LLM can tag "
+        "equipment in one pass. Round-trips through PUT /data-model/import."
+    ),
 )
 def export_points(
     site_id: str | None = Query(
@@ -363,18 +581,59 @@ def export_points(
     ),
     bacnet_only: bool = Query(
         False,
-        description="If true, return only rows that have bacnet_device_id and object_identifier (discovery from graph). Omit or false for full dump (BACnet + CRUD points).",
+        description="If true, return only rows that have bacnet_device_id and object_identifier (discovery from graph). Omit or false for full dump (BACnet + CRUD points). Applies to the points array in both shape modes.",
     ),
-):
-    """Single export route: BACnet discovery + CRUD points. Use for LLM Brick tagging (docs/modeling/ai_assisted_tagging); then PUT /data-model/import. Unimported BACnet rows have polling=false by default; site_id/site_name are filled from ?site_id= or when only one site exists in the DB. Set bacnet_only=true to get only discovery rows."""
-    out = _build_unified_export(site_id)
+    shape: Literal["flat", "structured"] = Query(
+        "flat",
+        description=(
+            "``flat`` (default, back-compat): list[UnifiedExportRow]. "
+            "``structured``: {equipment: list[EquipmentExportRow], points: list[UnifiedExportRow]} "
+            "— use this for the AI-assisted tagging workflow so the LLM can fill ``equipment_type`` "
+            "(Brick 1.4 long-form) per equipment instead of inferring it from points."
+        ),
+    ),
+) -> list[UnifiedExportRow] | StructuredExport:
+    """Single export route: BACnet discovery + CRUD points. Use for LLM Brick tagging (docs/modeling/ai_assisted_tagging); then PUT /data-model/import.
+
+    ``shape=flat`` keeps the original list-of-points response. ``shape=structured`` returns
+    ``{equipment, points}`` mirroring the import body shape — pass it through an LLM that fills
+    in ``equipment_type`` on each equipment row (using GET /data-model/vocabulary as the
+    allowlist) and ``brick_type`` / ``rule_input`` on each point row, then PUT it back.
+    """
+    points = _build_unified_export(site_id)
     if bacnet_only:
-        out = [
+        points = [
             r
-            for r in out
+            for r in points
             if r.bacnet_device_id is not None and r.object_identifier is not None
         ]
-    return out
+    if shape == "structured":
+        equipment = _build_equipment_export(site_id)
+        return StructuredExport(equipment=equipment, points=points)
+    return points
+
+
+@router.get(
+    "/vocabulary",
+    response_model=VocabularyResponse,
+    summary="Brick 1.4 vocabulary (equipment classes + aliases)",
+    response_description=(
+        "Single source of truth for Brick 1.4 equipment classes used by API validators, "
+        "the TTL writer, the rules selector, and the frontend allowlist. The aliases map "
+        "documents which legacy strings the import endpoint silently rewrites."
+    ),
+)
+def get_vocabulary() -> VocabularyResponse:
+    """Return the Brick 1.4 vocabulary used for ``equipment_type`` validation.
+
+    Frontends and tagging tools should fetch this rather than hardcoding the list, so a
+    new equipment class added to ``brick_vocabulary.py`` is immediately picked up.
+    """
+    return VocabularyResponse(
+        equipment_classes=sorted(BRICK_14_EQUIPMENT_CLASSES),
+        non_equipment_classes=sorted(BRICK_14_NON_EQUIPMENT_CLASSES),
+        aliases=dict(sorted(BRICK_14_ALIASES.items())),
+    )
 
 
 # --- Import: bulk update full BRICK data model (points, site, equipment, rule_input) ---
@@ -403,12 +662,22 @@ class PointImportRow(BaseModel):
     )
     equipment_type: str | None = Field(
         None,
-        description="Used when creating equipment from equipment_name (e.g. AHU, VAV). Defaults to Equipment.",
+        description=(
+            "Brick 1.4 equipment class used when creating equipment from ``equipment_name`` "
+            "(e.g. ``Fan_Coil_Unit``, ``Air_Handling_Unit``, ``Variable_Air_Volume_Box``). "
+            "Aliases (``FCU``, ``AHU``, ``VAV``, ``brick:Cooling-Tower``) are normalized to "
+            "the long form. See GET /data-model/vocabulary. Defaults to ``Equipment``."
+        ),
     )
     external_id: str | None = Field(
         None,
         description="Time-series reference (e.g. HTG-O, ZoneTemp). Required when creating a point.",
     )
+
+    @field_validator("equipment_type")
+    @classmethod
+    def _validate_point_import_equipment_type(cls, v: Any) -> Any:
+        return normalize_or_raise(v)
     bacnet_device_id: str | None = Field(
         None,
         description="BACnet device instance (e.g. 3456789). Required when creating from export (unimported row).",
@@ -476,8 +745,19 @@ class EquipmentImportRow(BaseModel):
     )
     equipment_type: str | None = Field(
         None,
-        description="Brick equipment class when creating equipment (e.g. Air_Handling_Unit, Variable_Air_Volume_Box). Used so Data Model Testing 'Summarize your HVAC' (AHUs, VAV boxes, etc.) shows results. Defaults to Equipment.",
+        description=(
+            "Brick 1.4 equipment class (long-form: ``Air_Handling_Unit``, "
+            "``Variable_Air_Volume_Box``, ``Fan_Coil_Unit``, ``Chiller``, ``Pump``, …). "
+            "Aliases (``AHU``, ``VAV``, ``FCU``) are accepted and rewritten to the long form. "
+            "Used so Data Model Testing 'Summarize your HVAC' (AHUs, VAV boxes, etc.) shows "
+            "results. See GET /data-model/vocabulary. Defaults to ``Equipment``."
+        ),
     )
+
+    @field_validator("equipment_type")
+    @classmethod
+    def _validate_equipment_import_equipment_type(cls, v: Any) -> Any:
+        return normalize_or_raise(v)
     site_id: str | None = Field(
         None,
         description="Site UUID. Required when using equipment_name or when feeds_equipment_id/fed_by_equipment_id are equipment names.",

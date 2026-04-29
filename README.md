@@ -157,3 +157,34 @@ pytest openfdd_stack/tests -v
 ## License
 
 MIT
+
+
+commands to rebuild:
+
+One-shot: rebuild + recompose all three
+
+docker compose -f stack/docker-compose.yml build api
+docker compose -f stack/docker-compose.yml pull db
+docker compose -f stack/docker-compose.yml up -d --force-recreate db api frontend
+Per-service
+db (pull a fresh image, recreate container, keep the openfdd_db volume / data):
+
+
+docker compose -f stack/docker-compose.yml pull db
+docker compose -f stack/docker-compose.yml up -d --force-recreate db
+api (rebuild image from Dockerfile.api, then recreate):
+
+
+docker compose -f stack/docker-compose.yml build api
+docker compose -f stack/docker-compose.yml up -d --force-recreate api
+frontend (no image build — recreating runs npm run build again, picking up frontend/ changes):
+
+
+docker compose -f stack/docker-compose.yml up -d --force-recreate frontend
+If a frontend dependency changed (package.json / package-lock.json) and you need a clean npm ci, also wipe the cached node_modules volume first:
+
+
+docker compose -f stack/docker-compose.yml rm -sf frontend
+docker volume rm stack_frontend_node_modules
+docker compose -f stack/docker-compose.yml up -d frontend
+Volume name will be stack_frontend_node_modules if your compose project name is stack (the default when running from the stack/ folder); confirm with docker volume ls | grep frontend_node_modules first.

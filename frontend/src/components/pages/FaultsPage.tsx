@@ -1,12 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Play, Clock, Layers, Server } from "lucide-react";
 import { useSiteContext } from "@/contexts/site-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { apiFetchText } from "@/lib/api";
 import { useRulesList } from "@/hooks/use-rules";
-import { uploadRule, deleteRule, syncRuleDefinitions } from "@/lib/crud-api";
+import { useFddStatus } from "@/hooks/use-fdd-status";
+import { uploadRule, deleteRule, syncRuleDefinitions, triggerFddRun } from "@/lib/crud-api";
 import {
   Table,
   TableHeader,
@@ -61,7 +63,7 @@ function FaultsTable({
     const equip = equipById.get(fault.equipment_id) ?? equipByName.get(fault.equipment_id);
     const base = equip ? equip.name : (siteMap && siteNames.has(fault.equipment_id) ? `Site: ${fault.equipment_id}` : fault.equipment_id);
     if (fault.bacnet_device_id != null && fault.bacnet_device_id !== "") {
-      return `${base} (BACnet ${fault.bacnet_device_id})`;
+      return `${base} (device ${fault.bacnet_device_id})`;
     }
     return base;
   }
@@ -172,7 +174,7 @@ function FaultMatrixTable({
   if (devices.length === 0) {
     return (
       <div className="py-12 text-center text-sm text-muted-foreground" data-testid="fault-matrix-empty">
-        No BACnet devices in data model. Add points with bacnet_device_id (and equipment) to see the matrix.
+        No devices in data model. Add points with a device identifier (and equipment) to see the matrix.
       </div>
     );
   }
@@ -190,7 +192,7 @@ function FaultMatrixTable({
       <Table data-testid="fault-matrix-table">
         <TableHeader>
           <TableRow>
-            <TableHead className="font-mono">BACnet device</TableHead>
+            <TableHead className="font-mono">Device</TableHead>
             <TableHead>Equipment</TableHead>
             {siteMap && <TableHead>Site</TableHead>}
             <TableHead className="text-muted-foreground whitespace-nowrap">Last known fault</TableHead>
@@ -790,6 +792,122 @@ function RuleFilesSection() {
   );
 }
 
+function FddLoopStatusSection({ siteId }: { siteId: string | undefined }) {
+  const queryClient = useQueryClient();
+  const { data: status, isLoading: statusLoading } = useFddStatus();
+  const { data: rulesList } = useRulesList();
+  const { data: equipmentAll = [] } = useAllEquipment();
+  const { data: equipmentSite = [] } = useEquipment(siteId);
+  const equipment = siteId ? equipmentSite : equipmentAll;
+
+  const ruleCount = useMemo(() => {
+    const files = rulesList?.files ?? [];
+    return files.filter((f) => !isHotReloadBenchArtifact(f)).length;
+  }, [rulesList]);
+
+  const equipmentCount = equipment.length;
+  const evaluationsPerRun = ruleCount * equipmentCount;
+
+  const triggerMutation = useMutation({
+    mutationFn: triggerFddRun,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fdd-status"] });
+    },
+  });
+
+  const lastRun = status?.last_run ?? null;
+  const statusVariant = lastRun?.status === "ok" ? "success" : lastRun?.status ? "destructive" : "outline";
+
+  return (
+    <section className="mb-8">
+      <h2 className="mb-3 text-sm font-medium text-muted-foreground">FDD loop</h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Last run + manual trigger */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  Last FDD run
+                </p>
+                {statusLoading ? (
+                  <Skeleton className="mt-2 h-7 w-32" />
+                ) : lastRun ? (
+                  <>
+                    <p className="mt-1 text-lg font-semibold tabular-nums" title={lastRun.run_ts}>
+                      {timeAgo(lastRun.run_ts)}
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <Badge variant={statusVariant}>{lastRun.status}</Badge>
+                      <span>sites: <span className="font-mono tabular-nums">{lastRun.sites_processed}</span></span>
+                      <span>faults written: <span className="font-mono tabular-nums">{lastRun.faults_written}</span></span>
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-1 text-sm text-muted-foreground">No runs recorded yet.</p>
+                )}
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => triggerMutation.mutate()}
+                disabled={triggerMutation.isPending}
+                data-testid="fdd-run-now-button"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                title="POST /run-fdd — touches trigger file; loop picks it up within 60s"
+              >
+                <Play className="h-4 w-4" />
+                {triggerMutation.isPending ? "Triggering…" : "Run FDD now"}
+              </button>
+              {triggerMutation.isSuccess && (
+                <span className="text-xs text-muted-foreground">
+                  Triggered. Loop will pick up within ~60s.
+                </span>
+              )}
+              {triggerMutation.isError && (
+                <span className="text-xs text-destructive">
+                  {(triggerMutation.error as Error)?.message ?? "Trigger failed"}
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Rules loaded */}
+        <Card>
+          <CardContent className="pt-6">
+            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Layers className="h-4 w-4" />
+              Rules loaded
+            </p>
+            <p className="mt-1 text-3xl font-semibold tabular-nums">{ruleCount}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              YAML files in rules_dir (bench artifacts excluded). Each FDD run hot-reloads from disk.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Equipment in scope + estimated evaluations */}
+        <Card>
+          <CardContent className="pt-6">
+            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Server className="h-4 w-4" />
+              Equipment in scope {siteId ? "(this site)" : "(all sites)"}
+            </p>
+            <p className="mt-1 text-3xl font-semibold tabular-nums">{equipmentCount}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              ≈ <span className="font-mono tabular-nums">{evaluationsPerRun}</span> rule × equipment evaluations per run
+              (rules apply only to matching equipment_type, so actual count is lower).
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </section>
+  );
+}
+
 export function FaultsPage() {
   const { selectedSiteId } = useSiteContext();
   const [preset, setPreset] = useState<DatePreset>("7d");
@@ -829,6 +947,8 @@ export function FaultsPage() {
   return (
     <div className="flex flex-col">
       <h1 className="mb-4 text-2xl font-semibold tracking-tight">Faults</h1>
+
+      <FddLoopStatusSection siteId={selectedSiteId ?? undefined} />
 
       {/* Time range bar at top: all summary and charts below use this range */}
       <header className="mb-6 flex flex-wrap items-center gap-4 rounded-xl border border-border/80 bg-muted/70 px-4 py-3 shadow-sm">
@@ -882,10 +1002,10 @@ export function FaultsPage() {
 
       <section className="mb-8">
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-          BACnet devices × fault definitions (from data model + rule YAML)
+          Devices × fault definitions (from data model + rule YAML)
         </h2>
         <p className="mb-4 text-xs text-muted-foreground">
-          Rows = BACnet devices (data model). Cols = faults from rule YAML in rules_dir (platform config). Fault definitions auto-populate when you add or edit .yaml files in that dir—each FDD run syncs them to the DB. Active = fault currently active; Not active = applies but clear; N/A = fault does not apply to this device (equipment_type).
+          Rows = devices in the data model (BACnet, Niagara, Trend). Cols = faults from rule YAML in rules_dir (platform config). Fault definitions auto-populate when you add or edit .yaml files in that dir—each FDD run syncs them to the DB. Active = fault currently active; Not active = applies but clear; N/A = fault does not apply to this device (equipment_type).
         </p>
         <Card>
           <CardContent className="pt-4">

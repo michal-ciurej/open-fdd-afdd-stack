@@ -325,6 +325,94 @@ def test_equipment_delete():
     assert r.status_code == 200
 
 
+# --- equipment_type validation against Brick 1.4 vocabulary ---
+
+
+def test_equipment_create_normalizes_alias_to_brick_14_long_form():
+    """POST /equipment with `equipment_type='FCU'` (Brick 1.3 short-form) is
+    silently rewritten to `Fan_Coil_Unit` so the row matches the rules selector
+    after migration. Older clients keep working."""
+    site_id = uuid4()
+    eq_id = uuid4()
+    inserted = {
+        "id": eq_id,
+        "site_id": site_id,
+        "name": "FCU-7",
+        "description": None,
+        "equipment_type": "Fan_Coil_Unit",
+        "metadata": {},
+        "feeds_equipment_id": None,
+        "fed_by_equipment_id": None,
+        "created_at": "2024-01-01T00:00:00",
+    }
+    conn = _mock_conn()
+    cur = conn.cursor.return_value.__enter__.return_value
+    cur.fetchone.side_effect = [None, inserted]  # duplicate-check None, then INSERT RETURNING
+    with _patch_db(conn), patch("openfdd_stack.platform.api.equipment.sync_ttl_to_file"):
+        r = client.post(
+            "/equipment",
+            json={"site_id": str(site_id), "name": "FCU-7", "equipment_type": "FCU"},
+        )
+    assert r.status_code == 200
+    # The INSERT call should have used the canonical long form, not the alias.
+    insert_call = cur.execute.call_args_list[1]
+    args = insert_call.args[1]
+    assert "Fan_Coil_Unit" in args
+
+
+def test_equipment_create_rejects_unknown_equipment_type():
+    """Unknown classes return 422 with the allowlist in the message so a tagging
+    LLM can self-correct on the next attempt."""
+    site_id = uuid4()
+    r = client.post(
+        "/equipment",
+        json={
+            "site_id": str(site_id),
+            "name": "Mystery-1",
+            "equipment_type": "TotallyMadeUpClass",
+        },
+    )
+    assert r.status_code == 422
+    body = r.json()
+    detail = str(body.get("detail") or body)
+    assert "Brick 1.4" in detail or "Fan_Coil_Unit" in detail
+
+
+def test_equipment_patch_rejects_unknown_equipment_type():
+    """PATCH with a bad equipment_type fails before any DB write so a typo
+    can't poison the row."""
+    eq_id = uuid4()
+    r = client.patch(f"/equipment/{eq_id}", json={"equipment_type": "Notarealclass"})
+    assert r.status_code == 422
+
+
+def test_equipment_create_accepts_canonical_brick_14_class():
+    """Sanity: a fully canonical class is accepted as-is (no warning)."""
+    site_id = uuid4()
+    eq_id = uuid4()
+    inserted = {
+        "id": eq_id,
+        "site_id": site_id,
+        "name": "Pump-1",
+        "description": None,
+        "equipment_type": "Pump",
+        "metadata": {},
+        "feeds_equipment_id": None,
+        "fed_by_equipment_id": None,
+        "created_at": "2024-01-01T00:00:00",
+    }
+    conn = _mock_conn()
+    cur = conn.cursor.return_value.__enter__.return_value
+    cur.fetchone.side_effect = [None, inserted]
+    with _patch_db(conn), patch("openfdd_stack.platform.api.equipment.sync_ttl_to_file"):
+        r = client.post(
+            "/equipment",
+            json={"site_id": str(site_id), "name": "Pump-1", "equipment_type": "Pump"},
+        )
+    assert r.status_code == 200
+    assert r.json()["equipment_type"] == "Pump"
+
+
 # --- Points ---
 
 
