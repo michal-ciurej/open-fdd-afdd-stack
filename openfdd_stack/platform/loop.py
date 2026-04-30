@@ -118,8 +118,9 @@ def load_timeseries_for_site(
     df = pd.DataFrame(rows)
     df = df.pivot_table(index="ts", columns="external_id", values="value")
     df = df.reset_index()
-    csv_cols = {ext: column_map.get(ext, ext) for ext in ext_ids}
-    df = df.rename(columns=csv_cols)
+    # Do NOT rename the DataFrame columns here.
+    # The engine expects `column_map` (Brick/logical -> actual DataFrame column name).
+    # Our actual columns are `points.external_id` from the DB pivot above.
     df["timestamp"] = pd.to_datetime(df["ts"])
     return df
 
@@ -175,8 +176,63 @@ def load_timeseries_for_equipment(
     df = pd.DataFrame(rows)
     df = df.pivot_table(index="ts", columns="external_id", values="value")
     df = df.reset_index()
-    csv_cols = {ext: column_map.get(ext, ext) for ext in ext_ids}
-    df = df.rename(columns=csv_cols)
+    # Do NOT rename the DataFrame columns here.
+    # The engine expects `column_map` (Brick/logical -> actual DataFrame column name).
+    # Our actual columns are `points.external_id` from the DB pivot above.
+    df["timestamp"] = pd.to_datetime(df["ts"])
+    return df
+
+
+def load_timeseries_for_equipment_uuid(
+    site_id: str,
+    equipment_id: str,
+    start_ts: datetime,
+    end_ts: datetime,
+) -> Optional[pd.DataFrame]:
+    """
+    Load timeseries_readings for one equipment into a DataFrame by equipment UUID.
+
+    Columns = points.external_id. This avoids name collisions (multiple equipment with
+    same name) and matches how rules bind via column_map.
+    """
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT p.id, p.external_id
+                FROM points p
+                WHERE (p.site_id = %s OR p.site_id::text = %s)
+                  AND p.equipment_id = %s
+                ORDER BY p.external_id
+                """,
+                (site_id, site_id, equipment_id),
+            )
+            rows = cur.fetchall()
+    if not rows:
+        return None
+
+    point_ids = [r["id"] for r in rows]
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT tr.ts, p.external_id, tr.value
+                FROM timeseries_readings tr
+                JOIN points p ON tr.point_id = p.id
+                WHERE tr.point_id = ANY(%s::uuid[])
+                  AND tr.ts >= %s AND tr.ts <= %s
+                """,
+                (point_ids, start_ts, end_ts),
+            )
+            rows = cur.fetchall()
+
+    if not rows:
+        return None
+
+    df = pd.DataFrame(rows)
+    df = df.pivot_table(index="ts", columns="external_id", values="value")
+    df = df.reset_index()
     df["timestamp"] = pd.to_datetime(df["ts"])
     return df
 
@@ -278,6 +334,8 @@ def run_fdd_loop(
         BrickTtlColumnMapResolver,
         get_equipment_types_from_ttl,
     )
+    from openfdd_stack.platform.brick_vocabulary import normalize_equipment_type
+    from openfdd_stack.platform.equipment_column_map import build_equipment_column_map
 
     settings = get_platform_settings()
     lookback = lookback_days if lookback_days is not None else settings.lookback_days
@@ -311,6 +369,8 @@ def run_fdd_loop(
         if column_map_resolver is not None
         else BrickTtlColumnMapResolver()
     )
+    # Brick TTL resolver returns logical (Brick class / rule_input) -> physical (DF column name).
+    # The engine consumes this mapping directly; do not invert it for DataFrame renaming.
     column_map = resolver.build_column_map(ttl_path=ttl_path)
     equipment_types = (
         get_equipment_types_from_ttl(str(ttl_path)) if ttl_path.exists() else []
@@ -354,7 +414,31 @@ def run_fdd_loop(
             ", ".join(f"{flag}{eq_types}" for flag, eq_types in dropped[:20])
             + (f", … and {len(dropped) - 20} more" if len(dropped) > 20 else ""),
         )
-    runner = RuleRunner(rules=rules)
+
+    def _applies_to_equipment(rule: dict, equipment_type: str | None) -> bool:
+        """
+        Whether a rule should run for a specific equipment row.
+
+        - Rules without an equipment_type filter apply to all equipment.
+        - Rules with equipment_type apply only when the equipment's canonical Brick type matches.
+        - Normalizes legacy aliases in YAML (e.g. FCU -> Fan_Coil_Unit) and in DB rows.
+        """
+        rule_types = rule.get("equipment_type") or []
+        if not rule_types:
+            return True
+        if not equipment_type:
+            return False
+        eq = normalize_equipment_type(equipment_type) or equipment_type
+        for rt in rule_types:
+            canon = normalize_equipment_type(str(rt)) or str(rt)
+            if canon == eq:
+                return True
+        return False
+
+    # Cache per-equipment-type RuleRunner instances so we don't rebuild for every row.
+    runners_by_type: dict[str | None, RuleRunner] = {}
+    # Cache per-equipment column maps so we only hit DB once per equipment per run.
+    column_map_by_equipment: dict[str, dict[str, str]] = {}
     strict = bool(getattr(settings, "fdd_strict_rules", False))
 
     end_ts = datetime.now(timezone.utc)
@@ -388,7 +472,7 @@ def run_fdd_loop(
             with get_conn() as conn:
                 with conn.cursor() as cur:
                     cur.execute(
-                        "SELECT id, name FROM equipment WHERE site_id = %s ORDER BY name",
+                        "SELECT id, name, equipment_type FROM equipment WHERE site_id = %s ORDER BY name",
                         (sid,),
                     )
                     equipment_rows = cur.fetchall()
@@ -401,9 +485,28 @@ def run_fdd_loop(
             ran_equipment = False
             for eq_row in equipment_rows:
                 eq_name = eq_row["name"] or str(eq_row["id"])
-                df = load_timeseries_for_equipment(
-                    sid, eq_name, start_ts, end_ts, column_map
-                )
+                eq_id = str(eq_row["id"])
+                eq_type = eq_row.get("equipment_type")
+                # Only run rules applicable to this equipment type. This prevents
+                # FCU/Pump rules from being evaluated on (for example) Open-Meteo-only
+                # frames when those are the only ones with data in the window.
+                runner = runners_by_type.get(eq_type)
+                if runner is None:
+                    eq_rules = [r for r in rules if _applies_to_equipment(r, eq_type)]
+                    runner = RuleRunner(rules=eq_rules)
+                    runners_by_type[eq_type] = runner
+                selected_rules = getattr(runner, "rules", None) or []
+
+                # Build equipment-scoped column_map (avoids cross-equipment key collisions).
+                eq_column_map = column_map_by_equipment.get(eq_id)
+                if eq_column_map is None:
+                    eq_column_map = build_equipment_column_map(
+                        site_id=sid,
+                        equipment_id=eq_id,
+                    )
+                    column_map_by_equipment[eq_id] = eq_column_map
+
+                df = load_timeseries_for_equipment_uuid(sid, eq_id, start_ts, end_ts)
                 if df is None:
                     equipment_skipped["no_data"] += 1
                     _log.info(
@@ -421,19 +524,27 @@ def run_fdd_loop(
                     continue
                 ran_equipment = True
                 equipment_evaluated += 1
+                _log.debug(
+                    "  equipment %s: type=%s selected_rules=%d column_map_keys=%d df_cols=%d",
+                    eq_name,
+                    eq_type,
+                    len(selected_rules),
+                    len(eq_column_map),
+                    len(df.columns),
+                )
                 res = runner.run(
                     df,
                     **_fdd_runner_run_kwargs(
-                        settings, strict=strict, column_map=column_map
+                        settings, strict=strict, column_map=eq_column_map
                     ),
                 )
                 results = results_from_runner_output(
-                    res, sid, eq_name, timestamp_col="timestamp"
+                    res, sid, eq_id, timestamp_col="timestamp"
                 )
                 _log.info(
                     "  equipment %s: ran %d rule(s) on %d row(s) → %d fault row(s)",
                     eq_name,
-                    len(rules),
+                    len(selected_rules),
                     len(df),
                     len(results),
                 )
@@ -443,6 +554,10 @@ def run_fdd_loop(
                 df = load_timeseries_for_site(sid, start_ts, end_ts, column_map)
                 if df is not None and len(df) >= 6:
                     sites_processed += 1
+                    runner = runners_by_type.get(None)
+                    if runner is None:
+                        runner = RuleRunner(rules=rules)
+                        runners_by_type[None] = runner
                     res = runner.run(
                         df,
                         **_fdd_runner_run_kwargs(

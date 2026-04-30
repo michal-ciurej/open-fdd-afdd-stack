@@ -81,15 +81,14 @@ _NIAGARA_VAL_RE = re.compile(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?")
 # Valid Niagara "bqltime" windows that a caller can pass to run_niagara_sync.
 # The string is substituted directly into the BQL query (e.g. bqltime.lastweek).
 _VALID_BQL_WINDOWS = {
-    "today",
-    "yesterday",
-    "lasthour",
-    "last24hours",
-    "last7days",
-    "lastweek",
-    "lastmonth",
-    "thisweek",
-    "thismonth",
+  "today",
+  "yesterday",
+  "lastWeek",
+  "thisWeek",
+  "weektodate",
+  "lastMonth",
+  "thisMonth",
+
 }
 
 

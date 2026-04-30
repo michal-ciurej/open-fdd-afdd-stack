@@ -21,6 +21,7 @@ interface SiteCardProps {
   faults: FaultState[];
   definitions: FaultDefinition[];
   onSelect: (siteId: string) => void;
+  faultCountOverride?: number;
 }
 
 export function SiteCard({
@@ -30,8 +31,10 @@ export function SiteCard({
   faults,
   definitions,
   onSelect,
+  faultCountOverride,
 }: SiteCardProps) {
-  const hasFaults = faults.length > 0;
+  const faultCount = faultCountOverride ?? faults.length;
+  const hasFaults = faultCount > 0;
 
   return (
     <button
@@ -74,9 +77,9 @@ export function SiteCard({
             </span>
             <span className="text-muted-foreground">
               <span className={`font-medium tabular-nums ${hasFaults ? "text-destructive" : "text-success"}`}>
-                {faults.length}
+                {faultCount}
               </span>{" "}
-              fault{faults.length !== 1 ? "s" : ""}
+              fault{faultCount !== 1 ? "s" : ""}
             </span>
           </div>
 

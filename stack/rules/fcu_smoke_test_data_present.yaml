@@ -1,0 +1,19 @@
+# Smoke-test rule: flags every timestamp where the FCU has a zone temperature reading.
+# Use this to verify the FDD loop runs end-to-end (data → column_map → rule → fault_results).
+# If this rule does not produce faults, the failure is upstream of the engine
+# (no equipment_type match, no readings in lookback window, or Zone_Air_Temperature_Sensor
+# is not brick-tagged on any point for this FCU). Remove once real rules are firing.
+name: fcu_smoke_test_data_present
+description: Smoke test — fires whenever the FCU has any zone temperature reading
+type: expression
+flag: fcu_smoke_test_data_present_flag
+severity: info
+category: smoke_test
+equipment_type: [Fan_Coil_Unit]
+
+inputs:
+  Zone_Air_Temperature_Sensor:
+    brick: Zone_Air_Temperature_Sensor|space_temperature
+
+expression: |
+  Zone_Air_Temperature_Sensor.notna()

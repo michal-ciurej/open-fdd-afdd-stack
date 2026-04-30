@@ -7,10 +7,10 @@ flag: fcu_zone_setpoint_drift_flag
 equipment_type: [Fan_Coil_Unit]
 
 inputs:
-  Zone_Temperature_Sensor:
-    brick: Zone_Temperature_Sensor
-  Zone_Temperature_Setpoint:
-    brick: Zone_Temperature_Setpoint
+  Zone_Air_Temperature_Sensor:
+    brick: Zone_Air_Temperature_Sensor
+  Zone_Air_Temperature_Setpoint:
+    brick: Zone_Air_Temperature_Setpoint
   Supply_Fan_Command:
     brick: Supply_Fan_Command
 
@@ -19,4 +19,4 @@ params:
   rolling_window: 12        # ~1 h at 5-min sampling — zone inertia is slow
 
 expression: |
-  (np.abs(Zone_Temperature_Sensor - Zone_Temperature_Setpoint) > drift_band) & (normalize_cmd(Supply_Fan_Command) > 0)
+  (np.abs(Zone_Air_Temperature_Sensor - Zone_Air_Temperature_Setpoint) > drift_band) & (normalize_cmd(Supply_Fan_Command) > 0)

@@ -19,15 +19,13 @@ const field =
   "h-9 rounded-lg border border-border/60 bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring";
 
 const BQL_WINDOWS = [
-  "lasthour",
   "today",
   "yesterday",
-  "last24hours",
-  "lastweek",
-  "last7days",
-  "thisweek",
-  "lastmonth",
-  "thismonth",
+  "lastWeek",
+  "thisWeek",
+  "weektodate",
+  "lastMonth",
+  "thisMonth",
 ] as const;
 
 export function NiagaraConfigPanel() {

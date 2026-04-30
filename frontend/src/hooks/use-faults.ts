@@ -4,8 +4,10 @@ import type {
   FaultState,
   FaultDefinition,
   FaultSummaryResponse,
+  FaultSummaryBySiteResponse,
   FaultTimeseriesResponse,
   FaultsByEquipmentResponse,
+  FaultCountsByEquipmentResponse,
   FaultResultsSeriesResponse,
   FaultResultsRawResponse,
   BacnetDevice,
@@ -96,6 +98,23 @@ export function useFaultSummary(
   });
 }
 
+export function useFaultSummaryBySite(startDate: string, endDate: string) {
+  const start = startDate.slice(0, 10);
+  const end = endDate.slice(0, 10);
+  return useQuery<FaultSummaryBySiteResponse>({
+    queryKey: ["faults", "summary-by-site", start, end],
+    queryFn: () =>
+      apiFetch<FaultSummaryBySiteResponse>(
+        `/analytics/fault-summary-by-site${buildSearchParams({
+          start_date: start,
+          end_date: end,
+        })}`,
+      ),
+    enabled: !!startDate && !!endDate,
+    staleTime: 60 * 1000,
+  });
+}
+
 export function useFaultTimeseries(
   siteId: string | undefined,
   startDate: string,
@@ -138,6 +157,28 @@ export function useFaultsByEquipment(
     queryFn: () =>
       apiFetch<FaultsByEquipmentResponse>(
         `/analytics/faults-by-equipment${buildSearchParams({
+          site_id: siteId ?? undefined,
+          start_date: start,
+          end_date: end,
+        })}`,
+      ),
+    enabled: !!startDate && !!endDate,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useFaultCountsByEquipment(
+  siteId: string | undefined,
+  startDate: string,
+  endDate: string,
+) {
+  const start = startDate.slice(0, 10);
+  const end = endDate.slice(0, 10);
+  return useQuery<FaultCountsByEquipmentResponse>({
+    queryKey: ["faults", "counts-by-equipment", siteId ?? "all", start, end],
+    queryFn: () =>
+      apiFetch<FaultCountsByEquipmentResponse>(
+        `/analytics/fault-counts-by-equipment${buildSearchParams({
           site_id: siteId ?? undefined,
           start_date: start,
           end_date: end,

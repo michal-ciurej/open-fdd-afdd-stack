@@ -234,6 +234,16 @@ export interface FaultSummaryResponse {
   active_in_period: number;
 }
 
+/** GET /analytics/fault-summary-by-site */
+export interface FaultSummaryBySiteResponse {
+  period: { start: string; end: string };
+  by_site: {
+    site_id: string;
+    site_name: string;
+    active_in_period: number;
+  }[];
+}
+
 /** GET /analytics/faults-by-equipment */
 export interface FaultsByEquipmentResponse {
   site_id: string | null;
@@ -244,6 +254,25 @@ export interface FaultsByEquipmentResponse {
     equipment_name: string;
     bacnet_device_id: string | null;
     active_fault_count: number;
+  }[];
+}
+
+/** GET /analytics/fault-counts-by-equipment */
+export interface FaultCountsByEquipmentResponse {
+  site_id: string | null;
+  period: { start: string; end: string };
+  rows: {
+    site_id: string;
+    equipment_id: string;
+    equipment_name: string;
+    equipment_type: string | null;
+    fault_id: string;
+    fault_name: string;
+    fault_severity: string;
+    fault_category: string;
+    count: number;
+    first_ts: string | null;
+    last_ts: string | null;
   }[];
 }
 

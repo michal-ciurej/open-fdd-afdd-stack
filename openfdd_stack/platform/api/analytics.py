@@ -281,6 +281,62 @@ def get_fault_summary(
     }
 
 
+@router.get(
+    "/fault-summary-by-site",
+    summary="Active-in-period fault count per site (overview cards)",
+)
+def get_fault_summary_by_site(
+    start_date: date = Query(..., description="Start of range"),
+    end_date: date = Query(..., description="End of range"),
+):
+    """
+    Per-site version of the Faults page 'active_in_period' counter.
+
+    active_in_period = count of distinct (site, equipment, fault) that have at least one
+    flag_value=1 row in the range. Returned per site so the Overview page can render
+    all site cards without N requests.
+    """
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                  s.id::text AS site_id,
+                  s.name AS site_name,
+                  COUNT(*)::int AS active_in_period
+                FROM (
+                  SELECT
+                    fr.site_id,
+                    fr.equipment_id,
+                    fr.fault_id
+                  FROM fault_results fr
+                  WHERE fr.ts::date >= %s
+                    AND fr.ts::date <= %s
+                    AND fr.flag_value = 1
+                  GROUP BY fr.site_id, fr.equipment_id, fr.fault_id
+                ) active
+                JOIN sites s
+                  ON (s.id::text = active.site_id OR s.name = active.site_id)
+                GROUP BY s.id, s.name
+                ORDER BY s.name
+                """,
+                (start_date, end_date),
+            )
+            rows = cur.fetchall()
+
+    return {
+        "period": {"start": str(start_date), "end": str(end_date)},
+        "by_site": [
+            {
+                "site_id": r["site_id"],
+                "site_name": r["site_name"],
+                "active_in_period": int(r["active_in_period"]),
+            }
+            for r in rows
+        ],
+    }
+
+
 def _ts_iso_utc(dt: Optional[datetime]) -> Optional[str]:
     """Format datetime as ISO UTC with Z so frontend parses as UTC."""
     if dt is None:
@@ -452,6 +508,86 @@ def get_faults_by_equipment(
     if site_id and resolve_site_uuid(site_id, create_if_empty=False) is None:
         raise HTTPException(404, f"No site found for: {site_id!r}")
     return fetch_faults_by_equipment_data(site_id, start_date, end_date)
+
+
+@router.get(
+    "/fault-counts-by-equipment",
+    summary="Counts per equipment × fault_id (for equipment fault table)",
+)
+def get_fault_counts_by_equipment(
+    site_id: Optional[str] = Query(None, description="Site name or UUID; omit for all"),
+    start_date: date = Query(..., description="Start of range"),
+    end_date: date = Query(..., description="End of range"),
+):
+    """
+    Return per-equipment per-fault counts in a date range (flag_value=1 rows).
+
+    Intended for a table: one row per equipment, columns = faults (or grouped list).
+    """
+    conditions = ["fr.ts::date >= %s", "fr.ts::date <= %s", "fr.flag_value = 1"]
+    params: list = [start_date, end_date]
+    if site_id:
+        if resolve_site_uuid(site_id, create_if_empty=False) is None:
+            raise HTTPException(404, f"No site found for: {site_id!r}")
+        conditions.append(
+            "(fr.site_id = %s OR fr.site_id IN (SELECT name FROM sites WHERE id::text = %s))"
+        )
+        params.extend([site_id, site_id])
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT
+                  fr.site_id,
+                  fr.equipment_id,
+                  e.name AS equipment_name,
+                  e.equipment_type,
+                  fr.fault_id,
+                  fd.name AS fault_name,
+                  fd.severity AS fault_severity,
+                  fd.category AS fault_category,
+                  COUNT(*)::int AS fault_count,
+                  MIN(fr.ts) AS first_ts,
+                  MAX(fr.ts) AS last_ts
+                FROM fault_results fr
+                LEFT JOIN sites s
+                  ON (s.id::text = fr.site_id OR s.name = fr.site_id)
+                LEFT JOIN equipment e
+                  ON e.site_id = s.id AND e.id::text = fr.equipment_id
+                LEFT JOIN fault_definitions fd
+                  ON fd.fault_id = fr.fault_id
+                WHERE {" AND ".join(conditions)}
+                GROUP BY
+                  fr.site_id, fr.equipment_id, e.name, e.equipment_type,
+                  fr.fault_id, fd.name, fd.severity, fd.category
+                ORDER BY e.name NULLS LAST, fr.fault_id
+                """,
+                params,
+            )
+            rows = cur.fetchall()
+    out = []
+    for r in rows:
+        out.append(
+            {
+                "site_id": r["site_id"],
+                "equipment_id": r["equipment_id"],
+                "equipment_name": r.get("equipment_name") or r["equipment_id"] or "—",
+                "equipment_type": r.get("equipment_type"),
+                "fault_id": r["fault_id"],
+                "fault_name": r.get("fault_name") or r["fault_id"],
+                "fault_severity": r.get("fault_severity") or "warning",
+                "fault_category": r.get("fault_category") or "general",
+                "count": int(r["fault_count"]),
+                "first_ts": _ts_iso_utc_str(r.get("first_ts")),
+                "last_ts": _ts_iso_utc_str(r.get("last_ts")),
+            }
+        )
+    return {
+        "site_id": site_id,
+        "period": {"start": str(start_date), "end": str(end_date)},
+        "rows": out,
+    }
 
 
 @router.get(

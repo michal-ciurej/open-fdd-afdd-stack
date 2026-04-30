@@ -54,8 +54,8 @@ inputs:
       metric: [0, 500]         # kW
 
   # Zone/VAV sensors
-  Zone_Temperature_Sensor:
-    brick: Zone_Temperature_Sensor
+  Zone_Air_Temperature_Sensor:
+    brick: Zone_Air_Temperature_Sensor
     bounds:
       imperial: [40, 100]
       metric: [4, 38]

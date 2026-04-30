@@ -30,6 +30,7 @@ import {
   useSiteFaults,
   useFaultResultsSeries,
   useFaultResultsRaw,
+  useFaultCountsByEquipment,
 } from "@/hooks/use-faults";
 import { FaultOverTimeChart } from "@/components/dashboard/FaultOverTimeChart";
 import { DateRangeSelect } from "@/components/site/DateRangeSelect";
@@ -321,6 +322,94 @@ function FaultDefinitionsSection() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function FaultCountsByEquipmentSection({
+  siteId,
+  startDate,
+  endDate,
+}: {
+  siteId: string | undefined;
+  startDate: string;
+  endDate: string;
+}) {
+  const { data, isLoading, error } = useFaultCountsByEquipment(
+    siteId,
+    startDate,
+    endDate,
+  );
+
+  if (isLoading) return <Skeleton className="h-40 w-full rounded-xl" />;
+  if (error) {
+    return (
+      <div className="mb-8 text-sm text-destructive">
+        Could not load per-equipment fault counts.
+      </div>
+    );
+  }
+  const rows = data?.rows ?? [];
+  if (rows.length === 0) {
+    return (
+      <section className="mb-8">
+        <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+          Fault counts by equipment
+        </h2>
+        <div className="rounded-xl border border-border/70 bg-muted/40 p-6 text-sm text-muted-foreground">
+          No fault rows in this time range.
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="mb-8">
+      <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+        Fault counts by equipment
+      </h2>
+      <Card>
+        <CardContent className="pt-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Equipment</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Fault</TableHead>
+                <TableHead>Count</TableHead>
+                <TableHead className="text-right">Last seen</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={`${r.site_id}-${r.equipment_id}-${r.fault_id}`}>
+                  <TableCell className="font-medium">{r.equipment_name}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.equipment_type ?? "—"}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span>{r.fault_name}</span>
+                      <Badge variant={severityVariant(r.fault_severity)}>
+                        {r.fault_severity}
+                      </Badge>
+                    </div>
+                    <div className="text-xs font-mono text-muted-foreground">
+                      {r.fault_id}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-mono tabular-nums">
+                    {r.count}
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {r.last_ts ? timeAgo(r.last_ts) : "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 
@@ -999,6 +1088,12 @@ export function FaultsPage() {
           bucket={bucket}
         />
       </section>
+
+      <FaultCountsByEquipmentSection
+        siteId={selectedSiteId ?? undefined}
+        startDate={start}
+        endDate={end}
+      />
 
       <section className="mb-8">
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">

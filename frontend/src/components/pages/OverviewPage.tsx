@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useSites, useAllEquipment, useAllPoints, useEquipment, usePoints } from "@/hooks/use-sites";
-import { useActiveFaults, useFaultDefinitions, useSiteFaults } from "@/hooks/use-faults";
+import { useActiveFaults, useFaultDefinitions, useSiteFaults, useFaultSummary, useFaultSummaryBySite } from "@/hooks/use-faults";
 
 function AllSitesView() {
   const { setSelectedSiteId } = useSiteContext();
@@ -16,6 +16,16 @@ function AllSitesView() {
   const { data: points = [] } = useAllPoints();
   const { data: faults = [] } = useActiveFaults();
   const { data: definitions = [] } = useFaultDefinitions();
+  // Mirror Faults page: show active-in-period for last 7 days.
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const { data: perSite } = useFaultSummaryBySite(
+    weekAgo.toISOString(),
+    now.toISOString(),
+  );
+  const bySite = new Map(
+    (perSite?.by_site ?? []).map((r) => [r.site_id, r.active_in_period]),
+  );
 
   return (
     <>
@@ -47,6 +57,7 @@ function AllSitesView() {
                 faults={faults.filter((f) => f.site_id === site.id)}
                 definitions={definitions}
                 onSelect={setSelectedSiteId}
+                faultCountOverride={bySite.get(site.id) ?? 0}
               />
             ))}
           </div>
@@ -62,6 +73,10 @@ function SiteSummaryView({ siteId }: { siteId: string }) {
   const { data: points = [] } = usePoints(siteId);
   const { data: faults = [] } = useSiteFaults(siteId);
   const { data: definitions = [] } = useFaultDefinitions();
+  // Mirror Faults page: active-in-period for last 7 days.
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const { data: summary } = useFaultSummary(siteId, weekAgo.toISOString(), now.toISOString());
 
   if (!selectedSite) {
     return (
@@ -73,7 +88,7 @@ function SiteSummaryView({ siteId }: { siteId: string }) {
     );
   }
 
-  const faultCount = faults.length;
+  const faultCount = summary?.active_in_period ?? 0;
 
   return (
     <div>
@@ -89,7 +104,7 @@ function SiteSummaryView({ siteId }: { siteId: string }) {
         <div className="mt-3">
           {faultCount > 0 ? (
             <Badge variant="destructive">
-              {faultCount} active fault{faultCount !== 1 ? "s" : ""}
+              {faultCount} fault{faultCount !== 1 ? "s" : ""} in last 7 days
             </Badge>
           ) : (
             <Badge variant="success">No faults</Badge>
