@@ -283,6 +283,38 @@ def require_site_access(site_id_param: str = "site_id") -> Callable[..., AuthUse
     return _check
 
 
+def enforce_site_param(user: AuthUser, site_id_or_name: str | None) -> None:
+    """Validate that a non-admin user is allowed to query the given site.
+
+    Some tables (fault_state, fault_results) store site_id as TEXT and may hold
+    either the site UUID or the site name, so translation through the sites
+    table is required. Raises 400 when a scoped user omits site_id, 403 when
+    the resolved site isn't in their grants. No-op for admins/machine.
+    """
+    accessible = accessible_site_ids(user)
+    if accessible is None:
+        return
+    if not site_id_or_name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "SITE_REQUIRED",
+                "message": "site_id is required for users with site-scoped permissions",
+            },
+        )
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT id::text FROM sites WHERE id::text = %s OR name = %s LIMIT 1",
+            (str(site_id_or_name), str(site_id_or_name)),
+        )
+        row = cur.fetchone()
+    if not row or row[0] not in accessible:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "FORBIDDEN", "message": "No permission for this site"},
+        )
+
+
 def accessible_site_ids(user: AuthUser) -> list[str] | None:
     """Return the site_ids this user can see, or None for unrestricted (admin/machine).
 

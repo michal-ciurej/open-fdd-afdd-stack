@@ -4,10 +4,15 @@ import json
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from openfdd_stack.platform.database import get_conn
 from openfdd_stack.platform.data_model_ttl import sync_ttl_to_file
+from openfdd_stack.platform.api.auth_principal import (
+    AuthUser,
+    accessible_site_ids,
+    get_current_user,
+)
 from openfdd_stack.platform.api.models import EquipmentCreate, EquipmentRead, EquipmentUpdate
 from openfdd_stack.platform.realtime import emit, TOPIC_CRUD_EQUIPMENT
 
@@ -27,18 +32,31 @@ def _deep_merge_dict(base: dict | None, overlay: dict | None) -> dict:
 
 
 @router.get("", response_model=list[EquipmentRead])
-def list_equipment(site_id: UUID | None = None):
-    """List equipment, optionally filtered by site."""
+def list_equipment(
+    site_id: UUID | None = None,
+    user: AuthUser = Depends(get_current_user),
+):
+    """List equipment, scoped to sites the caller can access."""
+    accessible = accessible_site_ids(user)
+    if accessible is not None and site_id is not None and str(site_id) not in accessible:
+        raise HTTPException(403, "No permission for this site")
+    cols = "id, site_id, name, description, equipment_type, metadata, feeds_equipment_id, fed_by_equipment_id, created_at"
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cols = "id, site_id, name, description, equipment_type, metadata, feeds_equipment_id, fed_by_equipment_id, created_at"
             if site_id:
                 cur.execute(
                     f"SELECT {cols} FROM equipment WHERE site_id = %s ORDER BY name",
                     (str(site_id),),
                 )
-            else:
+            elif accessible is None:
                 cur.execute(f"SELECT {cols} FROM equipment ORDER BY site_id, name")
+            else:
+                if not accessible:
+                    return []
+                cur.execute(
+                    f"SELECT {cols} FROM equipment WHERE site_id::text = ANY(%s) ORDER BY site_id, name",
+                    (accessible,),
+                )
             rows = cur.fetchall()
     return [EquipmentRead.model_validate(dict(r)) for r in rows]
 

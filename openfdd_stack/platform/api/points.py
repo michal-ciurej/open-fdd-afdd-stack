@@ -3,11 +3,16 @@
 from uuid import UUID
 
 import psycopg2
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from psycopg2.extras import Json
 
 from openfdd_stack.platform.database import get_conn
 from openfdd_stack.platform.data_model_ttl import sync_ttl_to_file
+from openfdd_stack.platform.api.auth_principal import (
+    AuthUser,
+    accessible_site_ids,
+    get_current_user,
+)
 from openfdd_stack.platform.api.models import PointCreate, PointRead, PointUpdate
 from openfdd_stack.platform.realtime import emit, TOPIC_CRUD_POINT
 
@@ -26,24 +31,44 @@ def list_points(
     equipment_id: UUID | None = None,
     limit: int = Query(1000, ge=1, le=10000),
     offset: int = Query(0, ge=0),
+    user: AuthUser = Depends(get_current_user),
 ):
-    """List points, optionally filtered by site or equipment. Supports limit/offset."""
+    """List points, scoped to sites the caller can access."""
+    accessible = accessible_site_ids(user)
+    if accessible is not None and site_id is not None and str(site_id) not in accessible:
+        raise HTTPException(403, "No permission for this site")
     with get_conn() as conn:
         with conn.cursor() as cur:
             if equipment_id:
-                cur.execute(
-                    f"""SELECT {_COLS} FROM points WHERE equipment_id = %s ORDER BY external_id LIMIT %s OFFSET %s""",
-                    (str(equipment_id), limit, offset),
-                )
+                # Implicit site scoping: a point is only visible if its site is accessible.
+                if accessible is None:
+                    cur.execute(
+                        f"""SELECT {_COLS} FROM points WHERE equipment_id = %s ORDER BY external_id LIMIT %s OFFSET %s""",
+                        (str(equipment_id), limit, offset),
+                    )
+                else:
+                    if not accessible:
+                        return []
+                    cur.execute(
+                        f"""SELECT {_COLS} FROM points WHERE equipment_id = %s AND site_id::text = ANY(%s) ORDER BY external_id LIMIT %s OFFSET %s""",
+                        (str(equipment_id), accessible, limit, offset),
+                    )
             elif site_id:
                 cur.execute(
                     f"""SELECT {_COLS} FROM points WHERE site_id = %s ORDER BY external_id LIMIT %s OFFSET %s""",
                     (str(site_id), limit, offset),
                 )
-            else:
+            elif accessible is None:
                 cur.execute(
                     f"""SELECT {_COLS} FROM points ORDER BY site_id, external_id LIMIT %s OFFSET %s""",
                     (limit, offset),
+                )
+            else:
+                if not accessible:
+                    return []
+                cur.execute(
+                    f"""SELECT {_COLS} FROM points WHERE site_id::text = ANY(%s) ORDER BY site_id, external_id LIMIT %s OFFSET %s""",
+                    (accessible, limit, offset),
                 )
             rows = cur.fetchall()
     return [PointRead.model_validate(dict(r)) for r in rows]

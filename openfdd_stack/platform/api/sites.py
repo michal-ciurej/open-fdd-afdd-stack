@@ -3,10 +3,17 @@
 import json
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from openfdd_stack.platform.database import get_conn
 from openfdd_stack.platform.data_model_ttl import sync_ttl_to_file
+from openfdd_stack.platform.api.auth_principal import (
+    AuthUser,
+    Role,
+    accessible_site_ids,
+    get_current_user,
+    require_roles,
+)
 from openfdd_stack.platform.api.models import SiteCreate, SiteRead, SiteUpdate
 from openfdd_stack.platform.realtime import emit, TOPIC_CRUD_SITE
 
@@ -14,13 +21,23 @@ router = APIRouter(prefix="/sites", tags=["sites"])
 
 
 @router.get("", response_model=list[SiteRead])
-def list_sites():
-    """List all sites."""
+def list_sites(user: AuthUser = Depends(get_current_user)):
+    """List sites the caller has permission to see (admins/machine: all)."""
+    accessible = accessible_site_ids(user)
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT id, name, description, metadata, created_at FROM sites ORDER BY created_at DESC"
-            )
+            if accessible is None:
+                cur.execute(
+                    "SELECT id, name, description, metadata, created_at FROM sites ORDER BY created_at DESC"
+                )
+            else:
+                if not accessible:
+                    return []
+                cur.execute(
+                    "SELECT id, name, description, metadata, created_at FROM sites "
+                    "WHERE id::text = ANY(%s) ORDER BY created_at DESC",
+                    (accessible,),
+                )
             rows = cur.fetchall()
     return [SiteRead.model_validate(dict(r)) for r in rows]
 
@@ -107,7 +124,7 @@ def update_site(site_id: UUID, body: SiteUpdate):
     return SiteRead.model_validate(dict(row))
 
 
-@router.delete("/{site_id}")
+@router.delete("/{site_id}", dependencies=[Depends(require_roles(Role.ADMIN))])
 def delete_site(site_id: UUID):
     """Delete a site and all its equipment, points, timeseries, fault_results, fault_events (cascade)."""
     with get_conn() as conn:

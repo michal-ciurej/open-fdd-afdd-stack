@@ -8,4 +8,10 @@ COPY openfdd_stack ./openfdd_stack
 RUN pip install --no-cache-dir "open-fdd>=2.3.0" \
  && pip install --no-cache-dir .
 
+# Bake rules and seed config into the image — ACA Jobs have no host bind mounts.
+# Mutable state (data_model.ttl) is overlaid via the Azure Files mount on /app/config at runtime.
+COPY stack/rules ./stack/rules
+COPY config ./config
+
+# Default for compose/dev is the perma-loop; ACA Job overrides command/args to run once per cron firing.
 CMD ["python", "-u", "-m", "openfdd_stack.platform.drivers.run_rule_loop", "--loop"]

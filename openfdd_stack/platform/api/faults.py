@@ -1,9 +1,15 @@
 """Fault state and definitions API for HA/Node-RED (binary_sensors)."""
 
 import psycopg2
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from openfdd_stack.platform.database import get_conn
+from openfdd_stack.platform.api.auth_principal import (
+    AuthUser,
+    accessible_site_ids,
+    enforce_site_param,
+    get_current_user,
+)
 from openfdd_stack.platform.api.schemas import FaultStateItem, FaultDefinitionItem
 
 router = APIRouter(prefix="/faults", tags=["faults"])
@@ -17,12 +23,16 @@ def list_bacnet_devices(
     site_id: str | None = Query(
         None, description="Filter by site UUID or name; omit for all"
     ),
+    user: AuthUser = Depends(get_current_user),
 ):
     """
     CRUD/data-model driven: distinct BACnet devices from points (bacnet_device_id not null)
     joined to equipment and sites. For matrix table: one row per device with equipment_type
     for N/A logic (fault equipment_types vs device equipment_type).
     """
+    accessible = accessible_site_ids(user)
+    if accessible is not None and site_id is not None:
+        enforce_site_param(user, site_id)
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -31,6 +41,11 @@ def list_bacnet_devices(
                 if site_id:
                     conditions.append("(s.id::text = %s OR s.name = %s)")
                     params.extend([site_id, site_id])
+                elif accessible is not None:
+                    if not accessible:
+                        return []
+                    conditions.append("s.id::text = ANY(%s)")
+                    params.append(accessible)
                 cur.execute(
                     """
                     SELECT DISTINCT ON (s.id, p.bacnet_device_id)
@@ -76,11 +91,14 @@ def _fault_state_table_exists(cur) -> bool:
 def list_active_faults(
     site_id: str | None = Query(None, description="Filter by site_id"),
     equipment_id: str | None = Query(None, description="Filter by equipment_id"),
+    user: AuthUser = Depends(get_current_user),
 ):
     """
     List currently active fault states (for HA binary_sensors).
     Combine with GET /faults/definitions for labels.
     """
+    # Non-admins must specify a site they can access; admins see all.
+    enforce_site_param(user, site_id)
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -137,8 +155,10 @@ def list_fault_state(
     equipment_id: str | None = Query(
         None, description="Filter by equipment_id (optional with site_id)"
     ),
+    user: AuthUser = Depends(get_current_user),
 ):
     """List all fault state rows (active and cleared). Use for full state snapshot."""
+    enforce_site_param(user, site_id)
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:

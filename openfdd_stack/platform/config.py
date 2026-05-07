@@ -76,22 +76,13 @@ class PlatformSettings(BaseSettings):
     # Optional: multiple gateways (central aggregator). JSON array of {"url", "site_id", ...}; scrape uses KG points per site.
     bacnet_gateways: Optional[str] = None
 
-    # API key for REST/WebSocket auth (Bearer). When set, required on all endpoints except /health, /, /app (and /app/*)
+    # API key for REST/WebSocket auth (Bearer). Used by machine integrations (BACnet scraper, MCP) — separate from browser SSO.
     api_key: Optional[str] = None
-    # Single-user Phase-1 auth (bootstrap-managed); hash should be argon2id.
-    app_user: Optional[str] = None
-    app_user_hash: Optional[str] = None
-    # Access-token signing secret (required when Phase 1 app user is enabled).
-    jwt_secret: Optional[str] = None
-    access_token_minutes: int = 60
-    refresh_token_days: int = 7
-    # When true, expose /docs, /redoc, /openapi.json (HTTP lab). False when edge uses self-signed Caddy (bootstrap).
+    # When true, expose /docs, /redoc, /openapi.json (HTTP lab). False in cloud / production.
     enable_openapi_docs: bool = False
-    # When true, treat X-Forwarded-Proto: https as HTTPS for Secure cookies (TLS at reverse proxy only).
+    # When true, treat X-Forwarded-Proto: https as HTTPS for Secure cookies (TLS at reverse proxy / ACA ingress).
     trust_forwarded_proto: bool = False
-    # When set, requests with header X-Caddy-Auth equal to this value are trusted (Caddy sets it after Basic auth). Use behind Caddy so the browser only does Basic once.
-    caddy_internal_secret: Optional[str] = None
-    # Optional shared secret enforced by EntraPrincipalMiddleware on top of IP allowlist.
+    # Optional shared secret enforced by EntraPrincipalMiddleware on top of the ACA IP allowlist.
     # Leave unset when ACA ingress is locked down to SWA outbound IPs (recommended).
     swa_ingress_secret: Optional[str] = None
 
