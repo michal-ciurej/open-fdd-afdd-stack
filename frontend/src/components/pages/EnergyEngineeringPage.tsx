@@ -546,8 +546,7 @@ function EnergyCalculationWorkbench() {
   if (!selectedSiteId) {
     return (
       <p className="text-sm text-muted-foreground">
-        Select a site in the header. Energy calculations are stored per site—each building has different equipment,
-        points, and savings logic, so nothing here applies globally.
+        Select a site in the menu on the left to start estimating energy savings.
       </p>
     );
   }
@@ -555,12 +554,7 @@ function EnergyCalculationWorkbench() {
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
-        Define FDD-oriented savings estimates for <strong>this site only</strong>. Saved rows sync to Postgres and into{" "}
-        <code className="rounded bg-muted px-1 text-xs">config/data_model.ttl</code> as{" "}
-        <code className="rounded bg-muted px-1 text-xs">ofdd:EnergyCalculation</code> linked with{" "}
-        <code className="rounded bg-muted px-1 text-xs">brick:isPartOf</code> the site. Preview uses static inputs;
-        interval and fault-duration analytics are planned separately.
-      </p>
+Estimate cost savings of running the equipment efficiently.     </p>
 
       {typesQuery.isError && (
         <p className="text-sm text-destructive">Could not load calculation types: {(typesQuery.error as Error).message}</p>
@@ -570,8 +564,7 @@ function EnergyCalculationWorkbench() {
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">Calculations by equipment</CardTitle>
           <p className="text-xs font-normal text-muted-foreground">
-            Tree matches site equipment; site-level calcs are not tied to a device. Use the row actions menu (⋮) or
-            right-click a row for Enable, Disable, or Delete (same idea as the Points page).
+Check how much extra costs the equipment is generating by running inefficiently.
           </p>
         </CardHeader>
         <CardContent>
@@ -861,9 +854,7 @@ export function EnergyEngineeringPage() {
     <div>
       <h1 className="mb-2 text-2xl font-semibold tracking-tight">Energy Engineering</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        HVAC and control layouts differ by site. Use the energy workbench for savings specs tied to this
-        building&apos;s model; use equipment metadata when you need nameplate fields and topology export.
-      </p>
+Turn Building Running data into virtual meters and calculate the running costs (and savings)      </p>
 
       <div
         role="tablist"

@@ -276,6 +276,24 @@ export interface FaultCountsByEquipmentResponse {
   }[];
 }
 
+/** GET /analytics/equipment-fault-counts */
+export interface EquipmentFaultCountsResponse {
+  site_id: string | null;
+  period: { start: string; end: string };
+  paging: { limit: number; offset: number; total: number };
+  rows: {
+    id: string;
+    site_id: string;
+    site_name: string;
+    name: string;
+    equipment_type: string | null;
+    /** Distinct fault_id count with flag_value=1 in the selected period. */
+    fault_count_in_period: number;
+    /** Current active faults from fault_state (distinct fault_id). */
+    active_fault_count: number;
+  }[];
+}
+
 /** GET /analytics/fault-timeseries */
 export interface FaultTimeseriesResponse {
   site_id: string | null;

@@ -91,6 +91,9 @@ class PlatformSettings(BaseSettings):
     trust_forwarded_proto: bool = False
     # When set, requests with header X-Caddy-Auth equal to this value are trusted (Caddy sets it after Basic auth). Use behind Caddy so the browser only does Basic once.
     caddy_internal_secret: Optional[str] = None
+    # Optional shared secret enforced by EntraPrincipalMiddleware on top of IP allowlist.
+    # Leave unset when ACA ingress is locked down to SWA outbound IPs (recommended).
+    swa_ingress_secret: Optional[str] = None
 
     # Reserved for RDF overlay compatibility (always "disabled" in core builds).
     ai_backend: str = "disabled"

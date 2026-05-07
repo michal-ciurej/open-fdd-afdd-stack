@@ -34,6 +34,8 @@
 }
 
 :root {
+  --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   --background: 150 18% 97%;
   --foreground: 158 22% 11%;
   --card: 0 0% 100%;
@@ -104,6 +106,11 @@
     linear-gradient(180deg, hsl(150 18% 98%) 0%, hsl(150 18% 96%) 100%);
 }
 
+html,
+body {
+  font-family: var(--font-sans);
+}
+
 .dark {
   --background: 158 24% 6%;
   --foreground: 150 18% 92%;
@@ -170,6 +177,19 @@
       transparent 60%
     ),
     linear-gradient(180deg, hsl(158 24% 7%) 0%, hsl(158 24% 5%) 100%);
+}
+
+/* Floating pill containers (top bar + side menu). */
+.fdd-floating-pill-topbar {
+  margin-top: 0.5em;
+  margin-right: 0.5em;
+  border-radius: var(--radius);
+}
+/* Floating pill containers (top bar + side menu). */
+
+.fdd-floating-pill-sidebar {
+  margin: 0.5em;
+  border-radius: var(--radius);
 }
 
 *,

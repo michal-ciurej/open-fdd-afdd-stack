@@ -1,16 +1,12 @@
-import { getAccessToken } from "@/lib/auth";
 const apiBase = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(
   /\/$/,
   "",
 );
 
 function buildHeaders(init?: HeadersInit): Headers {
-  const headers = new Headers(init ?? {});
-  const accessToken = getAccessToken();
-  if (accessToken && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${accessToken}`);
-  }
-  return headers;
+  // Auth is handled by the SWA-issued StaticWebAppsAuthCookie on same-origin /api/* calls.
+  // No Bearer header is added here; the cookie travels automatically via credentials: "include".
+  return new Headers(init ?? {});
 }
 
 function buildUrl(path: string): string {

@@ -591,6 +591,134 @@ def get_fault_counts_by_equipment(
 
 
 @router.get(
+    "/equipment-fault-counts",
+    summary="Paged equipment list with fault counts (Equipment view)",
+)
+def get_equipment_fault_counts(
+    site_id: Optional[str] = Query(None, description="Site name or UUID; omit for all"),
+    start_date: date = Query(..., description="Start of range"),
+    end_date: date = Query(..., description="End of range"),
+    equipment_type: Optional[str] = Query(None, description="Filter by equipment.equipment_type"),
+    active_faults_only: bool = Query(False, description="Only equipment with active faults (fault_state.active=true)"),
+    q: Optional[str] = Query(None, description="Search equipment name (case-insensitive contains)"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+):
+    """
+    Return paged equipment rows with:
+      - fault_count_in_period: distinct fault_id count with flag_value=1 in the date range
+      - active_fault_count: distinct active fault_id count from fault_state (current)
+
+    Used by the frontend Equipment view for lazy loading + filters.
+    """
+    conditions: list[str] = ["1=1"]
+    params: list = []
+
+    if site_id:
+        if resolve_site_uuid(site_id, create_if_empty=False) is None:
+            raise HTTPException(404, f"No site found for: {site_id!r}")
+        conditions.append(
+            "(s.id::text = %s OR s.name = %s)"
+        )
+        params.extend([site_id, site_id])
+
+    if equipment_type:
+        conditions.append("e.equipment_type = %s")
+        params.append(equipment_type)
+
+    if q:
+        conditions.append("e.name ILIKE %s")
+        params.append(f"%{q}%")
+
+    # Fault counts in selected date range.
+    period_start = start_date
+    period_end = end_date
+
+    active_join = ""
+    if active_faults_only:
+        # Only include equipment that currently has at least one active fault.
+        # Use DISTINCT equipment IDs to avoid duplicating one equipment row per active fault.
+        active_join = """
+        JOIN (
+          SELECT DISTINCT equipment_id::text AS equipment_id
+          FROM fault_state
+          WHERE active = true
+        ) fs_active ON fs_active.equipment_id = e.id::text
+        """
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            # Total count for pagination.
+            cur.execute(
+                f"""
+                SELECT COUNT(*)::int AS n
+                FROM equipment e
+                JOIN sites s ON s.id = e.site_id
+                {active_join}
+                WHERE {" AND ".join(conditions)}
+                """,
+                params,
+            )
+            total = int(cur.fetchone()["n"])
+
+            # Page rows with fault counts.
+            cur.execute(
+                f"""
+                WITH faults_in_period AS (
+                  SELECT fr.equipment_id, COUNT(DISTINCT fr.fault_id)::int AS fault_count_in_period
+                  FROM fault_results fr
+                  WHERE fr.ts::date >= %s
+                    AND fr.ts::date <= %s
+                    AND fr.flag_value = 1
+                  GROUP BY fr.equipment_id
+                ),
+                active_faults AS (
+                  SELECT fs.equipment_id::text AS equipment_id, COUNT(DISTINCT fs.fault_id)::int AS active_fault_count
+                  FROM fault_state fs
+                  WHERE fs.active = true
+                  GROUP BY fs.equipment_id
+                )
+                SELECT
+                  e.id::text AS id,
+                  e.site_id::text AS site_id,
+                  s.name AS site_name,
+                  e.name,
+                  e.equipment_type,
+                  COALESCE(fip.fault_count_in_period, 0) AS fault_count_in_period,
+                  COALESCE(af.active_fault_count, 0) AS active_fault_count
+                FROM equipment e
+                JOIN sites s ON s.id = e.site_id
+                {active_join}
+                LEFT JOIN faults_in_period fip ON fip.equipment_id = e.id::text
+                LEFT JOIN active_faults af ON af.equipment_id = e.id::text
+                WHERE {" AND ".join(conditions)}
+                ORDER BY e.name
+                LIMIT %s OFFSET %s
+                """,
+                [period_start, period_end, *params, limit, offset],
+            )
+            rows = cur.fetchall()
+
+    return {
+        "site_id": site_id,
+        "period": {"start": str(start_date), "end": str(end_date)},
+        "paging": {"limit": limit, "offset": offset, "total": total},
+        "rows": [
+            {
+                "id": r["id"],
+                "site_id": r["site_id"],
+                "site_name": r["site_name"],
+                "name": r["name"],
+                "equipment_type": r.get("equipment_type"),
+                "fault_count_in_period": int(r["fault_count_in_period"]),
+                "active_fault_count": int(r["active_fault_count"]),
+            }
+            for r in rows
+        ],
+    }
+
+
+@router.get(
     "/fault-results-series",
     summary="Distinct fault × site × equipment (for data preview selector)",
 )

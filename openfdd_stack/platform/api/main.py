@@ -25,10 +25,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from openfdd_stack.platform.api import auth_me_routes
+from openfdd_stack.platform.api.auth_principal import EntraPrincipalMiddleware
+
 from openfdd_stack.platform.config import get_platform_settings
 from openfdd_stack.platform.api import (
     analytics,
-    auth_routes,
     bacnet,
     config as config_router,
     data_model,
@@ -48,7 +50,6 @@ from openfdd_stack.platform.api import (
     sites,
     timeseries as timeseries_router,
 )
-from openfdd_stack.platform.api.auth import APIKeyMiddleware
 from openfdd_stack.platform.api.schemas import CapabilityResponse, ErrorResponse, ErrorDetail
 from openfdd_stack.platform.realtime.ws import router as ws_router
 
@@ -159,11 +160,14 @@ def _custom_openapi():
 
 app.openapi = _custom_openapi
 
-app.add_middleware(APIKeyMiddleware)
+app.add_middleware(EntraPrincipalMiddleware)
+# SWA proxies /api/* server-side to ACA, so SPA traffic arrives without a browser Origin
+# header — no CORS exchange happens for the linked-backend hop. Keep CORS off by default
+# and only re-enable for explicit cross-origin integrations.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -220,7 +224,7 @@ def _unified_error_handler(request: Request, exc: Exception):
 
 
 app.include_router(config_router.router)
-app.include_router(auth_routes.router)
+app.include_router(auth_me_routes.router)
 app.include_router(sites.router)
 app.include_router(points.router)
 app.include_router(energy_calculations.router)

@@ -777,7 +777,7 @@ export function PlotsPage() {
         {traces.length > 0 ? (
           <PlotlyCanvas
             traces={traces}
-            title="3MSE FDD Trends"
+            title="Trends and Faults"
           />
         ) : (
           <div className="flex h-[50vh] min-h-[360px] items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">

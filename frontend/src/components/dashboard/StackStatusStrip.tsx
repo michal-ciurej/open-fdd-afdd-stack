@@ -31,7 +31,13 @@ function StatusDot({ status, label, title }: { status: Status; label: string; ti
   );
 }
 
-export function StackStatusStrip() {
+export function StackStatusStrip({
+  compact = false,
+  className,
+}: {
+  compact?: boolean;
+  className?: string;
+}) {
   const { data: health, isError: healthError, isLoading: healthLoading } = useHealth();
   const { data: bacnet, isError: bacnetError, isLoading: bacnetLoading } = useBacnetStatus();
 
@@ -47,8 +53,14 @@ export function StackStatusStrip() {
     !mqtt ? "gray" : mqtt.enabled && mqtt.connected ? "green" : mqtt.enabled ? "yellow" : "gray";
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-border/40 bg-muted/20 px-6 py-2 text-sm">
-      <span className="mr-1 text-muted-foreground">Stack:</span>
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-2 text-sm",
+        compact ? "" : "border-b border-border/40 bg-muted/20 px-6 py-2",
+        className,
+      )}
+    >
+      {!compact && <span className="mr-1 text-muted-foreground">Stack:</span>}
       <StatusDot
         status={apiStatus}
         label="API"

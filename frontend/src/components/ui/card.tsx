@@ -16,11 +16,11 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const toneClasses: Record<CardTone, string> = {
-  flat: "bg-card text-card-foreground rounded-2xl gradient-stroke shadow-[var(--shadow-elev-sm)]",
+  flat: "bg-card text-card-foreground rounded-[var(--radius)] gradient-stroke shadow-[var(--shadow-elev-sm)]",
   glass:
-    "bg-card/65 text-card-foreground rounded-2xl gradient-stroke shadow-[var(--shadow-elev-md)] backdrop-blur-xl backdrop-saturate-150",
+    "bg-card/65 text-card-foreground rounded-[var(--radius)] gradient-stroke shadow-[var(--shadow-elev-md)] backdrop-blur-xl backdrop-saturate-150",
   elevated:
-    "bg-card text-card-foreground rounded-2xl gradient-stroke shadow-[var(--shadow-elev-lg)]",
+    "bg-card text-card-foreground rounded-[var(--radius)] gradient-stroke shadow-[var(--shadow-elev-lg)]",
 };
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(

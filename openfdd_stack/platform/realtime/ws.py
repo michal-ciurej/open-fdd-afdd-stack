@@ -3,11 +3,15 @@
 import asyncio
 import json
 import logging
-from typing import Any
+import secrets
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
-from openfdd_stack.platform.api.auth import validate_access_token
+from openfdd_stack.platform.api.auth_principal import (
+    Role,
+    SWA_SECRET_HEADER,
+    principal_from_headers,
+)
 from openfdd_stack.platform.config import get_platform_settings
 from openfdd_stack.platform.realtime.hub import get_hub
 
@@ -18,21 +22,24 @@ router = APIRouter(tags=["realtime"])
 _HEARTBEAT_INTERVAL = 30.0  # seconds
 
 
-def _ws_auth_ok(token: str | None, headers: Any = None) -> bool:
-    """Validate WebSocket auth: token query param, or X-Caddy-Auth when behind Caddy."""
+def _ws_auth_ok(token: str | None, headers: dict[str, str]) -> bool:
+    """Validate WS auth: machine API key (token query) or SWA-injected Entra principal."""
     settings = get_platform_settings()
-    if headers and getattr(settings, "caddy_internal_secret", None):
-        if headers.get("x-caddy-auth") == settings.caddy_internal_secret:
-            return True
-    api_key = getattr(settings, "api_key", None)
-    app_user = getattr(settings, "app_user", None)
-    app_hash = getattr(settings, "app_user_hash", None)
-    auth_required = bool(api_key or (app_user and app_hash))
-    if not auth_required:
+
+    # Machine path — scraper, MCP, automations.
+    api_key = (getattr(settings, "api_key", None) or "").strip()
+    if token and api_key and secrets.compare_digest(token.strip(), api_key):
         return True
-    if token and api_key and token.strip() == api_key:
+
+    # Browser path — SWA forwards the Entra principal on the WS upgrade.
+    ingress_secret = (getattr(settings, "swa_ingress_secret", None) or "").strip()
+    if ingress_secret:
+        if not secrets.compare_digest(headers.get(SWA_SECRET_HEADER, ""), ingress_secret):
+            return False
+    user = principal_from_headers(headers)
+    if user and (user.is_machine or user.has_role(Role.ADMIN, Role.ENGINEER, Role.USER)):
         return True
-    return validate_access_token(token)
+    return False
 
 
 @router.websocket("/ws/events")

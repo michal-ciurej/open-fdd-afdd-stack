@@ -1,7 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { WsEvent } from "@/types/api";
-import { getAccessToken, subscribeAuth } from "@/lib/auth";
 
 const RECONNECT_DELAY = 3000;
 const RECONNECT_DELAY_AFTER_FAILURES = 60000;
@@ -28,11 +27,9 @@ export function useWebSocket() {
       host = parsed.host;
       basePath = parsed.pathname === "/" ? "" : parsed.pathname.replace(/\/+$/, "");
     }
-    const accessToken = getAccessToken();
-    if (!accessToken) return;
-    const tokenParam = `?token=${encodeURIComponent(accessToken)}`;
+    // Auth: same-origin WS carries the SWA session cookie automatically; no token query param needed.
     const wsPath = `${basePath}/ws/events`.replace(/\/{2,}/g, "/");
-    const url = `${protocol}//${host}${wsPath}${tokenParam}`;
+    const url = `${protocol}//${host}${wsPath}`;
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
@@ -94,20 +91,8 @@ export function useWebSocket() {
   useEffect(() => {
     mountedRef.current = true;
     connect();
-    const unsubAuth = subscribeAuth(() => {
-      clearTimeout(reconnectTimer.current);
-      if (wsRef.current) {
-        try {
-          wsRef.current.close();
-        } catch {
-          // ignore
-        }
-      }
-      connectRef.current();
-    });
     return () => {
       mountedRef.current = false;
-      unsubAuth();
       clearTimeout(reconnectTimer.current);
       const ws = wsRef.current;
       if (ws) {

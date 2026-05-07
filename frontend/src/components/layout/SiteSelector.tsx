@@ -2,13 +2,16 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronsUpDown, Check } from "lucide-react";
 import { useSites } from "@/hooks/use-sites";
 import { useSiteContext } from "@/contexts/site-context";
+import { useAuth } from "@/contexts/auth-context";
 
 export function SiteSelector() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
-  const { data: sites = [] } = useSites();
+  const { data: allSites = [] } = useSites();
+  const { canAccessSite } = useAuth();
+  const sites = allSites.filter((s) => canAccessSite(s.id));
   const { selectedSiteId, setSelectedSiteId, selectedSite } = useSiteContext();
 
   useEffect(() => {
@@ -53,7 +56,7 @@ export function SiteSelector() {
           <div className="border-b border-border/60 p-2.5">
             <input
               type="text"
-              placeholder="Search sites\u2026"
+              placeholder="Search sites"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-9 w-full rounded-lg border border-border/60 bg-background px-3 text-sm transition-colors duration-200 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

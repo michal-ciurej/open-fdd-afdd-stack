@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from "react";
-import { NavLink, useSearchParams } from "react-router-dom";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { NavLink, useLocation, useSearchParams } from "react-router-dom";
 import {
   LayoutDashboard,
   Settings,
   CircleDot,
+  Boxes,
   AlertTriangle,
   LineChart,
   BarChart2,
@@ -12,46 +13,72 @@ import {
   Database,
   Search,
   Sun,
-  Moon,
   ChevronUp,
   PlugZap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useCapabilities, useHealth } from "@/hooks/use-fdd-status";
+import { useHealth } from "@/hooks/use-fdd-status";
 import { useActiveFaults } from "@/hooks/use-faults";
-import { useTheme } from "@/contexts/theme-context";
 import { useConfig } from "@/hooks/use-config";
+import { useAuth, type Role } from "@/contexts/auth-context";
 import { timeAgo } from "@/lib/utils";
+import { SiteSelector } from "./SiteSelector";
 
-const NAV_ITEMS = [
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  end: boolean;
+  roles?: Role[]; // omit = visible to all signed-in users
+};
+
+const NAV_ITEMS: readonly NavItem[] = [
   { to: "/", label: "Overview", icon: LayoutDashboard, end: true },
-  { to: "/config", label: "3MSE FDD Config", icon: Settings, end: false },
-  { to: "/site-configuration", label: "Site Configuration", icon: PlugZap, end: false },
-  { to: "/data-model", label: "Data Modelling", icon: Database, end: false },
-  { to: "/energy-engineering", label: "Energy Analysis", icon: Zap, end: false },
-  { to: "/data-model-testing", label: "Data Model Testing", icon: Search, end: false },
-  { to: "/points", label: "Points", icon: CircleDot, end: false },
+  { to: "/energy-engineering", label: "Energy Analysis", icon: Zap, end: false, roles: ["admin", "engineer"] },
+  { to: "/equipment", label: "Equipment", icon: Boxes, end: false },
   { to: "/faults", label: "Faults", icon: AlertTriangle, end: false },
-  { to: "/plots", label: "Plots", icon: LineChart, end: false },
-  { to: "/weather", label: "Weather data", icon: Sun, end: false },
+  { to: "/data-model-testing", label: "Building Model", icon: Search, end: false, roles: ["admin", "engineer"] },
+  { to: "/plots", label: "Charting", icon: LineChart, end: false },
   { to: "/analytics", label: "Analytics", icon: BarChart2, end: false },
-  { to: "/system", label: "System resources", icon: Cpu, end: false },
 ] as const;
 
-const THEME_OPTIONS = [
-  { value: "light" as const, icon: Sun, label: "Light" },
-  { value: "dark" as const, icon: Moon, label: "Dark" },
-];
+// Entire Config submenu is admin-only.
+const CONFIG_ITEMS: readonly NavItem[] = [
+  { to: "/points", label: "Points", icon: CircleDot, end: false, roles: ["admin"] },
+  { to: "/site-configuration", label: "Site Configuration", icon: PlugZap, end: false, roles: ["admin"] },
+  { to: "/data-model", label: "Data Modelling", icon: Database, end: false, roles: ["admin"] },
+  { to: "/weather", label: "Weather data", icon: Sun, end: false, roles: ["admin"] },
+  { to: "/config", label: "System Config", icon: Settings, end: false, roles: ["admin"] },
+  { to: "/system", label: "System resources", icon: Cpu, end: false, roles: ["admin"] },
+] as const;
+
+
 
 export function Sidebar() {
+  const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
   const [healthOpen, setHealthOpen] = useState(false);
   const healthRef = useRef<HTMLDivElement>(null);
-  const { data: capabilities } = useCapabilities();
   const { data: health } = useHealth();
   const { data: config } = useConfig();
   const { data: faults } = useActiveFaults();
-  const { theme, setTheme } = useTheme();
+  const { hasRole } = useAuth();
+  const visibleNav = useMemo(
+    () => NAV_ITEMS.filter((i) => !i.roles || hasRole(...i.roles)),
+    [hasRole],
+  );
+  const visibleConfig = useMemo(
+    () => CONFIG_ITEMS.filter((i) => !i.roles || hasRole(...i.roles)),
+    [hasRole],
+  );
+  const onConfigRoute = useMemo(
+    () =>
+      CONFIG_ITEMS.some(
+        (i) => pathname === i.to || pathname.startsWith(`${i.to}/`),
+      ),
+    [pathname],
+  );
+  const [configOpen, setConfigOpen] = useState<boolean>(onConfigRoute);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -65,6 +92,11 @@ export function Sidebar() {
     }
   }, [healthOpen]);
 
+  // Auto-expand Config when navigating to a config route.
+  useEffect(() => {
+    if (onConfigRoute) setConfigOpen(true);
+  }, [onConfigRoute]);
+
   const isHealthy = health?.status === "ok";
   const gs = health?.graph_serialization;
   const lastFdd = health?.last_fdd_run;
@@ -74,22 +106,23 @@ export function Sidebar() {
   const search = siteParam ? `?site=${siteParam}` : "";
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-border/60 bg-card/50">
+    <aside className="fdd-floating-pill-sidebar flex w-60 shrink-0 flex-col border border-border/60 bg-card/50">
       {/* Branding */}
-      <div className="flex items-center gap-2.5 border-border/60 px-5 py-4">
-        <span className="text-lg font-semibold tracking-tight text-foreground">
-          3MSE FDD
-        </span>
-        {capabilities && (
-          <Badge variant="outline" className="text-[10px]">
-            v{capabilities.version}
-          </Badge>
-        )}
+      <div className="border-border/60 px-5 py-4">
+        <div className="flex items-center gap-2.5">
+          <span className="text-lg font-semibold tracking-tight text-foreground">
+            Servicer
+          </span>
+          <img src="/favicon.svg" alt="Servicer" className="h-10 w-10" />
+        </div>
+        <div className="mt-3">
+          <SiteSelector />
+        </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 space-y-0.5 px-3 py-2">
-        {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+        {visibleNav.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={{ pathname: to, search }}
@@ -114,32 +147,54 @@ export function Sidebar() {
             )}
           </NavLink>
         ))}
+
+        {visibleConfig.length > 0 && (
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => setConfigOpen((v) => !v)}
+            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-150 ${
+              onConfigRoute
+                ? "bg-muted/70 font-medium text-foreground"
+                : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+            }`}
+            aria-expanded={configOpen}
+            aria-controls="sidebar-config-items"
+          >
+            <Settings className="h-4 w-4 shrink-0" />
+            <span className="flex-1 text-left">Config</span>
+            <ChevronUp
+              className={`h-4 w-4 shrink-0 transition-transform ${configOpen ? "" : "rotate-180"}`}
+              aria-hidden="true"
+            />
+          </button>
+
+          {configOpen && (
+            <div id="sidebar-config-items" className="mt-1 space-y-0.5 pl-3">
+              {visibleConfig.map(({ to, label, icon: Icon, end }) => (
+                <NavLink
+                  key={to}
+                  to={{ pathname: to, search }}
+                  end={end}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-150 ${
+                      isActive
+                        ? "bg-muted/60 font-medium text-foreground"
+                        : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                    }`
+                  }
+                >
+                  <Icon className="h-4 w-4 shrink-0 opacity-80" />
+                  <span>{label}</span>
+                </NavLink>
+              ))}
+            </div>
+          )}
+        </div>
+        )}
       </nav>
 
-      {/* Theme selector */}
-      <div className="border-t border-border/60 px-5 py-3">
-        <div className="flex items-center rounded-lg bg-muted/60 p-1">
-          {THEME_OPTIONS.map(({ value, icon: Icon, label }) => {
-            const isActive = theme === value || (theme === "system" && value === "light");
-            return (
-              <button
-                key={value}
-                type="button"
-                aria-label={label}
-                title={label}
-                onClick={() => setTheme(value)}
-                className={`flex flex-1 items-center justify-center rounded-md p-1.5 transition-colors duration-150 ${
-                  isActive
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-              </button>
-            );
-          })}
-        </div>
-      </div>
+
 
       {/* Health indicator — click to open status details */}
       <div className="border-t border-border/60 px-5 py-3" ref={healthRef}>

@@ -161,7 +161,10 @@ MIT
 
 commands to rebuild:
 
-One-shot: rebuild + recompose all three
+
+
+docker compose -f stack/docker-compose.yml restart fdd-loop
+
 
 docker compose -f stack/docker-compose.yml build api
 docker compose -f stack/docker-compose.yml pull db

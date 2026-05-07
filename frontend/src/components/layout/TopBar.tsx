@@ -1,9 +1,9 @@
 import { Sun, Moon, Cloud } from "lucide-react";
-import { SiteSelector } from "./SiteSelector";
 import { useFddStatus } from "@/hooks/use-fdd-status";
 import { useConfig } from "@/hooks/use-config";
 import { useTheme } from "@/contexts/theme-context";
 import { TutorialPopover } from "@/components/ui/tutorial-popover";
+import { StackStatusStrip } from "@/components/dashboard/StackStatusStrip";
 import { timeAgo } from "@/lib/utils";
 
 export function TopBar() {
@@ -32,23 +32,23 @@ export function TopBar() {
     : "Weather is fetched by the standalone scraper every N hours.";
 
   return (
-    <header className="relative z-30 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border/60 bg-card/80 px-6 backdrop-blur-lg">
-      <SiteSelector />
-      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+    <header className="fdd-floating-pill-topbar relative z-30 flex h-14 shrink-0 items-center justify-between gap-4 border border-border/60 bg-card/80 px-6 backdrop-blur-lg">
+      {/* Left: FDD + Weather status (mirrors operator mental model) */}
+      <div className="flex min-w-0 items-center gap-4 text-sm text-muted-foreground">
         {lastRun ? (
           <TutorialPopover
-            title="FDD run (Fault Detection & Diagnostics)"
+            title="Rule run (Fault Detection & Diagnostics)"
             meaning="When the fault rule runner last executed. It evaluates your rules against timeseries data and updates fault state."
             status={`Last run ${timeAgo(lastRun.run_ts)}. ${lastRun.run_ts ? "Good." : "No runs yet."}`}
             side="bottom"
           >
             <span className="cursor-help">
-              FDD run <span className="font-medium text-foreground">{timeAgo(lastRun.run_ts)}</span>
+              last check: <span className="font-medium text-foreground">{timeAgo(lastRun.run_ts)}</span>
             </span>
           </TutorialPopover>
         ) : (
           <TutorialPopover
-            title="FDD run"
+            title="Last Check:"
             meaning="The fault rule runner has not completed a run yet. Start the fdd-loop service or trigger a run from the API."
             status="No FDD runs yet."
             side="bottom"
@@ -75,6 +75,11 @@ export function TopBar() {
             </span>
           </TutorialPopover>
         )}
+      </div>
+
+      {/* Right: stack health indicators + theme toggle */}
+      <div className="flex items-center gap-3">
+        <StackStatusStrip compact className="justify-end" />
         <TutorialPopover
           title={isDark ? "Light mode" : "Dark mode"}
           meaning="Toggle between light and dark theme for the UI. Your preference is stored in the browser."
