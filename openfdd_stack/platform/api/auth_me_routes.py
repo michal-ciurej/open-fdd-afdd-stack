@@ -27,6 +27,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # Whitelist — anything Entra returns outside this set is dropped.
 _KNOWN_ROLES = {r.value for r in Role}
 
+# SWA flattens Entra's v2.0 `roles` claim into the legacy WS-Fed URL form
+# when building clientPrincipal.claims. Accept both shapes.
+_ROLE_CLAIM_TYPES = frozenset({
+    "roles",
+    "http://schemas.microsoft.com/ws/2008/06/identity/claims/role",
+})
+
 
 class MeResponse(BaseModel):
     oid: str
@@ -86,7 +93,7 @@ async def roles_source(request: Request) -> RolesResponse:
     for claim in payload.get("claims") or ():
         if not isinstance(claim, dict):
             continue
-        if claim.get("typ") != "roles":
+        if claim.get("typ") not in _ROLE_CLAIM_TYPES:
             continue
         val = (claim.get("val") or "").strip().lower()
         if val in _KNOWN_ROLES:
