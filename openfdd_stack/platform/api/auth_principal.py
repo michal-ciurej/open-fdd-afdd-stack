@@ -117,8 +117,10 @@ def _path_exempt(path: str) -> bool:
         return True
     # SWA invokes the rolesSource endpoint server-side during login,
     # before the user has a session — no principal header yet.
+    # SWA preserves the /api prefix when forwarding to a linked container app,
+    # so the path the API sees is /api/auth/roles.
     # Path is hardened via the ACA ingress IP allowlist.
-    if path == "/auth/roles":
+    if path == "/api/auth/roles":
         return True
     if path in ("/docs", "/redoc", "/openapi.json") or path.startswith("/docs/"):
         return getattr(get_platform_settings(), "enable_openapi_docs", False)

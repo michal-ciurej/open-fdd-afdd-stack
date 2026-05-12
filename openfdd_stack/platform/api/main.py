@@ -223,27 +223,31 @@ def _unified_error_handler(request: Request, exc: Exception):
     raise exc
 
 
-app.include_router(config_router.router)
-app.include_router(auth_me_routes.router)
-app.include_router(sites.router)
-app.include_router(points.router)
-app.include_router(energy_calculations.router)
-app.include_router(equipment.router)
-app.include_router(data_model.router)
-app.include_router(download.router)
-app.include_router(timeseries_router.router)
-app.include_router(entities.router)
-app.include_router(analytics.router)
-app.include_router(faults.router)
-app.include_router(rules_router.router)
-app.include_router(jobs_router.router)
-app.include_router(bacnet.router)
-app.include_router(niagara_router.router)
-app.include_router(iqvision_router.router)
-app.include_router(run_fdd.router)
-app.include_router(ws_router)
-app.include_router(model_context.router)
-app.include_router(mcp_bridge.router)
+# SWA linked-backend forwards /api/* requests WITH the /api prefix preserved.
+# Mount every router under /api so the API and the SWA URL space agree.
+# /health and / stay at the root (used by ACA liveness probe and unauthenticated checks).
+_API = "/api"
+app.include_router(config_router.router, prefix=_API)
+app.include_router(auth_me_routes.router, prefix=_API)
+app.include_router(sites.router, prefix=_API)
+app.include_router(points.router, prefix=_API)
+app.include_router(energy_calculations.router, prefix=_API)
+app.include_router(equipment.router, prefix=_API)
+app.include_router(data_model.router, prefix=_API)
+app.include_router(download.router, prefix=_API)
+app.include_router(timeseries_router.router, prefix=_API)
+app.include_router(entities.router, prefix=_API)
+app.include_router(analytics.router, prefix=_API)
+app.include_router(faults.router, prefix=_API)
+app.include_router(rules_router.router, prefix=_API)
+app.include_router(jobs_router.router, prefix=_API)
+app.include_router(bacnet.router, prefix=_API)
+app.include_router(niagara_router.router, prefix=_API)
+app.include_router(iqvision_router.router, prefix=_API)
+app.include_router(run_fdd.router, prefix=_API)
+app.include_router(ws_router, prefix=_API)
+app.include_router(model_context.router, prefix=_API)
+app.include_router(mcp_bridge.router, prefix=_API)
 
 # Legacy config UI at /app/ (optional; removed when using React frontend only)
 _static_dir = Path(__file__).resolve().parent.parent / "static"
