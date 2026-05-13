@@ -11,5 +11,10 @@ RUN pip install --no-cache-dir "open-fdd>=2.1.0" \
  && pip install --no-cache-dir .
 COPY pdf ./pdf
 
+# Bake rules YAMLs into the image so OFDD_RULES_DIR=stack/rules resolves.
+# NOTE: rules edited through the API are not persisted across restarts.
+# Move to an Azure Files mount if rule edits need to survive revisions.
+COPY stack/rules ./stack/rules
+
 EXPOSE 8000
 CMD ["uvicorn", "openfdd_stack.platform.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
