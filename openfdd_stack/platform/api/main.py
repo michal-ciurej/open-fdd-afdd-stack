@@ -273,6 +273,18 @@ def root():
     return out
 
 
+@app.get("/api/")
+def api_root():
+    """Same as `/` — exposed under /api/ for SPA calls that come in via SWA linked-backend (which preserves the /api prefix)."""
+    return root()
+
+
+@app.get("/api/health")
+def api_health():
+    """Same as `/health` — exposed under /api/health for SPA same-origin calls via SWA."""
+    return health()
+
+
 @app.get("/health")
 def health():
     """One-stop status: ok, graph serialization (RDF/TTL), and last FDD run (includes weather when enabled)."""
