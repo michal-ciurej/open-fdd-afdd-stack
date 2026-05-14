@@ -20,6 +20,7 @@ const PAGE_BACKGROUNDS: Record<string, string> = {
   "/system": "/data/images/system.jpg",
   "/data-model": "/data/images/data-model.jpg",
   "/energy-engineering": "/data/images/energy-engineering.jpg",
+  "/my-building": "/data/images/data-model-testing.jpg",
   "/data-model-testing": "/data/images/data-model-testing.jpg",
 };
 

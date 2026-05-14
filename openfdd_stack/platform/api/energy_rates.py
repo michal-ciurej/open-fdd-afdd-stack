@@ -79,7 +79,7 @@ def get_site_energy_rates(
 @router.put(
     "/{site_id}/energy-rates",
     response_model=SiteEnergyRatesRead,
-    dependencies=[Depends(require_roles(Role.ADMIN))],
+    dependencies=[Depends(require_roles(Role.ADMIN, Role.ENGINEER))],
 )
 def put_site_energy_rates(
     site_id: UUID,

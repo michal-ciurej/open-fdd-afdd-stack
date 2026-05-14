@@ -14,7 +14,7 @@ import { SystemResourcesPage } from "@/components/pages/SystemResourcesPage";
 import { SiteConfigurationPage } from "@/components/pages/SiteConfigurationPage";
 import { DataModelPage } from "@/components/pages/DataModelPage";
 import { EnergyOpportunitiesPage } from "@/components/pages/EnergyOpportunitiesPage";
-import { DataModelTestingPage } from "@/components/pages/DataModelTestingPage";
+import { MyBuildingPage } from "@/components/pages/MyBuildingPage";
 import { PlotsPage } from "@/components/pages/PlotsPage";
 import { AnalyticsPage } from "@/components/pages/AnalyticsPage";
 import { WeatherDataPage } from "@/components/pages/WeatherDataPage";
@@ -77,7 +77,8 @@ function AppRoutes() {
             path="data-model-engineering"
             element={<Navigate to="/equipment" replace />}
           />
-          <Route path="data-model-testing" element={engineerOrAdmin(<DataModelTestingPage />)} />
+          <Route path="my-building" element={engineerOrAdmin(<MyBuildingPage />)} />
+          <Route path="data-model-testing" element={<Navigate to="/my-building" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

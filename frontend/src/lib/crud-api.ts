@@ -98,6 +98,20 @@ export function deleteSite(siteId: string) {
   });
 }
 
+export type SitePatchBody = Partial<{
+  name: string;
+  description: string | null;
+  metadata: Record<string, unknown>;
+}>;
+
+export function updateSite(siteId: string, body: SitePatchBody) {
+  return apiFetch<Site>(`/sites/${siteId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 export function deleteEquipment(equipmentId: string) {
   return apiFetch<{ status: string }>(`/equipment/${equipmentId}`, {
     method: "DELETE",
