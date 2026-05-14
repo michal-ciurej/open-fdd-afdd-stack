@@ -1,10 +1,49 @@
-import { Sun, Moon, Cloud } from "lucide-react";
+import { Link } from "react-router-dom";
+import { AlertTriangle, CheckCircle2, Sun, Moon, Cloud } from "lucide-react";
 import { useFddStatus } from "@/hooks/use-fdd-status";
 import { useConfig } from "@/hooks/use-config";
+import { useActiveFaults } from "@/hooks/use-faults";
 import { useTheme } from "@/contexts/theme-context";
 import { TutorialPopover } from "@/components/ui/tutorial-popover";
-import { StackStatusStrip } from "@/components/dashboard/StackStatusStrip";
-import { timeAgo } from "@/lib/utils";
+import { cn, timeAgo } from "@/lib/utils";
+
+function ActiveFaultCounter() {
+  const { data: faults } = useActiveFaults();
+  const count = faults?.length ?? 0;
+  const hasFaults = count > 0;
+  const label =
+    count === 0
+      ? "No active faults"
+      : `${count} active fault${count === 1 ? "" : "s"}`;
+
+  return (
+    <TutorialPopover
+      title={hasFaults ? "Active faults" : "All clear"}
+      meaning="Number of equipment × fault rows currently flagged across the stack."
+      status="Click to open the Faults page."
+      side="bottom"
+    >
+      <Link
+        to="/faults"
+        className={cn(
+          "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+          hasFaults
+            ? "border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20"
+            : "border-success/30 bg-success/10 text-success hover:bg-success/20",
+        )}
+        aria-label={label}
+        data-testid="topbar-fault-counter"
+      >
+        {hasFaults ? (
+          <AlertTriangle className="h-4 w-4" aria-hidden />
+        ) : (
+          <CheckCircle2 className="h-4 w-4" aria-hidden />
+        )}
+        <span className="tabular-nums">{label}</span>
+      </Link>
+    </TutorialPopover>
+  );
+}
 
 export function TopBar() {
   const { data: fddStatus } = useFddStatus();
@@ -36,50 +75,18 @@ export function TopBar() {
       {/* Left: FDD + Weather status (mirrors operator mental model) */}
       <div className="flex min-w-0 items-center gap-4 text-sm text-muted-foreground">
         {lastRun ? (
-          <TutorialPopover
-            title="Rule run (Fault Detection & Diagnostics)"
-            meaning="When the fault rule runner last executed. It evaluates your rules against timeseries data and updates fault state."
-            status={`Last run ${timeAgo(lastRun.run_ts)}. ${lastRun.run_ts ? "Good." : "No runs yet."}`}
-            side="bottom"
-          >
+
             <span className="cursor-help">
               last check: <span className="font-medium text-foreground">{timeAgo(lastRun.run_ts)}</span>
             </span>
-          </TutorialPopover>
-        ) : (
-          <TutorialPopover
-            title="Last Check:"
-            meaning="The fault rule runner has not completed a run yet. Start the fdd-loop service or trigger a run from the API."
-            status="No FDD runs yet."
-            side="bottom"
-          >
-            <span className="cursor-help">No FDD runs yet</span>
-          </TutorialPopover>
-        )}
-        {weatherEnabled && (
-          <TutorialPopover
-            title="Weather"
-            meaning={weatherMeaning}
-            status={
-              withFdd && lastRun?.run_ts
-                ? "Fetched with last FDD run."
-                : withFdd
-                  ? "Fetched with each FDD run."
-                  : `Standalone scraper every ${standaloneIntervalHours}h.`
-            }
-            side="bottom"
-          >
-            <span className="flex cursor-help items-center gap-1.5">
-              <Cloud className="h-4 w-4" />
-              Weather <span className="font-medium text-foreground">{weatherLabel}</span>
-            </span>
-          </TutorialPopover>
-        )}
+        ) : (            <span className="cursor-help">No Checks yet</span>
+
+)}
       </div>
 
-      {/* Right: stack health indicators + theme toggle */}
+      {/* Right: active-fault counter + theme toggle */}
       <div className="flex items-center gap-3">
-        <StackStatusStrip compact className="justify-end" />
+        <ActiveFaultCounter />
         <TutorialPopover
           title={isDark ? "Light mode" : "Dark mode"}
           meaning="Toggle between light and dark theme for the UI. Your preference is stored in the browser."

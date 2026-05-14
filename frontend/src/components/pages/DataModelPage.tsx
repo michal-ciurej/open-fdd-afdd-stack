@@ -201,7 +201,7 @@ export function DataModelPage() {
         </p>
       )}
 
-      {/* Step-by-step guide — AI context via /model-context/docs + /mcp/manifest */}
+      {/* Step-by-step guide — AI context via /model-context/docs + /mcp/manifest 
       <Card className="mb-8 border-primary/20 bg-primary/5">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -244,7 +244,7 @@ export function DataModelPage() {
           </ol>
         </CardContent>
       </Card>
-
+*/}
       {/* Data model TTL — view, serialize, check */}
       <Card className="mt-6">
         <CardHeader className="pb-2">

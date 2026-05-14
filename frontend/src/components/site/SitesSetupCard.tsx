@@ -53,12 +53,10 @@ export function SitesSetupCard({ stepLabel = "Step 1", className }: SitesSetupCa
       <CardHeader className="pb-2">
         <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
           <Building2 className="h-5 w-5 shrink-0" />
-          <span className="text-base font-medium text-muted-foreground">{stepLabel}</span>
-          Sites
+          Sites under Sherlock's looking glass
         </CardTitle>
         <p className="text-sm font-normal text-muted-foreground">
-          Create a site if you don’t have one. Assign points to it when you import from the data model page.
-        </p>
+Create a new site, delete existing sites, or amend data drivers for the currently selected site.         </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-end gap-3">

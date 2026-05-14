@@ -118,6 +118,23 @@ export function deleteEquipment(equipmentId: string) {
   });
 }
 
+export type EquipmentPatchBody = Partial<{
+  name: string;
+  description: string | null;
+  equipment_type: string;
+  metadata: Record<string, unknown>;
+  feeds_equipment_id: string | null;
+  fed_by_equipment_id: string | null;
+}>;
+
+export function updateEquipment(equipmentId: string, body: EquipmentPatchBody) {
+  return apiFetch<import("@/types/api").Equipment>(`/equipment/${equipmentId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 export function deletePoint(pointId: string) {
   return apiFetch<{ status: string }>(`/points/${pointId}`, {
     method: "DELETE",

@@ -14,17 +14,10 @@ export function SiteConfigurationPage() {
   return (
     <div>
       <h1 className="mb-2 text-2xl font-semibold tracking-tight" data-testid="site-config-heading">
-        Site Configuration
+        Manage Sites
       </h1>
       <p className="mb-6 max-w-3xl text-sm text-muted-foreground">
-        Configure how points flow into this stack from each site. <strong>Niagara</strong> and{" "}
-        <strong>IQVision</strong> are the primary BQL-based connectors: one endpoint per site, scan the
-        station for control points, then sync history on a schedule. <strong>BACnet &amp; Modbus</strong>{" "}
-        remain available for direct gateway work and edge discovery. Export and tagging tools live on the{" "}
-        <Link to="/data-model" className="font-medium text-primary underline-offset-4 hover:underline">
-          Data model
-        </Link>{" "}
-        page.
+        Accessing data and configuring new sites.
       </p>
 
       <SitesSetupCard className="mb-6" />

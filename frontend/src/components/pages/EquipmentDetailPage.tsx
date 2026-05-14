@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronRight,
   ArrowLeft,
@@ -7,6 +8,8 @@ import {
   Gauge,
   AlertTriangle,
   Activity,
+  Eye,
+  EyeOff,
   Zap,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +29,8 @@ import { useFaultDefinitions, useSiteFaults } from "@/hooks/use-faults";
 import { DataQueryWidget } from "@/components/dashboard/DataQueryWidget";
 import { FaultOverTimeChart } from "@/components/dashboard/FaultOverTimeChart";
 import { EquipmentEnergyTab } from "@/components/equipment/EquipmentEnergyTab";
-import { severityVariant, timeAgo, cn } from "@/lib/utils";
+import { updateEquipment } from "@/lib/crud-api";
+import { severityVariant, timeAgo, cn, isEquipmentObserved } from "@/lib/utils";
 import { faultAppliesToDevice } from "./fault-matrix-utils";
 import type {
   Equipment,
@@ -182,6 +186,38 @@ function ActiveFaultsCard({
   );
 }
 
+function ObservationToggle({ equipment }: { equipment: Equipment }) {
+  const queryClient = useQueryClient();
+  const observed = isEquipmentObserved(equipment);
+  const mutation = useMutation({
+    mutationFn: (nextObserved: boolean) =>
+      updateEquipment(equipment.id, { metadata: { observed: nextObserved } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+    },
+  });
+
+  return (
+    <button
+      type="button"
+      onClick={() => mutation.mutate(!observed)}
+      disabled={mutation.isPending}
+      title={observed ? "Stop tracking this equipment on the overview page" : "Track fault frequency on the overview page"}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors",
+        observed
+          ? "border-warning/30 bg-warning/10 text-warning-foreground hover:bg-warning/20"
+          : "border-border/60 bg-background text-muted-foreground hover:bg-muted",
+      )}
+      data-testid="observation-toggle"
+      aria-pressed={observed}
+    >
+      {observed ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+      {observed ? "Under observation" : "Mark for observation"}
+    </button>
+  );
+}
+
 interface FaultsChartCardProps {
   equipment: Equipment;
   definitions: FaultDefinition[];
@@ -304,13 +340,16 @@ export function EquipmentDetailPage() {
         <span className="font-medium text-foreground">{equipment.name}</span>
       </nav>
 
-      <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">{equipment.name}</h1>
-        {equipment.equipment_type && (
-          <Badge variant="outline" className="font-mono text-xs">
-            {equipment.equipment_type}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {equipment.equipment_type && (
+            <Badge variant="outline" className="font-mono text-xs">
+              {equipment.equipment_type}
+            </Badge>
+          )}
+          <ObservationToggle equipment={equipment} />
+        </div>
       </div>
 
       <div

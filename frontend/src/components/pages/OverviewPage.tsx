@@ -3,6 +3,7 @@ import { SiteCard } from "@/components/dashboard/SiteCard";
 import { FddStatusBanner } from "@/components/dashboard/FddStatusBanner";
 import { FaultList } from "@/components/dashboard/FaultList";
 import { DataQueryWidget } from "@/components/dashboard/DataQueryWidget";
+import { EquipmentUnderObservationCard } from "@/components/dashboard/EquipmentUnderObservationCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +63,9 @@ function AllSitesView() {
             ))}
           </div>
         )}
+      </div>
+      <div className="mt-6">
+        <EquipmentUnderObservationCard equipment={equipment} sites={sites ?? []} />
       </div>
     </>
   );
@@ -155,6 +159,10 @@ function SiteSummaryView({ siteId }: { siteId: string }) {
           </Card>
         </div>
       )}
+
+      <div className="mt-6">
+        <EquipmentUnderObservationCard equipment={equipment} siteId={siteId} />
+      </div>
     </div>
   );
 }

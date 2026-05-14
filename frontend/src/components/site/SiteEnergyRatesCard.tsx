@@ -88,8 +88,7 @@ export function SiteEnergyRatesCard({ className }: SiteEnergyRatesCardProps) {
         </CardTitle>
         <p className="text-sm font-normal text-muted-foreground">
           Utility rates for the active site. Used by the energy opportunity calculator to
-          convert kWh and therms into dollars. One row per site; changes take effect on the
-          next opportunity recompute.
+          convert kWh and therms into pounhds.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">

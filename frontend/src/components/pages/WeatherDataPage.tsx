@@ -274,7 +274,7 @@ export function WeatherDataPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Weather data</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Open-Meteo weather by unit group — same layout as Grafana weather dashboard. Data with the same units are plotted together.
+            Open-Meteo weather by unit group.
           </p>
         </div>
       </div>

@@ -1,6 +1,8 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+import type { Equipment } from "@/types/api";
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -43,6 +45,14 @@ export function timeAgo(value: string | null | undefined): string {
 
   // Older than a week: fall back to locale date (used in tests).
   return date.toLocaleDateString();
+}
+
+/** True when the operator has flagged this equipment for closer fault tracking.
+ *  Stored as ``equipment.metadata.observed`` (boolean) so the API needs no new
+ *  schema; the Overview page rolls these up into a focused fault-frequency table. */
+export function isEquipmentObserved(equipment: Pick<Equipment, "metadata"> | null | undefined): boolean {
+  const md = equipment?.metadata as Record<string, unknown> | null | undefined;
+  return md?.observed === true;
 }
 
 export function severityVariant(severity: string | null | undefined):
