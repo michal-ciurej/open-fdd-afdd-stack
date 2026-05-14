@@ -20,6 +20,7 @@
     { "route": "/login", "redirect": "/.auth/login/aad", "statusCode": 302 },
     { "route": "/logout", "redirect": "/.auth/logout", "statusCode": 302 },
 
+    { "route": "/api/auth/roles", "allowedRoles": ["anonymous", "authenticated"] },
     { "route": "/api/admin/*", "allowedRoles": ["admin"] },
     { "route": "/api/engineering/*", "allowedRoles": ["admin", "engineer"] },
     { "route": "/api/*", "allowedRoles": ["admin", "engineer", "user"] },
@@ -28,8 +29,7 @@
     { "route": "/*", "allowedRoles": ["anonymous", "authenticated"] }
   ],
   "responseOverrides": {
-    "401": { "redirect": "/.auth/login/aad", "statusCode": 302 },
-    "403": { "rewrite": "/forbidden.html", "statusCode": 403 }
+    "404": { "rewrite": "/index.html", "statusCode": 200 }
   },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",

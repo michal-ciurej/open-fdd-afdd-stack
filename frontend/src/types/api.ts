@@ -502,3 +502,123 @@ export type EnergyCalculationPatchBody = Partial<{
   enabled: boolean;
 }>;
 
+/** GET /sites/{site_id}/energy-rates — utility rates per site. */
+export interface SiteEnergyRates {
+  site_id: string;
+  electric_rate_per_kwh: number;
+  demand_charge_per_kw: number;
+  therm_rate_usd: number;
+  currency: string;
+  updated_at: string;
+}
+
+/** PUT /sites/{site_id}/energy-rates — partial upsert. */
+export type SiteEnergyRatesUpdateBody = Partial<{
+  electric_rate_per_kwh: number;
+  demand_charge_per_kw: number;
+  therm_rate_usd: number;
+  currency: string;
+}>;
+
+/** GET /equipment/{equipment_id}/energy-profile — typed sizing for cost calcs. */
+export interface EquipmentEnergyProfile {
+  equipment_id: string;
+  nameplate_kw: number | null;
+  motor_hp: number | null;
+  motor_efficiency: number | null;
+  design_cfm: number | null;
+  design_sat_f: number | null;
+  design_static_pressure_inwc: number | null;
+  design_cop: number | null;
+  design_heating_efficiency: number | null;
+  occupied_hours_per_year: number | null;
+  updated_at: string;
+}
+
+/** PUT /equipment/{equipment_id}/energy-profile — partial upsert. */
+export type EquipmentEnergyProfileUpdateBody = Partial<{
+  nameplate_kw: number | null;
+  motor_hp: number | null;
+  motor_efficiency: number | null;
+  design_cfm: number | null;
+  design_sat_f: number | null;
+  design_static_pressure_inwc: number | null;
+  design_cop: number | null;
+  design_heating_efficiency: number | null;
+  occupied_hours_per_year: number | null;
+}>;
+
+export type MeasureFamily =
+  | "runtime"
+  | "setpoint_reset"
+  | "airside_thermal"
+  | "degradation";
+
+export type DataQuality = "observed" | "partial" | "assumed";
+
+/** Cached compute output for an opportunity. */
+export interface EnergyOpportunityResult {
+  baseline_annual_cost_usd: number | null;
+  projected_annual_cost_usd: number | null;
+  annual_savings_usd: number | null;
+  annual_kwh_saved: number | null;
+  annual_therms_saved: number | null;
+  peak_kw_reduced: number | null;
+  simple_payback_years: number | null;
+  npv_5yr_usd: number | null;
+  fault_hours_observed: number | null;
+  data_quality: DataQuality;
+  missing_inputs: string[];
+  notes: string | null;
+  computed_at: string | null;
+}
+
+export interface EnergyOpportunity {
+  id: string;
+  equipment_id: string;
+  external_id: string;
+  name: string;
+  description: string | null;
+  measure_family: MeasureFamily;
+  calc_type: string;
+  fdd_rule_id: string | null;
+  delta_params: Record<string, unknown>;
+  capex_usd: number;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+  result: EnergyOpportunityResult | null;
+}
+
+export interface EnergyOpportunityCreateBody {
+  equipment_id: string;
+  external_id: string;
+  name: string;
+  description?: string | null;
+  measure_family: MeasureFamily;
+  calc_type: string;
+  fdd_rule_id?: string | null;
+  delta_params?: Record<string, unknown>;
+  capex_usd?: number;
+  enabled?: boolean;
+}
+
+export type EnergyOpportunityPatchBody = Partial<{
+  name: string;
+  description: string | null;
+  measure_family: MeasureFamily;
+  calc_type: string;
+  fdd_rule_id: string | null;
+  delta_params: Record<string, unknown>;
+  capex_usd: number;
+  enabled: boolean;
+}>;
+
+/** POST /energy-opportunities/preview body — for the AddMeasureDialog wizard. */
+export interface EnergyOpportunityPreviewBody {
+  equipment_id: string;
+  calc_type: string;
+  delta_params?: Record<string, unknown>;
+  capex_usd?: number;
+}
+

@@ -204,3 +204,148 @@ class EquipmentRead(BaseModel):
     feeds_equipment_id: Optional[UUID] = None
     fed_by_equipment_id: Optional[UUID] = None
     created_at: datetime
+
+
+class SiteEnergyRatesRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    site_id: UUID
+    electric_rate_per_kwh: float
+    demand_charge_per_kw: float
+    therm_rate_usd: float
+    currency: str
+    updated_at: datetime
+
+
+class SiteEnergyRatesUpdate(BaseModel):
+    electric_rate_per_kwh: Optional[float] = Field(None, ge=0)
+    demand_charge_per_kw: Optional[float] = Field(None, ge=0)
+    therm_rate_usd: Optional[float] = Field(None, ge=0)
+    currency: Optional[str] = Field(None, min_length=1, max_length=8)
+
+
+class EquipmentEnergyProfileRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    equipment_id: UUID
+    nameplate_kw: Optional[float] = None
+    motor_hp: Optional[float] = None
+    motor_efficiency: Optional[float] = None
+    design_cfm: Optional[float] = None
+    design_sat_f: Optional[float] = None
+    design_static_pressure_inwc: Optional[float] = None
+    design_cop: Optional[float] = None
+    design_heating_efficiency: Optional[float] = None
+    occupied_hours_per_year: Optional[float] = None
+    updated_at: datetime
+
+
+class EquipmentEnergyProfileUpdate(BaseModel):
+    """All fields optional; PUT is treated as a partial upsert. NULL clears a value."""
+
+    nameplate_kw: Optional[float] = Field(None, ge=0)
+    motor_hp: Optional[float] = Field(None, ge=0)
+    motor_efficiency: Optional[float] = Field(None, gt=0, le=1)
+    design_cfm: Optional[float] = Field(None, ge=0)
+    design_sat_f: Optional[float] = None
+    design_static_pressure_inwc: Optional[float] = Field(None, ge=0)
+    design_cop: Optional[float] = Field(None, gt=0)
+    design_heating_efficiency: Optional[float] = Field(None, gt=0, le=1)
+    occupied_hours_per_year: Optional[float] = Field(None, ge=0, le=8784)
+
+
+MEASURE_FAMILIES = ("runtime", "setpoint_reset", "airside_thermal", "degradation")
+DATA_QUALITIES = ("observed", "partial", "assumed")
+
+
+class EnergyOpportunityResultRead(BaseModel):
+    """Cached computed result block. All numeric fields nullable so a row with
+    missing inputs still serialises cleanly."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    baseline_annual_cost_usd: Optional[float] = None
+    projected_annual_cost_usd: Optional[float] = None
+    annual_savings_usd: Optional[float] = None
+    annual_kwh_saved: Optional[float] = None
+    annual_therms_saved: Optional[float] = None
+    peak_kw_reduced: Optional[float] = None
+    simple_payback_years: Optional[float] = None
+    npv_5yr_usd: Optional[float] = None
+    fault_hours_observed: Optional[float] = None
+    data_quality: str = "assumed"
+    missing_inputs: list[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+    computed_at: Optional[datetime] = None
+
+
+class EnergyOpportunityRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    equipment_id: UUID
+    external_id: str
+    name: str
+    description: Optional[str] = None
+    measure_family: str
+    calc_type: str
+    fdd_rule_id: Optional[str] = None
+    delta_params: dict[str, Any]
+    capex_usd: float
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+    result: Optional[EnergyOpportunityResultRead] = None
+
+
+class EnergyOpportunityCreate(BaseModel):
+    equipment_id: UUID
+    external_id: str = Field(..., min_length=1, max_length=256)
+    name: str = Field(..., min_length=1, max_length=256)
+    description: Optional[str] = None
+    measure_family: str
+    calc_type: str = Field(..., min_length=1, max_length=64)
+    fdd_rule_id: Optional[str] = Field(None, max_length=128)
+    delta_params: dict[str, Any] = Field(default_factory=dict)
+    capex_usd: float = Field(0.0, ge=0)
+    enabled: bool = True
+
+    @field_validator("measure_family")
+    @classmethod
+    def _check_measure_family(cls, v: str) -> str:
+        if v not in MEASURE_FAMILIES:
+            raise ValueError(
+                f"measure_family must be one of {MEASURE_FAMILIES}, got {v!r}"
+            )
+        return v
+
+
+class EnergyOpportunityUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=256)
+    description: Optional[str] = None
+    measure_family: Optional[str] = None
+    calc_type: Optional[str] = Field(None, min_length=1, max_length=64)
+    fdd_rule_id: Optional[str] = Field(None, max_length=128)
+    delta_params: Optional[dict[str, Any]] = None
+    capex_usd: Optional[float] = Field(None, ge=0)
+    enabled: Optional[bool] = None
+
+    @field_validator("measure_family")
+    @classmethod
+    def _check_measure_family(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if v not in MEASURE_FAMILIES:
+            raise ValueError(
+                f"measure_family must be one of {MEASURE_FAMILIES}, got {v!r}"
+            )
+        return v
+
+
+class EnergyOpportunityPreviewBody(BaseModel):
+    """Preview a not-yet-saved opportunity. Used by the AddMeasureDialog wizard."""
+
+    equipment_id: UUID
+    calc_type: str = Field(..., min_length=1, max_length=64)
+    delta_params: dict[str, Any] = Field(default_factory=dict)
+    capex_usd: float = Field(0.0, ge=0)

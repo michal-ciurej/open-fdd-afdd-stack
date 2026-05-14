@@ -214,9 +214,11 @@ function DataQueryPlot({ csv, externalIdToLabel, isLoading, error }: DataQueryPl
 
 interface DataQueryWidgetProps {
   siteId: string | undefined;
+  /** When set, the equipment selector is hidden and points are scoped to this equipment. */
+  equipmentId?: string;
 }
 
-export function DataQueryWidget({ siteId }: DataQueryWidgetProps) {
+export function DataQueryWidget({ siteId, equipmentId }: DataQueryWidgetProps) {
   const { data: equipment = [] } = useEquipment(siteId);
   const { data: points = [] } = usePoints(siteId);
   const { data: latestList = [] } = useTimeseriesLatest(siteId);
@@ -248,7 +250,9 @@ export function DataQueryWidget({ siteId }: DataQueryWidgetProps) {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [equipment, pointsByEquipmentId, historyPointIds]);
 
-  const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>("");
+  const lockedEquipmentId = equipmentId ?? "";
+  const [internalEquipmentId, setInternalEquipmentId] = useState<string>("");
+  const selectedEquipmentId = lockedEquipmentId || internalEquipmentId;
   const [selectedPointIds, setSelectedPointIds] = useState<string[]>([]);
   const [timeWindow, setTimeWindow] = useState<TimeWindow>("24h");
   const [csv, setCsv] = useState<ParsedCsv | null>(null);
@@ -271,7 +275,7 @@ export function DataQueryWidget({ siteId }: DataQueryWidgetProps) {
   }, [selectedEquipmentId]);
 
   useEffect(() => {
-    setSelectedEquipmentId("");
+    setInternalEquipmentId("");
     setSelectedPointIds([]);
     setCsv(null);
     setError(null);
@@ -343,21 +347,23 @@ export function DataQueryWidget({ siteId }: DataQueryWidgetProps) {
             </p>
           </div>
 
-          <SearchableList<Equipment>
-            label="Equipment"
-            placeholder="Search equipment…"
-            items={equipmentOptions}
-            filter={equipmentFilter}
-            isSelected={(eq) => eq.id === selectedEquipmentId}
-            onSelect={(eq) => setSelectedEquipmentId(eq.id)}
-            emptyMessage={
-              !siteId
-                ? "Select a site to begin."
-                : "No equipment with timeseries history."
-            }
-            renderItem={(eq) => <span className="truncate">{equipmentLabel(eq)}</span>}
-            disabled={!siteId || equipmentOptions.length === 0}
-          />
+          {lockedEquipmentId ? null : (
+            <SearchableList<Equipment>
+              label="Equipment"
+              placeholder="Search equipment…"
+              items={equipmentOptions}
+              filter={equipmentFilter}
+              isSelected={(eq) => eq.id === selectedEquipmentId}
+              onSelect={(eq) => setInternalEquipmentId(eq.id)}
+              emptyMessage={
+                !siteId
+                  ? "Select a site to begin."
+                  : "No equipment with timeseries history."
+              }
+              renderItem={(eq) => <span className="truncate">{equipmentLabel(eq)}</span>}
+              disabled={!siteId || equipmentOptions.length === 0}
+            />
+          )}
 
           <SearchableList<Point>
             label="Histories"

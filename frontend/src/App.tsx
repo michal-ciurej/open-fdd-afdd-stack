@@ -9,6 +9,7 @@ import { ConfigPage } from "@/components/pages/ConfigPage";
 import { PointsPage } from "@/components/pages/PointsPage";
 import { FaultsPage } from "@/components/pages/FaultsPage";
 import { EquipmentPage } from "@/components/pages/EquipmentPage";
+import { EquipmentDetailPage } from "@/components/pages/EquipmentDetailPage";
 import { SystemResourcesPage } from "@/components/pages/SystemResourcesPage";
 import { SiteConfigurationPage } from "@/components/pages/SiteConfigurationPage";
 import { DataModelPage } from "@/components/pages/DataModelPage";
@@ -62,6 +63,7 @@ function AppRoutes() {
           <Route path="site-configuration" element={adminOnly(<SiteConfigurationPage />)} />
           <Route path="bacnet-tools" element={<Navigate to="/site-configuration" replace />} />
           <Route path="equipment" element={<EquipmentPage />} />
+          <Route path="equipment/:equipmentId" element={<EquipmentDetailPage />} />
           <Route path="points" element={adminOnly(<PointsPage />)} />
           <Route path="faults" element={<FaultsPage />} />
           <Route path="plots" element={<PlotsPage />} />

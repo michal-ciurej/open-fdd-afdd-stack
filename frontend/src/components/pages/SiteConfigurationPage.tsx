@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { NiagaraConfigPanel } from "@/components/niagara/NiagaraConfigPanel";
 import { IQVisionConfigPanel } from "@/components/iqvision/IQVisionConfigPanel";
 import { SitesSetupCard } from "@/components/site/SitesSetupCard";
+import { SiteEnergyRatesCard } from "@/components/site/SiteEnergyRatesCard";
 import { BacnetToolsPage } from "@/components/pages/BacnetToolsPage";
 
 type Connector = "niagara" | "iqvision" | "bacnet";
@@ -27,6 +28,8 @@ export function SiteConfigurationPage() {
       </p>
 
       <SitesSetupCard className="mb-6" />
+
+      <SiteEnergyRatesCard className="mb-6" />
 
       <div
         className="mb-4 flex flex-wrap gap-2 border-b border-border/60 pb-3"

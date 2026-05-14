@@ -111,9 +111,9 @@ export function Sidebar() {
       <div className="border-border/60 px-5 py-4">
         <div className="flex items-center gap-2.5">
           <span className="text-lg font-semibold tracking-tight text-foreground">
-            Servicer
+            3mse Sherlock
           </span>
-          <img src="/favicon.svg" alt="Servicer" className="h-10 w-10" />
+          <img src="/data/images/logosmall.png" alt="Servicer" className="w-5" />
         </div>
         <div className="mt-3">
           <SiteSelector />

@@ -747,11 +747,10 @@ function RuleFilesSection() {
   return (
     <div className="mb-8">
       <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-        FDD rule files (YAML)
+        Rules Repository
       </h2>
       <p className="mb-2 text-xs text-muted-foreground">
-        Rule YAML from platform config (rules_dir via GET /config). Upload, download, or delete files; FDD loop hot-reloads each run.
-        Timestamped <span className="font-mono">test_*_*</span> files are bench/E2E artifacts, not created by site bootstrap—delete them if you do not need them.
+        These rules are our storage of rule fault definitions, we can write new rules, check existing ones, then when our updated collection of rules is ready we can Sync them into the fault engine
       </p>
       <Card>
         <CardContent className="pt-4">

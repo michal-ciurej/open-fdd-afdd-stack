@@ -36,7 +36,10 @@ from openfdd_stack.platform.api import (
     data_model,
     download,
     energy_calculations,
+    energy_opportunities,
+    energy_rates,
     entities,
+    equipment_energy_profile,
     faults,
     jobs as jobs_router,
     mcp_bridge,
@@ -230,9 +233,12 @@ _API = "/api"
 app.include_router(config_router.router, prefix=_API)
 app.include_router(auth_me_routes.router, prefix=_API)
 app.include_router(sites.router, prefix=_API)
+app.include_router(energy_rates.router, prefix=_API)
 app.include_router(points.router, prefix=_API)
 app.include_router(energy_calculations.router, prefix=_API)
 app.include_router(equipment.router, prefix=_API)
+app.include_router(equipment_energy_profile.router, prefix=_API)
+app.include_router(energy_opportunities.router, prefix=_API)
 app.include_router(data_model.router, prefix=_API)
 app.include_router(download.router, prefix=_API)
 app.include_router(timeseries_router.router, prefix=_API)

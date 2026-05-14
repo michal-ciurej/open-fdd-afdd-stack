@@ -37,6 +37,10 @@ interface FaultOverTimeChartProps {
   start: string;
   end: string;
   bucket: "hour" | "day";
+  /** When set, scopes the timeseries query to these equipment IDs. */
+  equipmentIds?: string[];
+  /** Override the rendered chart height (default 340). */
+  height?: number;
 }
 
 /** Pivot API series (time, metric, value) into Recharts rows (timestamp, fault_id: value). */
@@ -53,8 +57,23 @@ function pivotFaultSeries(series: { time: string; metric: string; value: number 
     .map(([timestamp, rest]) => ({ timestamp, ...rest }));
 }
 
-export function FaultOverTimeChart({ siteId, definitions, preset, start, end, bucket }: FaultOverTimeChartProps) {
-  const { data, isLoading, error } = useFaultTimeseries(siteId ?? undefined, start, end, bucket);
+export function FaultOverTimeChart({
+  siteId,
+  definitions,
+  preset,
+  start,
+  end,
+  bucket,
+  equipmentIds,
+  height = 340,
+}: FaultOverTimeChartProps) {
+  const { data, isLoading, error } = useFaultTimeseries(
+    siteId ?? undefined,
+    start,
+    end,
+    bucket,
+    { equipmentIds },
+  );
 
   const chartData = useMemo(() => {
     const raw = data?.series ? pivotFaultSeries(data.series) : [];
@@ -83,9 +102,14 @@ export function FaultOverTimeChart({ siteId, definitions, preset, start, end, bu
   const tooltipFormat = (ts: number) =>
     new Date(ts).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
+  const placeholderStyle = { height };
+
   if (error) {
     return (
-      <div className="flex h-72 items-center justify-center rounded-2xl border border-border/60 bg-card">
+      <div
+        className="flex items-center justify-center rounded-2xl border border-border/60 bg-card"
+        style={placeholderStyle}
+      >
         <p className="text-sm text-destructive">Failed to load fault history.</p>
       </div>
     );
@@ -93,10 +117,13 @@ export function FaultOverTimeChart({ siteId, definitions, preset, start, end, bu
 
   return (
     <div className="space-y-4">
-      {isLoading && <Skeleton className="h-72 w-full rounded-2xl" />}
+      {isLoading && <Skeleton className="w-full rounded-2xl" style={placeholderStyle} />}
 
       {!isLoading && chartData.length === 0 && (
-        <div className="flex h-72 items-center justify-center rounded-2xl border border-border/60 bg-card">
+        <div
+          className="flex items-center justify-center rounded-2xl border border-border/60 bg-card"
+          style={placeholderStyle}
+        >
           <p className="text-sm text-muted-foreground">
             No fault data in this period. FDD runs periodically; widen the range or run FDD to see results.
           </p>
@@ -108,7 +135,7 @@ export function FaultOverTimeChart({ siteId, definitions, preset, start, end, bu
           config={config}
           className="rounded-2xl border border-border/60 bg-card p-5"
         >
-          <ResponsiveContainer width="100%" height={340}>
+          <ResponsiveContainer width="100%" height={height}>
             <LineChart data={chartData}>
               <CartesianGrid
                 strokeDasharray="3 3"

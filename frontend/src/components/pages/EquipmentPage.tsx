@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
 import type React from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Wind, Building2, Snowflake, AlertTriangle, Search } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  Wind,
+  Building2,
+  Snowflake,
+  AlertTriangle,
+  Search,
+  ChevronRight,
+} from "lucide-react";
 import { useSiteContext } from "@/contexts/site-context";
 import { apiFetch } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,6 +73,7 @@ const PILL_DEFS: {
 
 export function EquipmentPage() {
   const { selectedSiteId } = useSiteContext();
+  const location = useLocation();
   const [pill, setPill] = useState<EquipPill>("all");
   const [search, setSearch] = useState("");
 
@@ -232,13 +241,14 @@ export function EquipmentPage() {
                   {!selectedSiteId && <TableHead>Site</TableHead>}
                   <TableHead className="text-right">Faults in window</TableHead>
                   <TableHead className="text-right">Active now</TableHead>
+                  <TableHead aria-label="Open detail" className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={selectedSiteId ? 4 : 5}
+                      colSpan={selectedSiteId ? 5 : 6}
                       className="py-10 text-center text-sm text-muted-foreground"
                     >
                       No equipment found for the selected filters.
@@ -265,6 +275,18 @@ export function EquipmentPage() {
                         ) : (
                           <span className="text-muted-foreground">0</span>
                         )}
+                      </TableCell>
+                      <TableCell className="w-10 text-right">
+                        <Link
+                          to={{
+                            pathname: `/equipment/${r.id}`,
+                            search: location.search,
+                          }}
+                          aria-label={`Open ${r.name} detail`}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Link>
                       </TableCell>
                     </TableRow>
                   ))

@@ -10,11 +10,20 @@ import type {
   EnergyCalculationsImportBody,
   EnergyCalculationsImportResponse,
   EnergyCalcTypePublic,
+  EnergyOpportunity,
+  EnergyOpportunityCreateBody,
+  EnergyOpportunityPatchBody,
+  EnergyOpportunityPreviewBody,
+  EnergyOpportunityResult,
   EnergyPreviewResult,
+  EquipmentEnergyProfile,
+  EquipmentEnergyProfileUpdateBody,
   PlatformConfig,
   Point,
   PointPatchBody,
   Site,
+  SiteEnergyRates,
+  SiteEnergyRatesUpdateBody,
 } from "@/types/api";
 
 export interface SiteCreate {
@@ -535,4 +544,96 @@ export function listIQVisionPoints(siteId: string) {
   return apiFetch<{ count: number; points: IQVisionScanPoint[] }>(
     `/iqvision/endpoints/${encodeURIComponent(siteId)}/points`,
   );
+}
+
+/** GET /sites/{site_id}/energy-rates */
+export function getSiteEnergyRates(siteId: string) {
+  return apiFetch<SiteEnergyRates>(`/sites/${siteId}/energy-rates`);
+}
+
+/** PUT /sites/{site_id}/energy-rates — partial upsert. */
+export function updateSiteEnergyRates(
+  siteId: string,
+  body: SiteEnergyRatesUpdateBody,
+) {
+  return apiFetch<SiteEnergyRates>(`/sites/${siteId}/energy-rates`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/** GET /equipment/{equipment_id}/energy-profile */
+export function getEquipmentEnergyProfile(equipmentId: string) {
+  return apiFetch<EquipmentEnergyProfile>(
+    `/equipment/${equipmentId}/energy-profile`,
+  );
+}
+
+/** PUT /equipment/{equipment_id}/energy-profile — partial upsert. */
+export function updateEquipmentEnergyProfile(
+  equipmentId: string,
+  body: EquipmentEnergyProfileUpdateBody,
+) {
+  return apiFetch<EquipmentEnergyProfile>(
+    `/equipment/${equipmentId}/energy-profile`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+/** GET /energy-opportunities?equipment_id=… or ?site_id=… */
+export function listEnergyOpportunities(
+  scope: { equipmentId: string } | { siteId: string },
+) {
+  const p = new URLSearchParams();
+  if ("equipmentId" in scope) p.set("equipment_id", scope.equipmentId);
+  else p.set("site_id", scope.siteId);
+  return apiFetch<EnergyOpportunity[]>(`/energy-opportunities?${p.toString()}`);
+}
+
+export function getEnergyOpportunity(id: string) {
+  return apiFetch<EnergyOpportunity>(`/energy-opportunities/${id}`);
+}
+
+export function createEnergyOpportunity(body: EnergyOpportunityCreateBody) {
+  return apiFetch<EnergyOpportunity>("/energy-opportunities", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateEnergyOpportunity(
+  id: string,
+  body: EnergyOpportunityPatchBody,
+) {
+  return apiFetch<EnergyOpportunity>(`/energy-opportunities/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteEnergyOpportunity(id: string) {
+  return apiFetch<{ status: string }>(`/energy-opportunities/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function recomputeEnergyOpportunity(id: string) {
+  return apiFetch<EnergyOpportunity>(`/energy-opportunities/${id}/recompute`, {
+    method: "POST",
+  });
+}
+
+export function previewEnergyOpportunity(body: EnergyOpportunityPreviewBody) {
+  return apiFetch<EnergyOpportunityResult>("/energy-opportunities/preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
