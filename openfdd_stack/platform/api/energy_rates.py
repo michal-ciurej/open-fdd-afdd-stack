@@ -7,6 +7,11 @@ honors any subset of fields the caller sends.
 Rates here replace the per-row electric_rate_per_kwh / therm_rate_usd fields
 that lived inside energy_calculations.parameters. Phase 2 reads from this table
 when computing opportunity costs.
+
+Default currency is GBP (this is a UK deployment); the column accepts any
+3-letter code so multi-currency portfolios are not blocked, but cost values
+are passed through the calc library as raw numbers — the operator is
+responsible for entering rates in the same currency they want results in.
 """
 
 import logging
@@ -142,4 +147,12 @@ def put_site_energy_rates(
             row = cur.fetchone()
         conn.commit()
     logger.info("Updated energy rates for site %s", site_id)
+    # Cascade recompute to every enabled opportunity on this site. Async via
+    # the existing in-memory job queue so the PUT response returns immediately.
+    try:
+        from openfdd_stack.platform.jobs import spawn_energy_recompute_site
+
+        spawn_energy_recompute_site(str(site_id))
+    except Exception:
+        logger.exception("Failed to spawn energy recompute for site %s", site_id)
     return SiteEnergyRatesRead.model_validate(dict(row))

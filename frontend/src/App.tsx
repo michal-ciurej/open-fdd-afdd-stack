@@ -13,7 +13,7 @@ import { EquipmentDetailPage } from "@/components/pages/EquipmentDetailPage";
 import { SystemResourcesPage } from "@/components/pages/SystemResourcesPage";
 import { SiteConfigurationPage } from "@/components/pages/SiteConfigurationPage";
 import { DataModelPage } from "@/components/pages/DataModelPage";
-import { EnergyEngineeringPage } from "@/components/pages/EnergyEngineeringPage";
+import { EnergyOpportunitiesPage } from "@/components/pages/EnergyOpportunitiesPage";
 import { DataModelTestingPage } from "@/components/pages/DataModelTestingPage";
 import { PlotsPage } from "@/components/pages/PlotsPage";
 import { AnalyticsPage } from "@/components/pages/AnalyticsPage";
@@ -72,10 +72,10 @@ function AppRoutes() {
           <Route path="diagnostics" element={<Navigate to="/analytics" replace />} />
           <Route path="system" element={adminOnly(<SystemResourcesPage />)} />
           <Route path="data-model" element={adminOnly(<DataModelPage />)} />
-          <Route path="energy-engineering" element={engineerOrAdmin(<EnergyEngineeringPage />)} />
+          <Route path="energy-engineering" element={engineerOrAdmin(<EnergyOpportunitiesPage />)} />
           <Route
             path="data-model-engineering"
-            element={<Navigate to="/energy-engineering?tab=metadata" replace />}
+            element={<Navigate to="/equipment" replace />}
           />
           <Route path="data-model-testing" element={engineerOrAdmin(<DataModelTestingPage />)} />
         </Route>

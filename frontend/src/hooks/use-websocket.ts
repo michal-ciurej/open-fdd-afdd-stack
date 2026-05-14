@@ -39,7 +39,7 @@ export function useWebSocket() {
       ws.send(
         JSON.stringify({
           type: "subscribe",
-          topics: ["fault.*", "fdd.run", "crud.*"],
+          topics: ["fault.*", "fdd.run", "crud.*", "energy.*"],
         }),
       );
     };
@@ -63,6 +63,12 @@ export function useWebSocket() {
       }
       if (msg.topic.startsWith("crud.point")) {
         queryClient.invalidateQueries({ queryKey: ["points"] });
+      }
+      if (msg.topic.startsWith("energy.recompute")) {
+        // FDD-loop end-of-tick or cascade from rate/profile change refreshed
+        // cached opportunity results — drop both the per-equipment and
+        // site-level query caches so the next view re-fetches.
+        queryClient.invalidateQueries({ queryKey: ["energy-opportunities"] });
       }
     };
 

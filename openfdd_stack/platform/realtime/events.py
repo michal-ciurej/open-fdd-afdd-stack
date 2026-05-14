@@ -19,6 +19,7 @@ TOPIC_NIAGARA_SYNC = "niagara.sync"
 TOPIC_NIAGARA_SCAN = "niagara.scan"
 TOPIC_IQVISION_SYNC = "iqvision.sync"
 TOPIC_IQVISION_SCAN = "iqvision.scan"
+TOPIC_ENERGY_RECOMPUTE = "energy.recompute"
 
 
 def _ts() -> str:

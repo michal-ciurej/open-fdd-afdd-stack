@@ -107,7 +107,7 @@ def _load_rates(cur, site_id: str) -> dict[str, Any]:
         "electric_rate_per_kwh": 0.12,
         "demand_charge_per_kw": 0.0,
         "therm_rate_usd": 1.0,
-        "currency": "USD",
+        "currency": "GBP",
     }
 
 

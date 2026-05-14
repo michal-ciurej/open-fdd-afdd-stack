@@ -9,6 +9,7 @@ import {
   useDeleteOpportunity,
   useUpdateOpportunity,
 } from "@/hooks/use-energy";
+import { useEquipment } from "@/hooks/use-sites";
 import type {
   EnergyCalcTypePublic,
   EnergyOpportunity,
@@ -78,7 +79,7 @@ function slugify(s: string): string {
 
 function fmtCurrency(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return "—";
-  return `$${Math.round(value).toLocaleString()}`;
+  return `£${Math.round(value).toLocaleString()}`;
 }
 
 function fmtYears(value: number | null | undefined): string {
@@ -89,7 +90,13 @@ function fmtYears(value: number | null | undefined): string {
 }
 
 type OpportunityFormDialogProps = {
-  equipmentId: string;
+  /** Pre-selected equipment when the dialog is opened from the equipment Energy
+   *  tab. Omit to let the operator pick from a dropdown — used by the
+   *  /energy-engineering "+ New opportunity" entry. */
+  equipmentId?: string;
+  /** Required when equipmentId is omitted, so the equipment dropdown can list
+   *  only equipment from the active site. */
+  siteId?: string;
   /** Existing opportunity for edit mode; omit to create. */
   opportunity?: EnergyOpportunity;
   onClose: () => void;
@@ -97,10 +104,23 @@ type OpportunityFormDialogProps = {
 
 export function OpportunityFormDialog({
   equipmentId,
+  siteId,
   opportunity,
   onClose,
 }: OpportunityFormDialogProps) {
   const isEdit = !!opportunity;
+
+  // When opened from the site ranking page (no equipmentId), the operator picks
+  // an equipment first. Edit mode always derives the equipmentId from the
+  // opportunity row.
+  const [pickedEquipmentId, setPickedEquipmentId] = useState<string>(
+    opportunity?.equipment_id ?? equipmentId ?? "",
+  );
+  const effectiveEquipmentId = equipmentId ?? pickedEquipmentId;
+  const showEquipmentPicker = !isEdit && !equipmentId;
+  const { data: equipmentList = [] } = useEquipment(
+    showEquipmentPicker ? siteId : undefined,
+  );
 
   const { data: calcTypesData } = useQuery({
     queryKey: ["energy-calc-types"],
@@ -173,20 +193,20 @@ export function OpportunityFormDialog({
   const { data: preview, isFetching: previewLoading } = useQuery<
     EnergyOpportunityResult
   >({
-    queryKey: ["opportunity-preview", equipmentId, previewKey],
+    queryKey: ["opportunity-preview", effectiveEquipmentId, previewKey],
     queryFn: () =>
       previewEnergyOpportunity({
-        equipment_id: equipmentId,
+        equipment_id: effectiveEquipmentId,
         calc_type: calcTypeId,
         delta_params: deltaPayload,
         capex_usd: Number(capex) || 0,
       }),
-    enabled: !!calcTypeId && !!equipmentId,
+    enabled: !!calcTypeId && !!effectiveEquipmentId,
   });
 
-  const createMut = useCreateOpportunity(equipmentId);
-  const updateMut = useUpdateOpportunity(equipmentId);
-  const deleteMut = useDeleteOpportunity(equipmentId);
+  const createMut = useCreateOpportunity(effectiveEquipmentId || undefined);
+  const updateMut = useUpdateOpportunity(effectiveEquipmentId || undefined);
+  const deleteMut = useDeleteOpportunity(effectiveEquipmentId || undefined);
 
   const saving = createMut.isPending || updateMut.isPending;
   const saveError =
@@ -210,9 +230,10 @@ export function OpportunityFormDialog({
         { onSuccess: onClose },
       );
     } else {
+      if (!effectiveEquipmentId) return;
       createMut.mutate(
         {
-          equipment_id: equipmentId,
+          equipment_id: effectiveEquipmentId,
           external_id: externalId.trim() || slugify(name),
           name: name.trim(),
           measure_family: family,
@@ -259,6 +280,33 @@ export function OpportunityFormDialog({
         </header>
 
         <div className="space-y-5 px-5 py-4">
+          {showEquipmentPicker && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                Equipment
+              </label>
+              <select
+                value={pickedEquipmentId}
+                onChange={(e) => setPickedEquipmentId(e.target.value)}
+                className={`${inputBase} w-full`}
+                data-testid="opportunity-equipment-picker"
+              >
+                <option value="">Select equipment…</option>
+                {equipmentList.map((eq) => (
+                  <option key={eq.id} value={eq.id}>
+                    {eq.name}
+                    {eq.equipment_type ? ` — ${eq.equipment_type}` : ""}
+                  </option>
+                ))}
+              </select>
+              {equipmentList.length === 0 && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  No equipment on this site yet. Add equipment via Data Model first.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Family + template */}
           <div className="space-y-3">
             <div>
@@ -397,7 +445,7 @@ export function OpportunityFormDialog({
           {/* Capex */}
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Capex ($)
+              Capex (£)
             </label>
             <input
               type="number"
@@ -480,7 +528,7 @@ export function OpportunityFormDialog({
             <button
               type="button"
               onClick={handleSave}
-              disabled={!calcTypeId || !name.trim() || saving}
+              disabled={!calcTypeId || !name.trim() || !effectiveEquipmentId || saving}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               data-testid="opportunity-save-button"
             >

@@ -326,3 +326,51 @@ def run_fdd_job(job_id: str) -> None:
     except Exception as e:
         set_job_failed(job_id, str(e))
         emit(TOPIC_FDD_RUN + ".failed", {"job_id": job_id, "error": str(e)})
+
+
+def run_energy_recompute_site_job(job_id: str, site_id: str) -> None:
+    """Refresh cached results for every enabled opportunity on a site after a
+    site-rates change. Best-effort; the recompute module emits its own events."""
+    from openfdd_stack.platform.energy_recompute import recompute_for_site
+
+    set_job_running(job_id)
+    try:
+        n = recompute_for_site(site_id)
+        set_job_finished(job_id, {"recomputed": n, "site_id": site_id})
+    except Exception as e:
+        _log.exception("recompute_for_site failed for %s", site_id)
+        set_job_failed(job_id, str(e))
+
+
+def run_energy_recompute_equipment_job(job_id: str, equipment_id: str) -> None:
+    """Same as the site variant but scoped to one piece of equipment, fired
+    when the equipment energy profile is updated."""
+    from openfdd_stack.platform.energy_recompute import recompute_for_equipment
+
+    set_job_running(job_id)
+    try:
+        n = recompute_for_equipment(equipment_id)
+        set_job_finished(job_id, {"recomputed": n, "equipment_id": equipment_id})
+    except Exception as e:
+        _log.exception("recompute_for_equipment failed for %s", equipment_id)
+        set_job_failed(job_id, str(e))
+
+
+def spawn_energy_recompute_site(site_id: str) -> str:
+    """Fire-and-forget recompute scoped to a site. Returns job_id."""
+    job_id = create_job("energy_recompute_site", {"site_id": site_id})
+    threading.Thread(
+        target=run_energy_recompute_site_job, args=(job_id, site_id), daemon=True
+    ).start()
+    return job_id
+
+
+def spawn_energy_recompute_equipment(equipment_id: str) -> str:
+    """Fire-and-forget recompute scoped to one piece of equipment. Returns job_id."""
+    job_id = create_job("energy_recompute_equipment", {"equipment_id": equipment_id})
+    threading.Thread(
+        target=run_energy_recompute_equipment_job,
+        args=(job_id, equipment_id),
+        daemon=True,
+    ).start()
+    return job_id

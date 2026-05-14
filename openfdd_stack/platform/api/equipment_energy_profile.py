@@ -148,4 +148,12 @@ def put_equipment_energy_profile(
             row = cur.fetchone()
         conn.commit()
     logger.info("Updated energy profile for equipment %s", equipment_id)
+    try:
+        from openfdd_stack.platform.jobs import spawn_energy_recompute_equipment
+
+        spawn_energy_recompute_equipment(str(equipment_id))
+    except Exception:
+        logger.exception(
+            "Failed to spawn energy recompute for equipment %s", equipment_id
+        )
     return EquipmentEnergyProfileRead.model_validate(dict(row))

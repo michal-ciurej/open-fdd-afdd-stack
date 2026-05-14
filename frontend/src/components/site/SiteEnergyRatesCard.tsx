@@ -24,7 +24,7 @@ const EMPTY_FORM: RateForm = {
   electric_rate_per_kwh: "",
   demand_charge_per_kw: "",
   therm_rate_usd: "",
-  currency: "USD",
+  currency: "GBP",
 };
 
 function toForm(rates: {
@@ -75,7 +75,7 @@ export function SiteEnergyRatesCard({ className }: SiteEnergyRatesCardProps) {
       electric_rate_per_kwh: electric,
       demand_charge_per_kw: demand,
       therm_rate_usd: therm,
-      currency: form.currency.trim() || "USD",
+      currency: form.currency.trim() || "GBP",
     });
   }
 
@@ -104,7 +104,7 @@ export function SiteEnergyRatesCard({ className }: SiteEnergyRatesCardProps) {
             <div className="flex flex-wrap items-end gap-4">
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Electric ($/kWh)
+                  Electric (£/kWh)
                 </label>
                 <input
                   type="number"
@@ -121,7 +121,7 @@ export function SiteEnergyRatesCard({ className }: SiteEnergyRatesCardProps) {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Demand ($/kW)
+                  Demand (£/kW)
                 </label>
                 <input
                   type="number"
@@ -138,7 +138,7 @@ export function SiteEnergyRatesCard({ className }: SiteEnergyRatesCardProps) {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Gas ($/therm)
+                  Gas (£/therm)
                 </label>
                 <input
                   type="number"

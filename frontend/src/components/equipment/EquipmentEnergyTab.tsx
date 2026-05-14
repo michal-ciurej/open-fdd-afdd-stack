@@ -34,7 +34,7 @@ const QUALITY_VARIANT: Record<DataQuality, "success" | "secondary" | "outline"> 
 
 function fmtCurrency(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return "—";
-  return `$${Math.round(value).toLocaleString()}`;
+  return `£${Math.round(value).toLocaleString()}`;
 }
 
 function fmtYears(value: number | null | undefined): string {

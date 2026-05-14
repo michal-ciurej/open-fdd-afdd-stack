@@ -16,6 +16,7 @@ from openfdd_stack.platform.realtime.events import (
     TOPIC_NIAGARA_SCAN,
     TOPIC_IQVISION_SYNC,
     TOPIC_IQVISION_SCAN,
+    TOPIC_ENERGY_RECOMPUTE,
     emit,
 )
 from openfdd_stack.platform.realtime.hub import get_hub
@@ -38,4 +39,5 @@ __all__ = [
     "TOPIC_NIAGARA_SCAN",
     "TOPIC_IQVISION_SYNC",
     "TOPIC_IQVISION_SCAN",
+    "TOPIC_ENERGY_RECOMPUTE",
 ]

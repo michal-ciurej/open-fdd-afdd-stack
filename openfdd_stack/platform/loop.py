@@ -600,6 +600,38 @@ def run_fdd_loop(
                     exc_info=_log.isEnabledFor(logging.DEBUG),
                 )
 
+            # Auto-seed disabled energy opportunities for new (equipment, fault) pairs.
+            # Opt-in per rule via fault_definitions.params hints; silently skips rules
+            # without default_calc_type / default_measure_family.
+            try:
+                from openfdd_stack.platform.energy_auto_seed import (
+                    auto_seed_from_results,
+                )
+
+                auto_seed_from_results(all_results)
+            except Exception as e:
+                _log.warning(
+                    "energy auto-seed failed after writing fault_results: %s",
+                    e,
+                    exc_info=_log.isEnabledFor(logging.DEBUG),
+                )
+
+        # Refresh cached results for every enabled opportunity so trailing
+        # fault hours + latest evidence catch up. Best-effort; opportunity
+        # data is informational and a stale cache is preferable to a failed run.
+        try:
+            from openfdd_stack.platform.energy_recompute import recompute_all_enabled
+
+            n_recomputed = recompute_all_enabled()
+            if n_recomputed:
+                _log.info("energy: recomputed %d opportunities", n_recomputed)
+        except Exception as e:
+            _log.warning(
+                "energy opportunity recompute failed: %s",
+                e,
+                exc_info=_log.isEnabledFor(logging.DEBUG),
+            )
+
         _log.info(
             "FDD run done: sites_processed=%d equipment_evaluated=%d "
             "skipped(no_data=%d, insufficient_rows=%d) faults_written=%d",
