@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, Sun, Moon, Cloud } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Sun, Moon } from "lucide-react";
 import { useFddStatus } from "@/hooks/use-fdd-status";
-import { useConfig } from "@/hooks/use-config";
 import { useActiveFaults } from "@/hooks/use-faults";
 import { useTheme } from "@/contexts/theme-context";
 import { TutorialPopover } from "@/components/ui/tutorial-popover";
@@ -47,28 +46,11 @@ function ActiveFaultCounter() {
 
 export function TopBar() {
   const { data: fddStatus } = useFddStatus();
-  const { data: config } = useConfig();
   const { theme, setTheme } = useTheme();
   const lastRun = fddStatus?.last_run;
   const isDark =
     theme === "dark" ||
     (theme === "system" && typeof document !== "undefined" && document.documentElement.classList.contains("dark"));
-  const weatherEnabled = config?.open_meteo_enabled === true;
-  const ruleIntervalHours =
-    config?.rule_interval_hours != null ? Number(config.rule_interval_hours) : undefined;
-  const withFdd = ruleIntervalHours != null && ruleIntervalHours > 0;
-  const weatherTimeAgo = withFdd && lastRun?.run_ts ? timeAgo(lastRun.run_ts) : null;
-  const standaloneIntervalHours = config?.open_meteo_interval_hours ?? 24;
-  const weatherLabel = weatherTimeAgo
-    ? weatherTimeAgo
-    : withFdd && ruleIntervalHours != null
-      ? ruleIntervalHours < 1
-        ? `with FDD (every ${Math.round(ruleIntervalHours * 60)}m)`
-        : `with FDD (every ${ruleIntervalHours}h)`
-      : `every ${standaloneIntervalHours}h`;
-  const weatherMeaning = withFdd
-    ? "Weather is fetched with each FDD run."
-    : "Weather is fetched by the standalone scraper every N hours.";
 
   return (
     <header className="fdd-floating-pill-topbar relative z-30 flex h-14 shrink-0 items-center justify-between gap-4 border border-border/60 bg-card/80 px-6 backdrop-blur-lg">

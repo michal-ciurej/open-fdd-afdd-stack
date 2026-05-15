@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ListOrdered, Database, Upload, Server, Save, RotateCcw, Search, Trash2, Download, FileText, FileUp } from "lucide-react";
+import { Database, Upload, Server, Save, RotateCcw, Search, Trash2, Download, FileText, FileUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { JsonPrettyPanel } from "@/components/ui/json-pretty-panel";
 import { Skeleton } from "@/components/ui/skeleton";

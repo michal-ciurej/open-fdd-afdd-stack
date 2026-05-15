@@ -16,12 +16,10 @@ import { createSite, deleteSite, type SiteCreate } from "@/lib/crud-api";
 import { useSites } from "@/hooks/use-sites";
 
 type SitesSetupCardProps = {
-  /** Shown in the card title next to "Sites" (e.g. Step 1). */
-  stepLabel?: string;
   className?: string;
 };
 
-export function SitesSetupCard({ stepLabel = "Step 1", className }: SitesSetupCardProps) {
+export function SitesSetupCard({ className }: SitesSetupCardProps) {
   const queryClient = useQueryClient();
   const { data: sites = [] } = useSites();
   const [newSiteName, setNewSiteName] = useState("");
