@@ -1,0 +1,25 @@
+# Compliance: AHU air-side ΔT below target during cooling operation.
+# Symptom of low coil heat transfer (frosted/fouled coil, low flow, OAT close
+# to setpoint). Persistent low ΔT wastes fan energy for the cooling delivered.
+name: ahu_low_delta_t_compliance
+description: AHU air-side ΔT below target while cooling is commanded
+type: expression
+flag: ahu_low_delta_t_compliance_flag
+category: compliance
+severity: warning
+equipment_type: [Air_Handling_Unit, AHU]
+
+inputs:
+  Supply_Air_Temperature_Sensor:
+    brick: Supply_Air_Temperature_Sensor
+  Return_Air_Temperature_Sensor:
+    brick: Return_Air_Temperature_Sensor
+  Cooling_Command:
+    brick: Cooling_Command
+
+params:
+  min_delta_t_f: 12.0
+  rolling_window: 12
+
+expression: |
+  ((Return_Air_Temperature_Sensor - Supply_Air_Temperature_Sensor).rolling(window=rolling_window).mean() < min_delta_t_f) & (normalize_cmd(Cooling_Command) > 0)

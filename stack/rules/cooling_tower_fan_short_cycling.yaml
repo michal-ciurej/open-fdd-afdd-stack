@@ -1,0 +1,28 @@
+# Cooling tower fan status changes excessively within a short period, indicating short cycling.
+# Catches stuck relay, control loop instability, oversized fan, or aggressive staging logic.
+# Tuning: state-change count uses a 60-min rolling window (12 samples at 5-min data); threshold set at 8 changes per the legacy rule.
+name: cooling_tower_fan_short_cycling
+description: CT fan short cycling — too many state changes in 60 min
+type: expression
+flag: cooling_tower_fan_short_cycling_flag
+category: general
+severity: warning
+equipment_type:
+  - Cooling_Tower
+
+inputs:
+  Cooling_Tower_Fan_Status:
+    brick: Cooling_Tower_Fan_Status
+  Cooling_Tower_Fan_Command:
+    brick: Cooling_Tower_Fan_Command
+
+params:
+  max_state_changes: 8      # count — maximum allowed fan state changes per rolling window before flagging
+  rolling_window: 12        # 60 min at 5-min sampling (debounce window)
+
+expression: |
+  (
+    Cooling_Tower_Fan_Status.diff().abs().fillna(0).rolling(window=rolling_window).sum() > max_state_changes
+  ) | (
+    normalize_cmd(Cooling_Tower_Fan_Command).diff().abs().fillna(0).rolling(window=rolling_window).sum() > max_state_changes
+  )

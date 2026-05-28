@@ -1,0 +1,26 @@
+# Boiler is running but hot water leaving (supply) temperature remains more than 4°C below setpoint for 2 hours.
+# Catches undersized or degraded burner, fouled heat exchanger, incorrect setpoint configuration, or failed modulating control.
+# Tuning: 2-hour trigger period → 24 consecutive 5-min samples; delta threshold kept at legacy 4°C.
+name: boiler_hhwt_sp_not_reached
+description: HW leaving temp more than 4°C below setpoint while boiler is running
+type: expression
+flag: boiler_hhwt_sp_not_reached_flag
+category: general
+severity: warning
+equipment_type:
+  - Boiler
+
+inputs:
+  Hot_Water_Supply_Temperature_Sensor:
+    brick: Hot_Water_Supply_Temperature_Sensor
+  Hot_Water_Supply_Temperature_Setpoint:
+    brick: Hot_Water_Supply_Temperature_Setpoint
+  Boiler_Status:
+    brick: Boiler_Status
+
+params:
+  temp_delta: 4.0        # °C — fault threshold: leaving temp more than 4°C below setpoint
+  rolling_window: 24     # 24 consecutive 5-min samples ≈ 2 h trigger period
+
+expression: |
+  (normalize_cmd(Boiler_Status) > 0) & ((Hot_Water_Supply_Temperature_Setpoint - Hot_Water_Supply_Temperature_Sensor) > temp_delta)

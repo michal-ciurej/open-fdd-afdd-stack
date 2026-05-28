@@ -1,0 +1,29 @@
+# Boiler enable command toggles on/off too many times within a rolling window, indicating short cycling.
+# Catches oversized boiler relative to load, faulty aquastat or controller, low-load conditions, hunting setpoint.
+# Tuning: threshold of 8 state changes per 60-min window; sized for 5-min data (12 samples/hour).
+name: boiler_short_cycling
+description: Boiler command short cycling — too many on/off changes in 60 min
+type: expression
+flag: boiler_short_cycling_flag
+category: general
+severity: warning
+equipment_type:
+  - Boiler
+
+inputs:
+  Boiler_Run_Command:
+    brick: Boiler_Run_Command
+
+params:
+  state_change_threshold: 8   # count — max allowable on/off transitions per rolling window
+  rolling_window: 12          # 60 min at 5-min sampling (debounce window for state-change count)
+
+expression: |
+  (
+    normalize_cmd(Boiler_Run_Command)
+    .diff()
+    .abs()
+    .rolling(window=rolling_window)
+    .sum()
+    > state_change_threshold
+  )

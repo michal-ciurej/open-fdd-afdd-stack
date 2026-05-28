@@ -19,6 +19,7 @@ from openfdd_stack.platform.api.auth_principal import (
     Role,
     accessible_site_ids,
     get_current_user,
+    record_user_login,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,11 @@ def me(user: AuthUser = Depends(get_current_user)) -> MeResponse:
 
     The SPA calls this on mount to decide which menu items to render and
     which sites to show in the site selector.
+
+    Side effect: records the login in app_users so the admin User-access page
+    has a roster to assign sites against (best-effort; never blocks the call).
     """
+    record_user_login(user)
     return MeResponse(
         oid=user.oid,
         email=user.email,

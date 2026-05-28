@@ -42,7 +42,7 @@ function formatLocalDT(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-const PLOT_COLORS = [
+const PLOT_COLORS_LIGHT = [
   "#1d4ed8",
   "#be185d",
   "#15803d",
@@ -52,6 +52,33 @@ const PLOT_COLORS = [
   "#b91c1c",
   "#4d7c0f",
 ];
+
+const PLOT_COLORS_DARK = [
+  "#60a5fa",
+  "#f472b6",
+  "#4ade80",
+  "#fbbf24",
+  "#a78bfa",
+  "#22d3ee",
+  "#f87171",
+  "#a3e635",
+];
+
+function useIsDarkMode(): boolean {
+  const [isDark, setIsDark] = useState(() =>
+    typeof document !== "undefined" &&
+    document.documentElement.classList.contains("dark"),
+  );
+  useEffect(() => {
+    const root = document.documentElement;
+    const obs = new MutationObserver(() => {
+      setIsDark(root.classList.contains("dark"));
+    });
+    obs.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+  return isDark;
+}
 
 type PlotMode = "lines" | "points" | "both";
 function toDateOnly(iso: string): string {
@@ -72,9 +99,11 @@ function pointLabel(p: Point): string {
 function PlotlyCanvas({
   traces,
   title,
+  isDark,
 }: {
   traces: Record<string, unknown>[];
   title: string;
+  isDark: boolean;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -85,19 +114,39 @@ function PlotlyCanvas({
         react: (el: HTMLDivElement, data: unknown[], layout: unknown, config: unknown) => void;
       };
       if (!mounted || !ref.current) return;
+      const text = isDark ? "rgba(229, 231, 235, 0.82)" : "rgba(17, 24, 39, 0.85)";
+      const muted = isDark ? "rgba(229, 231, 235, 0.6)" : "rgba(75, 85, 99, 0.85)";
+      const grid = isDark ? "rgba(148, 163, 184, 0.12)" : "rgba(15, 23, 42, 0.08)";
+      const axisLine = isDark ? "rgba(148, 163, 184, 0.25)" : "rgba(15, 23, 42, 0.18)";
+      const axis = {
+        automargin: true,
+        gridcolor: grid,
+        zerolinecolor: grid,
+        linecolor: axisLine,
+        tickfont: { color: muted },
+        title: { font: { color: muted } },
+      };
       Plotly.react(
         ref.current,
         traces,
         {
-          title,
+          title: { text: title, font: { color: text } },
           autosize: true,
           margin: { t: 50, r: 24, b: 48, l: 56 },
           paper_bgcolor: "transparent",
           plot_bgcolor: "transparent",
-          xaxis: { title: "X", automargin: true },
-          yaxis: { title: "Value", automargin: true },
-          yaxis2: { title: "Fault 0/1", overlaying: "y", side: "right", range: [0, 1.1] },
-          legend: { orientation: "h" },
+          font: { color: text },
+          xaxis: { ...axis, title: { text: "X", font: { color: muted } } },
+          yaxis: { ...axis, title: { text: "Value", font: { color: muted } } },
+          yaxis2: {
+            ...axis,
+            title: { text: "Fault 0/1", font: { color: muted } },
+            overlaying: "y",
+            side: "right",
+            range: [0, 1.1],
+            showgrid: false,
+          },
+          legend: { orientation: "h", font: { color: text } },
         },
         {
           responsive: true,
@@ -110,7 +159,7 @@ function PlotlyCanvas({
     return () => {
       mounted = false;
     };
-  }, [traces, title]);
+  }, [traces, title, isDark]);
   return <div ref={ref} className="h-[62vh] min-h-[420px] w-full rounded-lg border border-border/60 bg-card" />;
 }
 
@@ -319,6 +368,29 @@ export function PlotsPage() {
     [faultDefById],
   );
 
+  const isDark = useIsDarkMode();
+  const palette = isDark ? PLOT_COLORS_DARK : PLOT_COLORS_LIGHT;
+
+  const pointByExternalId = useMemo(() => {
+    const m = new Map<string, Point>();
+    for (const p of points) {
+      if (p.external_id) m.set(p.external_id, p);
+    }
+    return m;
+  }, [points]);
+
+  const columnLabel = useCallback(
+    (col: string): string => {
+      if (col.startsWith("fault_")) {
+        const fid = col.slice("fault_".length);
+        return `fault: ${faultOptionLabel(fid)}`;
+      }
+      const p = pointByExternalId.get(col);
+      return p ? pointLabel(p) : col;
+    },
+    [pointByExternalId, faultOptionLabel],
+  );
+
   const pointIdsForExport =
     selectedPointIds.length > 0
       ? selectedPointIds
@@ -431,14 +503,15 @@ export function PlotsPage() {
         x.push(xv as string | number);
         y.push(yNum);
       }
+      const color = palette[i % palette.length];
       out.push({
         x,
         y,
         type: "scatter",
         mode,
-        name: col,
-        line: { width: 2, color: PLOT_COLORS[i % PLOT_COLORS.length] },
-        marker: { size: 5, color: PLOT_COLORS[i % PLOT_COLORS.length] },
+        name: columnLabel(col),
+        line: { width: isDark ? 2.25 : 2, color },
+        marker: { size: 5, color },
       });
     });
     if (showFaultOverlays && selectedFaultId && faultData?.series?.length) {
@@ -455,7 +528,7 @@ export function PlotsPage() {
         type: "scatter",
         mode: "lines",
         name: `fault: ${faultOptionLabel(selectedFaultId)}`,
-        line: { shape: "hv", width: 1.5, dash: "dot", color: PLOT_COLORS[yColumns.length % PLOT_COLORS.length] },
+        line: { shape: "hv", width: 1.5, dash: "dot", color: palette[yColumns.length % palette.length] },
         yaxis: "y2",
       });
     }
@@ -468,6 +541,9 @@ export function PlotsPage() {
     faultData,
     showFaultOverlays,
     faultOptionLabel,
+    columnLabel,
+    palette,
+    isDark,
   ]);
 
   useEffect(() => {
@@ -763,7 +839,7 @@ export function PlotsPage() {
               className="h-28 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
             >
               {effectiveCsv.headers.filter((h) => h !== "timestamp").map((h) => (
-                <option key={h} value={h}>{h}</option>
+                <option key={h} value={h}>{columnLabel(h)}</option>
               ))}
             </select>
           </div>
@@ -778,6 +854,7 @@ export function PlotsPage() {
           <PlotlyCanvas
             traces={traces}
             title="Trends and Faults"
+            isDark={isDark}
           />
         ) : (
           <div className="flex h-[50vh] min-h-[360px] items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">

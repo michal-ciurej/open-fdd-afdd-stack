@@ -1,0 +1,35 @@
+# AHU return damper command oscillates with a range >10% and crosses its moving average
+# more than 6 times in a 60-minute window, indicating PID control instability.
+# Catches aggressive PID tuning, actuator wear, sensor noise, or conflicting control sequences.
+# Tuning note: window sized for 60 min at 5-min sampling (12 samples); thresholds match legacy rule.
+name: ahu_return_damper_hunting
+description: Return damper command hunting — range >10% with >6 moving-average crosses
+type: expression
+flag: ahu_return_damper_hunting_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Return_Air_Damper_Position_Command:
+    brick: Return_Air_Damper_Position_Command
+
+params:
+  window: 12              # samples — 60 min at 5-min data
+  range_threshold: 0.10   # fraction — damper range must exceed 10% of full stroke
+  cross_threshold: 6      # number of moving-average crossings indicating instability
+  rolling_window: 12      # ~60 min at 5-min sampling (debounce: fault must persist full window)
+
+expression: |
+  (
+    (normalize_cmd(Return_Air_Damper_Position_Command).rolling(window=window).max()
+     - normalize_cmd(Return_Air_Damper_Position_Command).rolling(window=window).min()) > range_threshold
+  ) & (
+    (
+      ((normalize_cmd(Return_Air_Damper_Position_Command)
+        - normalize_cmd(Return_Air_Damper_Position_Command).rolling(window=window).mean())
+       * (normalize_cmd(Return_Air_Damper_Position_Command)
+          - normalize_cmd(Return_Air_Damper_Position_Command).rolling(window=window).mean()).shift(1)) < 0
+    ).rolling(window=window).sum() > cross_threshold
+  )

@@ -1,0 +1,33 @@
+# PAC unit actively heating while zone temperature is persistently above zone setpoint.
+# Catches stuck heating valve, incorrect mode control, faulty zone sensor, or wrong setpoint.
+# Heating active inferred from return air temperature exceeding return air setpoint.
+# Trigger period 30 min → 6 samples at 5-min data.
+name: ahu_pac_heating_while_zt_above_sp
+description: PAC heating active while zone temp exceeds setpoint
+type: expression
+flag: ahu_pac_heating_while_zt_above_sp_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Zone_Air_Temperature_Sensor:
+    brick: Zone_Air_Temperature_Sensor
+  Zone_Air_Temperature_Setpoint:
+    brick: Zone_Air_Temperature_Setpoint
+  Return_Air_Temperature_Sensor:
+    brick: Return_Air_Temperature_Sensor
+  Return_Air_Temperature_Setpoint:
+    brick: Return_Air_Temperature_Setpoint
+
+params:
+  zt_above_sp_threshold: 1.0   # °C — zone temp must exceed setpoint by this margin to flag
+  heating_active_margin: 0.0   # °C — return air temp above return air setpoint indicates heating active
+  rolling_window: 6            # 30 min at 5-min sampling (debounce)
+
+expression: |
+  (
+    (Zone_Air_Temperature_Sensor - Zone_Air_Temperature_Setpoint > zt_above_sp_threshold) &
+    (Return_Air_Temperature_Sensor > Return_Air_Temperature_Setpoint + heating_active_margin)
+  )

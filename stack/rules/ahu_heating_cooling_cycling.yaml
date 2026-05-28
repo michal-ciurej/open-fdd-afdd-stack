@@ -1,0 +1,29 @@
+# AHU switches between heating and cooling mode repeatedly within a short window.
+# Catches simultaneous or rapid sequential heating/cooling demand, unstable mixed-air control,
+# oversized plant, or a misconfigured control sequence (e.g. missing deadband).
+# Tuning: 45-min window = 9 samples at 5-min data; flag when ≥ 3 mode transitions detected.
+name: ahu_heating_cooling_cycling
+description: AHU cycling between heating and cooling modes within 45 minutes
+type: expression
+flag: ahu_heating_cooling_cycling_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Heating_Valve_Command:
+    brick: Heating_Valve_Command
+  Cooling_Valve_Command:
+    brick: Cooling_Valve_Command
+
+params:
+  vlv_open: 0.05          # fraction — treat anything above 5% as "active"
+  transition_count_max: 3 # number of mode transitions in window before flagging
+  rolling_window: 9       # 45 min at 5-min sampling (debounce window)
+
+expression: |
+  (
+    (normalize_cmd(Heating_Valve_Command) > vlv_open).astype("float").diff().abs().rolling(window=rolling_window).sum()
+    + (normalize_cmd(Cooling_Valve_Command) > vlv_open).astype("float").diff().abs().rolling(window=rolling_window).sum()
+  ) >= transition_count_max

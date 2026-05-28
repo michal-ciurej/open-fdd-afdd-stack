@@ -1,0 +1,30 @@
+# Outside air relative humidity sensor reads outside valid range (0.2–99.8 %RH) or is flat-lining.
+# Catches failed/saturated humidity sensors, wiring faults, transmitter failure, or stuck A/D conversion.
+# Tuning: 3-hour trigger period = 36 samples at 5-min data; flatline window matches same period.
+name: ahu_oarh_sensor_unexpected_value
+description: Outside air humidity sensor out of valid range or flat-lining
+type: expression
+flag: ahu_oarh_sensor_unexpected_value_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Outside_Air_Humidity_Sensor:
+    brick: Outside_Air_Humidity_Sensor
+
+params:
+  rh_low: 0.2          # %RH — lower bound of valid sensor range
+  rh_high: 99.8        # %RH — upper bound of valid sensor range
+  flatline_tol: 0.1    # %RH — rolling spread below this is considered flat-lined
+  flatline_window: 36  # samples — 3 h at 5-min data, matches trigger period
+  rolling_window: 36   # samples — 3 h at 5-min data (debounce)
+
+expression: |
+  (
+    (Outside_Air_Humidity_Sensor < rh_low) | (Outside_Air_Humidity_Sensor > rh_high)
+  ) | (
+    (Outside_Air_Humidity_Sensor.rolling(window=flatline_window).max() -
+     Outside_Air_Humidity_Sensor.rolling(window=flatline_window).min()) < flatline_tol
+  )

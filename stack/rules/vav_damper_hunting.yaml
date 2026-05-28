@@ -1,0 +1,35 @@
+# VAV damper position oscillates excessively around its median, indicating PID hunting or control instability.
+# Catches aggressive PID tuning, sensor noise, undersized actuator, or conflicting zone/pressure resets.
+# Tuning: 2-hour rolling window at 5-min data (24 samples); 15% deviation threshold; 4 sign-changes ≈ 2 full cycles/hr.
+name: vav_damper_hunting
+description: VAV damper hunting — excessive oscillation around median position
+type: expression
+flag: vav_damper_hunting_flag
+category: general
+severity: warning
+equipment_type:
+  - Variable_Air_Volume_Box
+  - Variable_Air_Volume_Box_With_Reheat
+
+inputs:
+  Damper_Position_Command:
+    brick: Damper_Position_Command
+  Damper_Position_Sensor:
+    brick: Damper_Position_Sensor
+
+params:
+  range_threshold: 0.15       # fraction (0–1) — flag when peak-to-trough range exceeds 15% of full stroke
+  min_crossings: 4            # slope direction reversals in window — 4 ≈ 2 full up/down cycles
+  rolling_window: 24          # 2 h at 5-min sampling (debounce / analysis window)
+
+expression: |
+  (
+    ((normalize_cmd(Damper_Position_Command).rolling(window=rolling_window).max()
+      - normalize_cmd(Damper_Position_Command).rolling(window=rolling_window).min()) > range_threshold)
+    |
+    ((normalize_cmd(Damper_Position_Sensor).rolling(window=rolling_window).max()
+      - normalize_cmd(Damper_Position_Sensor).rolling(window=rolling_window).min()) > range_threshold)
+  ) & (
+    ((normalize_cmd(Damper_Position_Command).diff()
+      * normalize_cmd(Damper_Position_Command).diff().shift(1)) < 0).rolling(window=rolling_window).sum() >= min_crossings
+  )

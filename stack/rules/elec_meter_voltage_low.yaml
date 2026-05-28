@@ -1,0 +1,22 @@
+# Electrical meter voltage sensor reports sustained low voltage below the minimum threshold.
+# Catches under-voltage conditions: supply issues, transformer tap problems, high load demand, or faulty sensor.
+# Tuning: 30-min window (6 samples at 5-min) avoids nuisance trips from momentary sags.
+name: elec_meter_voltage_low
+description: Voltage sensor reading persistently below minimum threshold
+type: expression
+flag: elec_meter_voltage_low_flag
+category: general
+severity: warning
+equipment_type:
+  - Building_Electrical_Meter
+
+inputs:
+  Electric_Voltage_Sensor:
+    brick: Electric_Voltage_Sensor
+
+params:
+  voltage_min: 220.0      # V — minimum acceptable voltage level
+  rolling_window: 6       # 30 min at 5-min sampling (debounce)
+
+expression: |
+  (Electric_Voltage_Sensor.rolling(window=rolling_window).mean() < voltage_min)

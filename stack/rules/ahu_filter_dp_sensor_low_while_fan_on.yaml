@@ -1,0 +1,30 @@
+# AHU filter differential pressure sensor reads near-zero while the supply fan is running.
+# Indicates a failed, disconnected, or stuck pressure sensor (not a real low-DP condition).
+# Catches broken sensor tubing, failed transducer, wiring fault, or sensor out of range.
+# Trigger period is 4 hours → rolling_window: 48 at 5-min sampling.
+name: ahu_filter_dp_sensor_low_while_fan_on
+description: Filter DP sensor reads near zero while fan is running
+type: expression
+flag: ahu_filter_dp_sensor_low_while_fan_on_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Filter_Differential_Pressure_Sensor:
+    brick: Filter_Differential_Pressure_Sensor
+  Supply_Fan_Status:
+    brick: Supply_Fan_Status
+
+params:
+  dp_low_threshold: 15.0    # Pa — absolute DP below this magnitude is considered near-zero (sensor error band)
+  dp_high_threshold: -15.0  # Pa — lower bound of the near-zero band
+  rolling_window: 48         # 4 hours at 5-min sampling (12 samples/h × 4 h)
+
+expression: |
+  (
+    (Filter_Differential_Pressure_Sensor >= dp_high_threshold) &
+    (Filter_Differential_Pressure_Sensor <= dp_low_threshold) &
+    (Supply_Fan_Status > 0)
+  )

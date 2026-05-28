@@ -25,7 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from openfdd_stack.platform.api import auth_me_routes
+from openfdd_stack.platform.api import admin_users, auth_me_routes
 from openfdd_stack.platform.api.auth_principal import EntraPrincipalMiddleware
 
 from openfdd_stack.platform.config import get_platform_settings
@@ -51,6 +51,9 @@ from openfdd_stack.platform.api import (
     rules as rules_router,
     run_fdd,
     sites,
+    site_schedules,
+    maintenance,
+    compliance,
     timeseries as timeseries_router,
 )
 from openfdd_stack.platform.api.schemas import CapabilityResponse, ErrorResponse, ErrorDetail
@@ -232,7 +235,11 @@ def _unified_error_handler(request: Request, exc: Exception):
 _API = "/api"
 app.include_router(config_router.router, prefix=_API)
 app.include_router(auth_me_routes.router, prefix=_API)
+app.include_router(admin_users.router, prefix=_API)
 app.include_router(sites.router, prefix=_API)
+app.include_router(site_schedules.router, prefix=_API)
+app.include_router(maintenance.router, prefix=_API)
+app.include_router(compliance.router, prefix=_API)
 app.include_router(energy_rates.router, prefix=_API)
 app.include_router(points.router, prefix=_API)
 app.include_router(energy_calculations.router, prefix=_API)

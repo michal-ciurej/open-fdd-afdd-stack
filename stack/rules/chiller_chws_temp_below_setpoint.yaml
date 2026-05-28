@@ -1,0 +1,29 @@
+# Chiller running in cooling mode but leaving CHW temperature is persistently below setpoint.
+# Catches oversized chiller, aggressive setpoint reset, faulty leaving-temp sensor, or control loop windup.
+# Tuning: 0.5°C delta is tight; 30-min window (6 samples at 5-min) avoids nuisance trips on transients.
+name: chiller_chws_temp_below_setpoint
+description: Leaving CHW temp below setpoint while chiller is running in cooling mode
+type: expression
+flag: chiller_chws_temp_below_sp_flag
+category: general
+severity: warning
+equipment_type:
+  - Chiller
+
+inputs:
+  Chilled_Water_Supply_Temperature_Sensor:
+    brick: Chilled_Water_Supply_Temperature_Sensor
+  Chilled_Water_Supply_Temperature_Setpoint:
+    brick: Chilled_Water_Supply_Temperature_Setpoint
+  Chiller_Status:
+    brick: Chiller_Status
+
+params:
+  chws_below_delta: 0.5   # °C — flag when leaving CHW temp is more than this below setpoint
+  rolling_window: 6       # 30 min at 5-min sampling (debounce)
+
+expression: |
+  (
+    (normalize_cmd(Chiller_Status) > 0)
+    & ((Chilled_Water_Supply_Temperature_Setpoint - Chilled_Water_Supply_Temperature_Sensor) > chws_below_delta)
+  )

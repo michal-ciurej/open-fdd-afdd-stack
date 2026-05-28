@@ -1,0 +1,30 @@
+# AHU supply air temperature persistently below setpoint while in heating mode.
+# Catches failed heating coil, stuck heating valve, undersized plant, or control loop issue.
+# Trigger period is 1 hour; rolling_window sized for 5-min samples (12 samples = 1 h).
+name: ahu_sat_below_setpoint_heating
+description: Supply air temp below setpoint while AHU in heating mode
+type: expression
+flag: ahu_sat_below_setpoint_heating_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Supply_Air_Temperature_Sensor:
+    brick: Supply_Air_Temperature_Sensor
+  Supply_Air_Temperature_Setpoint:
+    brick: Supply_Air_Temperature_Setpoint
+  Return_Air_Temperature_Sensor:
+    brick: Return_Air_Temperature_Sensor
+
+params:
+  sat_err: 1.0          # °C — SAT must be this far below setpoint to flag
+  heating_mode_margin: 0.0  # °C — heating mode when RAT < SATSP (no additional margin)
+  rolling_window: 12    # 12 samples = 1 h at 5-min data (debounce)
+
+expression: |
+  (
+    (Return_Air_Temperature_Sensor < Supply_Air_Temperature_Setpoint)
+    & ((Supply_Air_Temperature_Setpoint - Supply_Air_Temperature_Sensor) > sat_err)
+  )

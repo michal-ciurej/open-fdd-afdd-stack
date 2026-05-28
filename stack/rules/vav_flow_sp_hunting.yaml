@@ -1,0 +1,31 @@
+# VAV flow setpoint oscillates repeatedly around its median — indicates PID or controls instability.
+# Catches aggressive control loop tuning, conflicting zone/AHU commands, or sensor noise driving hunting.
+# Tuning: 2-hour window at 5-min data = 24 samples; 2 full cycles/hour = 4 direction reversals per window.
+name: vav_flow_sp_hunting
+description: Flow setpoint hunting — oscillating around median more than threshold
+type: expression
+flag: vav_flow_sp_hunting_flag
+category: general
+severity: warning
+equipment_type:
+  - Variable_Air_Volume_Box
+  - Variable_Air_Volume_Box_With_Reheat
+
+inputs:
+  Discharge_Air_Flow_Setpoint:
+    brick: Discharge_Air_Flow_Setpoint
+
+params:
+  oscillation_threshold: 0.15   # fraction of median — flag when swing exceeds 15% of median value
+  min_reversals: 4              # minimum direction reversals in window (2 full up/down cycles/hour × 2 h)
+  rolling_window: 24            # 2-hour window at 5-min sampling (24 samples)
+
+expression: |
+  (
+    (Discharge_Air_Flow_Setpoint.rolling(window=rolling_window).max()
+     - Discharge_Air_Flow_Setpoint.rolling(window=rolling_window).min())
+    > (oscillation_threshold * Discharge_Air_Flow_Setpoint.rolling(window=rolling_window).mean())
+  ) & (
+    ((Discharge_Air_Flow_Setpoint.diff()
+      * Discharge_Air_Flow_Setpoint.diff().shift(1)) < 0).rolling(window=rolling_window).sum() >= min_reversals
+  )

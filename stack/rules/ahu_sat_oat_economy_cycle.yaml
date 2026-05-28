@@ -1,0 +1,37 @@
+# AHU supply air temperature significantly above OAT while in full economizer mode with heating valve closed.
+# Catches failed cooling coil, stuck heating valve leaking heat, OAT sensor fault, or SAT sensor fault.
+# Tuning: 90-min trigger period → 18 consecutive 5-min samples; 4°C delta matches legacy threshold.
+name: ahu_sat_oat_economy_cycle
+description: SAT significantly above OAT during full economizer cycle while AHU running
+type: expression
+flag: ahu_sat_oat_economy_cycle_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Outside_Air_Damper_Position_Command:
+    brick: Outside_Air_Damper_Position_Command
+  Supply_Air_Temperature_Sensor:
+    brick: Supply_Air_Temperature_Sensor
+  Outside_Air_Temperature_Sensor:
+    brick: Outside_Air_Temperature_Sensor
+  Supply_Fan_Status:
+    brick: Supply_Fan_Status
+  Heating_Valve_Command:
+    brick: Heating_Valve_Command
+
+params:
+  damper_full_open_threshold: 0.99   # fraction — economy damper considered fully open above 99%
+  sat_oat_delta: 4.0                 # °C — minimum SAT-OAT difference to flag
+  htg_vlv_closed: 0.05               # fraction — heating valve treated as closed below 5%
+  rolling_window: 18                 # ~90 min at 5-min sampling (debounce)
+
+expression: |
+  (
+    (normalize_cmd(Outside_Air_Damper_Position_Command) >= damper_full_open_threshold)
+    & ((Supply_Air_Temperature_Sensor - Outside_Air_Temperature_Sensor) >= sat_oat_delta)
+    & (Supply_Fan_Status > 0)
+    & (normalize_cmd(Heating_Valve_Command) < htg_vlv_closed)
+  )

@@ -1,0 +1,39 @@
+# AHU supply air temperature drops well below mixed air temperature while CHW valve is commanded closed.
+# Indicates chilled water passing through a leaking or failed cooling valve (valve seat wear, actuator failure, stuck open).
+# Tuning: 4°C delta and 120-min window avoid nuisance trips from sensor noise and short transients; 5-min samples assumed.
+
+name: ahu_chw_valve_passing
+description: SAT well below MAT while CHW valve closed — chilled water passing
+type: expression
+flag: ahu_chw_valve_passing_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Supply_Air_Temperature_Sensor:
+    brick: Supply_Air_Temperature_Sensor
+  Mixed_Air_Temperature_Sensor:
+    brick: Mixed_Air_Temperature_Sensor
+  Return_Air_Temperature_Sensor:
+    brick: Return_Air_Temperature_Sensor
+  Cooling_Valve_Command:
+    brick: Cooling_Valve_Command
+
+params:
+  sat_mat_delta: 4.0        # °C — SAT must be this far below MAT to indicate valve passing
+  sat_rat_delta: 4.0        # °C — fallback: SAT vs RAT when MAT unavailable
+  vlv_closed_max: 0.05      # fraction — valve treated as closed below 5% command
+  rolling_window: 24        # ~120 min at 5-min sampling (debounce, matches trigger period)
+
+expression: |
+  (
+    (
+      (Mixed_Air_Temperature_Sensor - Supply_Air_Temperature_Sensor) > sat_mat_delta
+    ) | (
+      (Return_Air_Temperature_Sensor - Supply_Air_Temperature_Sensor) > sat_rat_delta
+    )
+  ) & (
+    normalize_cmd(Cooling_Valve_Command) < vlv_closed_max
+  )

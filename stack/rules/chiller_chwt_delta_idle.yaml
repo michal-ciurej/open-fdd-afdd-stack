@@ -1,0 +1,30 @@
+# Chiller is running but not actively cooling, yet CHW entering/leaving delta is abnormal.
+# Catches sensor reversal (negative delta), stuck sensors, or incorrect chiller state reporting.
+# A 60-minute rolling window suppresses transient noise and post-state-change settling artefacts.
+name: chiller_chwt_delta_idle
+description: CHW entering/leaving temp delta abnormal while chiller running but not cooling
+type: expression
+flag: chiller_chwt_delta_idle_flag
+category: general
+severity: warning
+equipment_type:
+  - Chiller
+
+inputs:
+  Chilled_Water_Supply_Temperature_Sensor:
+    brick: Chilled_Water_Supply_Temperature_Sensor
+  Chilled_Water_Return_Temperature_Sensor:
+    brick: Chilled_Water_Return_Temperature_Sensor
+  Chiller_Status:
+    brick: Chiller_Status
+
+params:
+  delta_high: 2.0       # °C — upper bound; delta above this on an idle chiller is unexpected
+  delta_low: -0.2       # °C — negative delta indicates possible sensor reversal
+  rolling_window: 12    # 12 consecutive 5-min samples = 60 min trigger period
+
+expression: |
+  (normalize_cmd(Chiller_Status) > 0) & (
+    (np.abs(Chilled_Water_Return_Temperature_Sensor - Chilled_Water_Supply_Temperature_Sensor) > delta_high) |
+    ((Chilled_Water_Return_Temperature_Sensor - Chilled_Water_Supply_Temperature_Sensor) < delta_low)
+  )

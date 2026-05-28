@@ -1,0 +1,38 @@
+# AHU supply air temperature persistently exceeds its setpoint while the unit is in cooling mode.
+# Catches failed or undersized cooling coil, low chilled water flow, high chilled water supply temp,
+# economiser fault, or refrigerant charge issue. OAT lockout prevents nuisance trips in mild weather.
+# Tuning: 3°C deviation threshold; 1.5 h window at 5-min sampling = 18 consecutive samples.
+name: ahu_sat_sp_not_reached_cooling
+description: SAT above setpoint in cooling mode — cooling not tracking SP
+type: expression
+flag: ahu_sat_sp_not_reached_cooling_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Supply_Air_Temperature_Sensor:
+    brick: Supply_Air_Temperature_Sensor
+  Supply_Air_Temperature_Setpoint:
+    brick: Supply_Air_Temperature_Setpoint
+  Return_Air_Temperature_Sensor:
+    brick: Return_Air_Temperature_Sensor
+  Outside_Air_Temperature_Sensor:
+    brick: Outside_Air_Temperature_Sensor
+
+params:
+  sat_deviation: 3.0        # °C — fault threshold above SAT setpoint
+  oat_lockout: 18.0         # °C — minimum OAT to consider cooling mode active
+  sat_sp_cooling_max: 16.0  # °C — SAT-SP below this confirms cooling mode is demanded
+  rolling_window: 18        # 18 samples × 5 min = 1.5 h debounce (matches trigger period)
+
+expression: |
+  (
+    (Outside_Air_Temperature_Sensor > oat_lockout) &
+    (
+      (Return_Air_Temperature_Sensor > Supply_Air_Temperature_Setpoint) |
+      (Supply_Air_Temperature_Setpoint < sat_sp_cooling_max)
+    ) &
+    (Supply_Air_Temperature_Sensor > (Supply_Air_Temperature_Setpoint + sat_deviation))
+  )

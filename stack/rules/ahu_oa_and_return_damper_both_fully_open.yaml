@@ -1,0 +1,31 @@
+# AHU outside-air (economy) damper and return-air damper are both commanded fully open simultaneously.
+# Indicates a damper control conflict: if OA damper is 100% open the return damper should be nearly closed.
+# Catches failed actuators, stuck dampers, control logic error, or mis-wired/mis-configured damper commands.
+# Tuning: 99% threshold (0.99) matches legacy rule; 30-min window avoids nuisance trips during transitions.
+name: ahu_oa_and_return_damper_both_fully_open
+description: OA and return air dampers both fully open while AHU is running
+type: expression
+flag: ahu_oa_and_return_damper_both_fully_open_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Outside_Air_Damper_Command:
+    brick: Outside_Air_Damper_Command
+  Return_Air_Damper_Command:
+    brick: Return_Air_Damper_Command
+  Supply_Fan_Status:
+    brick: Supply_Fan_Status
+
+params:
+  damper_full_open_threshold: 0.99  # fraction — both dampers at or above 99% open triggers fault
+  rolling_window: 6                 # 30 min at 5-min sampling (matches legacy 30-min trigger period)
+
+expression: |
+  (
+    (normalize_cmd(Outside_Air_Damper_Command) >= damper_full_open_threshold)
+    & (normalize_cmd(Return_Air_Damper_Command) >= damper_full_open_threshold)
+    & (Supply_Fan_Status > 0)
+  )

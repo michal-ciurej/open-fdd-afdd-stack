@@ -1,0 +1,55 @@
+# AHU heating or cooling valve remains open while the supply fan is off for a sustained period.
+# Catches stuck-open valves, failed actuators, or control logic errors that waste energy and risk coil freeze/flooding.
+# Tuning: 3-hour consecutive window (debounce) + 25% of fan-off time over 7 days; sized for 5-min samples.
+name: ahu_chw_hhw_valve_open_fan_off
+description: Heating or cooling valve open while AHU fan is off for sustained period
+type: expression
+flag: ahu_chw_hhw_valve_open_fan_off_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Heating_Valve_Command:
+    brick: Heating_Valve_Command
+  Cooling_Valve_Command:
+    brick: Cooling_Valve_Command
+  Supply_Fan_Status:
+    brick: Supply_Fan_Status
+
+params:
+  vlv_open_threshold: 0.05      # fraction — treat anything above 5% as "open" (normalize_cmd output)
+  fan_off_threshold: 0.5        # fraction — fan considered off when normalized status <= this
+  consecutive_window: 36        # 3 h at 5-min sampling — minimum sustained valve-open period
+  rolling_window_7d: 2016       # 7 days at 5-min sampling — period for % calculation
+  fraction_threshold: 0.25      # fraction of fan-off time that valve must be open to trigger
+  rolling_window: 36            # debounce: 3 h at 5-min sampling — consecutive True samples required
+
+expression: |
+  (
+  (
+    (
+      (normalize_cmd(Heating_Valve_Command) > vlv_open_threshold) |
+      (normalize_cmd(Cooling_Valve_Command) > vlv_open_threshold)
+    ) &
+    (normalize_cmd(Supply_Fan_Status) <= fan_off_threshold)
+  ).rolling(window=consecutive_window).min().fillna(0).astype("bool") &
+  (
+    np.where(
+      (normalize_cmd(Supply_Fan_Status) <= fan_off_threshold).rolling(window=rolling_window_7d).sum() > 0,
+      (
+        (
+          (
+            (normalize_cmd(Heating_Valve_Command) > vlv_open_threshold) |
+            (normalize_cmd(Cooling_Valve_Command) > vlv_open_threshold)
+          ) &
+          (normalize_cmd(Supply_Fan_Status) <= fan_off_threshold)
+        ).rolling(window=rolling_window_7d).sum()
+        /
+        (normalize_cmd(Supply_Fan_Status) <= fan_off_threshold).rolling(window=rolling_window_7d).sum()
+      ),
+      0
+    ) > fraction_threshold
+  )
+  )

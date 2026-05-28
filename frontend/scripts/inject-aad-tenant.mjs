@@ -1,7 +1,8 @@
 /**
  * Post-build substitution: writes the Entra tenant GUID into the deployed
- * staticwebapp.config.json. Source file keeps the placeholder so the repo
- * stays tenant-agnostic.
+ * staticwebapp.config.json. Source file keeps the AAD_TENANT_ID placeholder
+ * (present twice in the issuer URL — once as ciamlogin subdomain, once as
+ * path segment) so the repo stays tenant-agnostic.
  *
  * Required env: AAD_TENANT_ID (GUID).
  * Run via: npm run build:swa
@@ -43,8 +44,9 @@ try {
   fail(`substituted output is not valid JSON: ${err.message}`);
 }
 const issuer = parsed?.auth?.identityProviders?.azureActiveDirectory?.registration?.openIdIssuer;
-if (typeof issuer !== "string" || !issuer.includes(tenantId)) {
-  fail(`expected openIdIssuer to contain the tenant GUID, got: ${issuer}`);
+const expectedIssuer = `https://${tenantId}.ciamlogin.com/${tenantId}/v2.0`;
+if (issuer !== expectedIssuer) {
+  fail(`openIdIssuer does not match the expected External ID format. expected: ${expectedIssuer}, got: ${issuer}`);
 }
 
 writeFileSync(TARGET, body);

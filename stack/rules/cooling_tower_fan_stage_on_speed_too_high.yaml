@@ -1,0 +1,24 @@
+# Cooling tower fan is running but its stage-on speed exceeds the expected maximum threshold,
+# indicating the VSD stage-on setpoint is configured too high and energy is being wasted.
+# Catches misconfigured VSD stage-on speed, incorrect commissioning, or control logic drift.
+# Tuning: 35% is the design stage-on speed limit; adjust fan_stage_on_speed_max if site differs.
+name: cooling_tower_fan_stage_on_speed_too_high
+description: Cooling tower fan stage-on speed exceeds maximum threshold
+type: expression
+flag: cooling_tower_fan_stage_on_speed_too_high_flag
+category: general
+severity: warning
+equipment_type:
+  - Cooling_Tower
+
+inputs:
+  Fan_Speed_Sensor:
+    brick: Fan_Speed_Sensor
+
+params:
+  fan_stage_on_speed_max: 0.35  # fraction (35%) — design maximum stage-on speed per rule spec
+  fan_on_min: 0.01              # fraction — minimum speed to consider fan running
+  rolling_window: 3             # ~15 min at 5-min sampling — light debounce for transient spikes
+
+expression: |
+  (normalize_cmd(Fan_Speed_Sensor) > fan_on_min) & (normalize_cmd(Fan_Speed_Sensor) > fan_stage_on_speed_max)

@@ -1,0 +1,23 @@
+# AHU filter differential pressure sensor reading outside physically plausible range.
+# Catches failed/blocked pressure sensor, disconnected tubing, sensor drift, or wiring fault.
+# Tuning: 300 Pa upper bound flags a severely clogged or mis-ranged sensor; -15 Pa lower bound catches negative/inverted readings.
+name: ahu_filter_dp_sensor_unexpected_value
+description: Filter differential pressure sensor outside expected range on AHU
+type: expression
+flag: ahu_filter_dp_sensor_unexpected_value_flag
+severity: warning
+category: general
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Filter_Differential_Pressure_Sensor:
+    brick: Filter_Differential_Pressure_Sensor
+
+params:
+  dp_max: 300.0       # Pa — upper plausible limit; values at or above indicate sensor fault or extreme blockage
+  dp_min: -15.0       # Pa — lower plausible limit; negative readings indicate inverted or failed sensor
+  rolling_window: 48  # 4 h at 5-min sampling (debounce to avoid transient spikes)
+
+expression: |
+  (Filter_Differential_Pressure_Sensor >= dp_max) | (Filter_Differential_Pressure_Sensor <= dp_min)

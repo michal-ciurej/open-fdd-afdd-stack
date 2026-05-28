@@ -28,6 +28,17 @@ export interface Site {
   created_at: string;
 }
 
+/** GET /admin/users — login-derived roster with per-site grants (admin only). */
+export interface AdminUser {
+  oid: string;
+  email: string | null;
+  roles: string[];
+  first_seen: string;
+  last_seen: string;
+  /** site ids this user is granted access to (empty for admins — they're unrestricted). */
+  site_ids: string[];
+}
+
 export interface Equipment {
   id: string;
   site_id: string;
@@ -620,5 +631,88 @@ export interface EnergyOpportunityPreviewBody {
   calc_type: string;
   delta_params?: Record<string, unknown>;
   capex_usd?: number;
+}
+
+/** GET /maintenance/equipment — observed equipment + maintenance state + sparkline. */
+export type MaintenanceEventType = "scheduled" | "maintained" | "cancelled";
+
+export interface MaintenanceEquipmentRow {
+  equipment_id: string;
+  site_id: string;
+  name: string;
+  equipment_type: string | null;
+  scheduled: boolean;
+  last_scheduled_ts: string | null;
+  last_maintained_ts: string | null;
+  last_cancelled_ts: string | null;
+  fault_histogram: number[];
+  histogram_days: string[];
+}
+
+export interface MaintenanceOverviewResponse {
+  period_days: number;
+  rows: MaintenanceEquipmentRow[];
+}
+
+export interface MaintenanceEvent {
+  id: string;
+  equipment_id: string;
+  event_type: MaintenanceEventType;
+  ts: string;
+  actor_email: string | null;
+  notes: string | null;
+}
+
+export interface MaintenanceEventCreateBody {
+  equipment_id: string;
+  event_type: MaintenanceEventType;
+  notes?: string | null;
+}
+
+/** GET /compliance/summary */
+export interface ComplianceDial {
+  fault_id: string;
+  name: string;
+  description: string | null;
+  severity: string;
+  active_count: number;
+  evaluated_count: number;
+}
+
+export interface ComplianceSummaryResponse {
+  site_id: string | null;
+  dials: ComplianceDial[];
+}
+
+/** GET /compliance/equipment-analytics */
+export interface ComplianceEquipmentRow {
+  equipment_id: string;
+  site_id: string;
+  name: string;
+  equipment_type: string | null;
+  avg_delta_t: number | null;
+  avg_supply_air_t: number | null;
+  avg_supply_water_t: number | null;
+  avg_return_air_t: number | null;
+  avg_return_water_t: number | null;
+  in_hours_compliance_pct: number | null;
+}
+
+export interface ComplianceEquipmentAnalyticsResponse {
+  site_id: string | null;
+  period: { start: string; end: string };
+  rows: ComplianceEquipmentRow[];
+}
+
+/** GET/PUT /sites/{site_id}/schedule */
+export interface SiteScheduleEntry {
+  dow: number; // 0=Mon..6=Sun
+  start_local: string; // HH:MM:SS
+  end_local: string;
+  tz: string;
+}
+
+export interface SiteScheduleBody {
+  entries: SiteScheduleEntry[];
 }
 

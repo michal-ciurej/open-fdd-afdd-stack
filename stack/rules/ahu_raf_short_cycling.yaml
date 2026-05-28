@@ -1,0 +1,28 @@
+# AHU return air fan status changes excessively within a rolling window, indicating short cycling.
+# Catches stuck relay, control loop instability, faulty enable command, or undersized equipment.
+# Tuning: 60-min trigger period at 5-min sampling = 12 samples; threshold of 8 state changes per window.
+name: ahu_raf_short_cycling
+description: Return air fan short cycling — excessive state changes within 60 min
+type: expression
+flag: ahu_raf_short_cycling_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Return_Fan_Status:
+    brick: Return_Fan_Status
+  Return_Fan_Command:
+    brick: Return_Fan_Command
+
+params:
+  state_change_threshold: 8   # count — max allowable state changes per rolling window before fault
+  rolling_window: 12          # 60 min at 5-min sampling (12 samples)
+
+expression: |
+  (
+    Return_Fan_Status.diff().abs().rolling(window=rolling_window).sum() > state_change_threshold
+  ) | (
+    normalize_cmd(Return_Fan_Command).diff().abs().rolling(window=rolling_window).sum() > state_change_threshold
+  )

@@ -1,0 +1,42 @@
+# AHU heat recovery is running but recovering a very small fraction of available thermal energy.
+# Catches fouled/bypassed heat wheel, failed rotary drive, leaking bypass damper, or sensor fault.
+# Efficiency = (RAT - Relief_Air_Temp) / (RAT - OAT); guarded against near-zero delta to avoid division noise.
+name: ahu_heat_recovery_low_efficiency
+description: Heat recovery efficiency low while AHU is running
+type: expression
+flag: ahu_heat_recovery_low_efficiency_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Return_Air_Temperature_Sensor:
+    brick: Return_Air_Temperature_Sensor
+  Outside_Air_Temperature_Sensor:
+    brick: Outside_Air_Temperature_Sensor
+  Relief_Air_Temperature_Sensor:
+    brick: Relief_Air_Temperature_Sensor
+  Supply_Fan_Status:
+    brick: Supply_Fan_Status
+
+params:
+  min_delta_temp: 2.0       # °C — minimum RAT-OAT delta required to compute meaningful efficiency
+  efficiency_threshold: 0.20 # fraction — flag when recovered fraction is below 20%
+  rolling_window: 6          # 6 consecutive samples = 30 min at 5-min data (matches trigger period)
+
+expression: |
+  (
+    (Supply_Fan_Status > 0) &
+    (
+      np.abs(Return_Air_Temperature_Sensor - Outside_Air_Temperature_Sensor) > min_delta_temp
+    ) &
+    (
+      np.where(
+        np.abs(Return_Air_Temperature_Sensor - Outside_Air_Temperature_Sensor) > min_delta_temp,
+        (Return_Air_Temperature_Sensor - Relief_Air_Temperature_Sensor) /
+          (Return_Air_Temperature_Sensor - Outside_Air_Temperature_Sensor),
+        1.0
+      ) < efficiency_threshold
+    )
+  )

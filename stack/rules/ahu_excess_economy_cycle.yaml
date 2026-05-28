@@ -1,0 +1,32 @@
+# AHU economy cycle active while outside air is warmer/more humid than return air, wasting cooling energy.
+# Catches failed economizer controls, stuck-open OA damper, incorrect enthalpy/temperature sensor readings,
+# or misconfigured economizer lockout setpoints.
+# Tuning: temperature branch used as primary; damper open threshold proxies "economy active".
+# Trigger period 1 h → rolling_window 12 at 5-min sampling.
+name: ahu_excess_economy_cycle
+description: Economy cycle active while OA temp exceeds RA temp
+type: expression
+flag: ahu_excess_economy_cycle_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Outside_Air_Temperature_Sensor:
+    brick: Outside_Air_Temperature_Sensor
+  Return_Air_Temperature_Sensor:
+    brick: Return_Air_Temperature_Sensor
+  Outside_Air_Damper_Command:
+    brick: Outside_Air_Damper_Command
+
+params:
+  oat_rat_delta: 0.0      # °C — fault when OAT exceeds RAT (any positive delta)
+  damper_open_min: 0.15   # fraction — damper above 15% treated as economy active
+  rolling_window: 12      # ~1 h at 5-min sampling (debounce, matches 1-h trigger period)
+
+expression: |
+  (
+    (Outside_Air_Temperature_Sensor - Return_Air_Temperature_Sensor > oat_rat_delta) &
+    (normalize_cmd(Outside_Air_Damper_Command) > damper_open_min)
+  ).rolling(window=rolling_window).min().fillna(0).astype("bool")

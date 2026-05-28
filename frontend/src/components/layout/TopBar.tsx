@@ -12,7 +12,7 @@ function ActiveFaultCounter() {
   const hasFaults = count > 0;
   const label =
     count === 0
-      ? "No active faults"
+      ? "No New faults"
       : `${count} active fault${count === 1 ? "" : "s"}`;
 
   return (

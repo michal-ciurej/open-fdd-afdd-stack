@@ -32,18 +32,62 @@ def _rules_dir_resolved() -> Path:
     return (repo_root / path).resolve()
 
 
+def _rule_meta(path: Path) -> dict:
+    """Lightweight metadata for one rule file, for grouping/display in the UI.
+
+    Never raises: an unreadable or invalid YAML still yields an entry (with empty
+    fields) so the file remains visible in the list rather than vanishing.
+    """
+    meta = {
+        "filename": path.name,
+        "name": None,
+        "equipment_types": [],
+        "category": None,
+        "severity": None,
+        "description": None,
+    }
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        return meta
+    if not isinstance(data, dict):
+        return meta
+    et = data.get("equipment_type")
+    if isinstance(et, str):
+        equipment_types = [et]
+    elif isinstance(et, list):
+        equipment_types = [str(x) for x in et if x is not None]
+    else:
+        equipment_types = []
+    meta.update(
+        {
+            "name": data.get("name"),
+            "equipment_types": equipment_types,
+            "category": data.get("category"),
+            "severity": data.get("severity"),
+            "description": data.get("description"),
+        }
+    )
+    return meta
+
+
 @router.get("", summary="List rule YAML files")
 def list_rules():
-    """Return the configured rules_dir path and the list of .yaml filenames in it. Path comes from GET /config (RDF)."""
+    """Return the configured rules_dir path, the .yaml filenames in it, and parsed
+    per-rule metadata (equipment_type, category, severity, …) for UI grouping.
+    Path comes from GET /config (RDF)."""
     base = _rules_dir_resolved()
     if not base.is_dir():
         return {
             "rules_dir": str(base),
             "files": [],
+            "rules": [],
             "error": "rules_dir is not a directory",
         }
-    files = sorted(f.name for f in base.glob("*.yaml"))
-    return {"rules_dir": str(base), "files": files}
+    paths = sorted(base.glob("*.yaml"), key=lambda p: p.name)
+    files = [p.name for p in paths]  # kept for backward compat
+    rules = [_rule_meta(p) for p in paths]
+    return {"rules_dir": str(base), "files": files, "rules": rules}
 
 
 @router.get(

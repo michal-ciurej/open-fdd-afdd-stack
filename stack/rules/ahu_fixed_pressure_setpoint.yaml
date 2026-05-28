@@ -1,0 +1,36 @@
+# AHU supply air pressure setpoint is not changing while the fan is running,
+# indicating the system is operating to a fixed (non-reset) pressure setpoint.
+# Catches disabled or misconfigured demand-controlled static pressure reset logic.
+# Tuning: 1-week rolling window at 5-min sampling = 2016 samples; spread threshold 5 Pa.
+name: ahu_fixed_pressure_setpoint
+description: Supply air pressure setpoint fixed (no reset) while AHU fan is running
+type: expression
+flag: ahu_fixed_pressure_setpoint_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Supply_Air_Static_Pressure_Setpoint:
+    brick: Supply_Air_Static_Pressure_Setpoint
+  Supply_Fan_Speed_Command:
+    brick: Supply_Fan_Speed_Command
+
+params:
+  sp_spread_max: 5.0        # Pa — setpoint considered "fixed" if range stays within 5 Pa
+  rolling_window: 2016      # 1 week at 5-min sampling (7 days × 24 h × 12 samples/h)
+  fan_on_threshold: 0.05    # fraction — treat fan as running above 5% speed command
+
+expression: |
+  (
+    (
+      Supply_Air_Static_Pressure_Setpoint
+        .rolling(window=rolling_window, min_periods=rolling_window)
+        .max()
+      -
+      Supply_Air_Static_Pressure_Setpoint
+        .rolling(window=rolling_window, min_periods=rolling_window)
+        .min()
+    ) <= sp_spread_max
+  ) & (normalize_cmd(Supply_Fan_Speed_Command) > fan_on_threshold)

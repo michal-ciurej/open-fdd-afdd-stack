@@ -1,0 +1,45 @@
+# Keep ACR build contexts small — neither Python image (Dockerfile.api,
+# Dockerfile.fdd_loop) needs the frontend, git history, or local caches.
+# Without this file the build tarball includes ~200 MB of frontend/node_modules.
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# Frontend — Python images never need any of it
+frontend/
+
+# Python build / cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local dotfiles & logs
+*.log
+.env
+.env.*
+!.env.example
+
+# Claude / scratch
+.claude/

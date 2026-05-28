@@ -1,0 +1,33 @@
+# AHU heating and cooling valves open at the same time, causing simultaneous heating and cooling.
+# Catches misconfigured control sequences, stuck valves, or overlapping PID setpoints.
+# Dehumidification mode is excluded as it legitimately requires both heating and cooling.
+# Trigger period is 30 min → 6 samples at 5-min data.
+name: ahu_heating_cooling_simultaneous
+description: AHU heating and cooling valves open simultaneously while dehumidification inactive
+type: expression
+flag: ahu_heating_cooling_simultaneous_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Heating_Valve_Command:
+    brick: Heating_Valve_Command
+  Cooling_Valve_Command:
+    brick: Cooling_Valve_Command
+  Dehumidification_Command:
+    brick: Dehumidification_Command
+
+params:
+  htg_vlv_open: 0.05       # fraction — treat anything above 5% as "open"
+  clg_vlv_open: 0.05       # fraction — treat anything above 5% as "open"
+  dehum_active: 0.05       # fraction — treat anything above 5% as dehumidification active
+  rolling_window: 6        # 30 min at 5-min sampling (debounce)
+
+expression: |
+  (
+    (normalize_cmd(Heating_Valve_Command) > htg_vlv_open) &
+    (normalize_cmd(Cooling_Valve_Command) > clg_vlv_open) &
+    (normalize_cmd(Dehumidification_Command) <= dehum_active)
+  )

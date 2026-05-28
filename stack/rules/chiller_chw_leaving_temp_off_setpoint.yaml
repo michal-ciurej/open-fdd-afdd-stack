@@ -1,0 +1,34 @@
+# Chiller is running but leaving chilled-water temperature persistently exceeds setpoint.
+# Catches refrigerant charge loss, condenser fouling, compressor degradation, or control loop fault.
+# Trigger period is 30 min (6 samples); startup transients suppressed by rolling average window.
+name: chiller_chw_leaving_temp_off_setpoint
+description: Leaving CHW temp above setpoint while chiller is running
+type: expression
+flag: chiller_chw_leaving_temp_off_setpoint_flag
+category: general
+severity: warning
+equipment_type:
+  - Chiller
+
+inputs:
+  Chilled_Water_Supply_Temperature_Sensor:
+    brick: Chilled_Water_Supply_Temperature_Sensor
+  Chilled_Water_Supply_Temperature_Setpoint:
+    brick: Chilled_Water_Supply_Temperature_Setpoint
+  Chiller_Run_Status:
+    brick: Chiller_Run_Status
+
+params:
+  chw_temp_err: 2.0       # °C — leaving CHW temp must exceed setpoint by this margin to flag
+  rolling_window: 6        # 30 min at 5-min sampling — matches trigger period
+  startup_window: 9        # 45 min at 5-min sampling — suppress faults during chiller startup
+
+expression: |
+  (
+    (
+      Chilled_Water_Supply_Temperature_Sensor.rolling(window=startup_window).mean()
+      - Chilled_Water_Supply_Temperature_Setpoint.rolling(window=startup_window).mean()
+      > chw_temp_err
+    )
+    & (Chiller_Run_Status.rolling(window=startup_window).min() > 0)
+  )

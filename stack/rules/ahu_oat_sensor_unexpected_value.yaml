@@ -1,0 +1,32 @@
+# OAT sensor reports a value outside the physically plausible range, or flat-lines for a sustained period.
+# Catches failed/frozen sensors, wiring faults, stuck A/D converters, or sensor disconnection.
+# Tuning: 2-hour window at 5-min sampling = 24 samples; flatline tolerance of 0.05 °C avoids false trips on stable cold nights.
+name: ahu_oat_sensor_unexpected_value
+description: OAT sensor out of range or flat-lining for 2+ hours
+type: expression
+flag: ahu_oat_sensor_unexpected_value_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Outside_Air_Temperature_Sensor:
+    brick: Outside_Air_Temperature_Sensor
+
+params:
+  oat_max: 40.0           # °C — upper plausible outdoor air temperature limit
+  oat_min: -10.0          # °C — lower plausible outdoor air temperature limit
+  flatline_tolerance: 0.05  # °C — rolling spread below this is considered flat-lined
+  rolling_window: 24      # 24 samples = 2 h at 5-min data (debounce and flatline window)
+
+expression: |
+  (
+    (Outside_Air_Temperature_Sensor > oat_max) |
+    (Outside_Air_Temperature_Sensor < oat_min) |
+    (
+      Outside_Air_Temperature_Sensor.rolling(window=rolling_window).max() -
+      Outside_Air_Temperature_Sensor.rolling(window=rolling_window).min()
+      < flatline_tolerance
+    )
+  )

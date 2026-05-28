@@ -1,0 +1,35 @@
+# Chiller is actively cooling with pumps running but leaving CHW temperature is outside
+# the plausible operating band (≤5°C or >16°C), indicating a faulty or mis-ranged sensor.
+# Catches failed/drifted temperature sensors, wiring errors, or sensor substitution issues.
+# Tuning: 1-hour window (12 × 5-min samples) avoids nuisance trips during transient pull-down.
+name: chiller_leaving_chwt_unexpected_value
+description: Leaving CHWT outside plausible range while chiller and pumps are running
+type: expression
+flag: chiller_leaving_chwt_unexpected_value_flag
+category: general
+severity: warning
+equipment_type:
+  - Chiller
+
+inputs:
+  Leaving_Chilled_Water_Temperature_Sensor:
+    brick: Leaving_Chilled_Water_Temperature_Sensor
+  Chiller_Run_Status:
+    brick: Chiller_Run_Status
+  Chilled_Water_Pump_Status:
+    brick: Chilled_Water_Pump_Status
+
+params:
+  chwt_low:  5.0   # °C — at or below this value is implausibly cold (near freezing)
+  chwt_high: 16.0  # °C — above this value is implausibly warm for active chilled water
+  rolling_window: 12  # 12 × 5-min samples = 1 h sustained fault (debounce)
+
+expression: |
+  (
+    (normalize_cmd(Chiller_Run_Status) > 0) &
+    (normalize_cmd(Chilled_Water_Pump_Status) > 0) &
+    (
+      (Leaving_Chilled_Water_Temperature_Sensor <= chwt_low) |
+      (Leaving_Chilled_Water_Temperature_Sensor > chwt_high)
+    )
+  )

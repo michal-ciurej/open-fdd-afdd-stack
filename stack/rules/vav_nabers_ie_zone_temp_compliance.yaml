@@ -1,0 +1,33 @@
+# Zone air temperature persistently outside NABERS IE comfort band during business hours (9am-5pm Mon-Fri).
+# Catches undersized plant, failed heating/cooling, incorrect setpoints, or damper/valve faults.
+# Tuning: 2-hour continuous trigger at 5-min sampling = 24 consecutive samples; thresholds per NABERS IE spec.
+name: vav_nabers_ie_zone_temp_compliance
+description: Zone temp outside NABERS IE 21-25°C band during business hours
+type: expression
+flag: vav_nabers_ie_zone_temp_compliance_flag
+category: compliance
+severity: warning
+equipment_type:
+  - Variable_Air_Volume_Box
+  - Variable_Air_Volume_Box_With_Reheat
+  - Air_Handling_Unit
+
+inputs:
+  Zone_Air_Temperature_Sensor:
+    brick: Zone_Air_Temperature_Sensor
+
+params:
+  temp_low: 21.0        # °C — NABERS IE lower comfort limit
+  temp_high: 24.9       # °C — NABERS IE upper comfort limit
+  rolling_window: 24    # 24 consecutive 5-min samples = 2 hours continuous (NABERS IE trigger period)
+  schedule:
+    enabled: true
+    weekdays: [0, 1, 2, 3, 4]   # Mon=0 … Fri=4
+    start_hour: 9
+    end_hour: 17                 # business hours 9am-5pm
+
+expression: |
+  (
+    (Zone_Air_Temperature_Sensor > temp_high) |
+    (Zone_Air_Temperature_Sensor < temp_low)
+  ) & schedule_occupied

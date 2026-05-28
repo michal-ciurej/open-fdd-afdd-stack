@@ -1,0 +1,29 @@
+# AHU filter differential pressure sensor reads an elevated value while the supply fan is off.
+# Catches stuck/failed DP sensor, blocked impulse tubing, or wiring fault on the pressure transmitter.
+# Tuning note: 15–300 Pa band excludes near-zero noise and implausible over-range; 4-hour window avoids nuisance trips on brief fan stops.
+name: ahu_filter_dp_high_fan_off
+description: Filter DP sensor reads high pressure while supply fan is off
+type: expression
+flag: ahu_filter_dp_high_fan_off_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Filter_Differential_Pressure_Sensor:
+    brick: Filter_Differential_Pressure_Sensor
+  Supply_Fan_Status:
+    brick: Supply_Fan_Status
+
+params:
+  dp_low:  15.0    # Pa — lower bound; below this is likely sensor noise / zero drift
+  dp_high: 300.0   # Pa — upper bound; above this is likely a different fault (extreme blockage or sensor over-range)
+  rolling_window: 48  # 4 h at 5-min sampling — sustained condition required before flagging
+
+expression: |
+  (
+    (Filter_Differential_Pressure_Sensor >= dp_low) &
+    (Filter_Differential_Pressure_Sensor <= dp_high) &
+    (normalize_cmd(Supply_Fan_Status) < 0.5)
+  ).rolling(window=rolling_window).min().fillna(0) > 0

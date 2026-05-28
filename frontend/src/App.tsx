@@ -10,8 +10,11 @@ import { PointsPage } from "@/components/pages/PointsPage";
 import { FaultsPage } from "@/components/pages/FaultsPage";
 import { EquipmentPage } from "@/components/pages/EquipmentPage";
 import { EquipmentDetailPage } from "@/components/pages/EquipmentDetailPage";
+import { MaintenancePage } from "@/components/pages/MaintenancePage";
+import { CompliancePage } from "@/components/pages/CompliancePage";
 import { SystemResourcesPage } from "@/components/pages/SystemResourcesPage";
 import { SiteConfigurationPage } from "@/components/pages/SiteConfigurationPage";
+import { UserAccessPage } from "@/components/pages/UserAccessPage";
 import { DataModelPage } from "@/components/pages/DataModelPage";
 import { EnergyOpportunitiesPage } from "@/components/pages/EnergyOpportunitiesPage";
 import { MyBuildingPage } from "@/components/pages/MyBuildingPage";
@@ -61,11 +64,14 @@ function AppRoutes() {
           <Route index element={<OverviewPage />} />
           <Route path="config" element={adminOnly(<ConfigPage />)} />
           <Route path="site-configuration" element={adminOnly(<SiteConfigurationPage />)} />
+          <Route path="user-access" element={adminOnly(<UserAccessPage />)} />
           <Route path="bacnet-tools" element={<Navigate to="/site-configuration" replace />} />
           <Route path="equipment" element={<EquipmentPage />} />
           <Route path="equipment/:equipmentId" element={<EquipmentDetailPage />} />
           <Route path="points" element={adminOnly(<PointsPage />)} />
           <Route path="faults" element={<FaultsPage />} />
+          <Route path="maintenance" element={<MaintenancePage />} />
+          <Route path="compliance" element={<CompliancePage />} />
           <Route path="plots" element={<PlotsPage />} />
           <Route path="weather" element={adminOnly(<WeatherDataPage />)} />
           <Route path="analytics" element={<AnalyticsPage />} />

@@ -1,0 +1,22 @@
+# AHU outside air damper command oscillates with a range >20% and >6 moving-average crossings per hour.
+# Catches unstable OA damper PID tuning, actuator mechanical issues, conflicting control sequences, or sensor noise feeding the loop.
+# Tuning: 1-hour trigger window at 5-min sampling = 12 samples; 10-hour minimum over 7 days handled by rolling_window debounce.
+name: ahu_oa_damper_hunting
+description: Outside air damper command hunting — oscillation range >20% with >6 MA crossings
+type: hunting
+flag: ahu_oa_damper_hunting_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Damper_Position_Command:
+    brick: Damper_Position_Command
+
+params:
+  delta_os_max: 6          # max allowed moving-average crossings per window before flagging
+  ahu_min_oa_dpr: 0.20     # 20% range threshold — oscillation must exceed this fraction to count
+  window: 12               # samples per evaluation window — 1 h at 5-min data
+  rolling_window: 12       # ~1 h consecutive fault samples required to confirm (5-min data)
+  units: metric

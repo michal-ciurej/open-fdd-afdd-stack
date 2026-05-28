@@ -1,0 +1,31 @@
+# Chiller is actively cooling but entering chilled water temperature is outside the expected operating range.
+# Catches a failed or miscalibrated entering CHWT sensor, reversed sensor wiring, or a process anomaly.
+# Tuning: bounds of 6.5–22°C cover normal chilled-water return conditions; 1-hour window avoids transient trips.
+name: chiller_entering_chwt_unexpected_value
+description: Entering CHWT out of expected range while chiller is actively cooling
+type: expression
+flag: chiller_entering_chwt_unexpected_value_flag
+category: general
+severity: warning
+equipment_type:
+  - Chiller
+
+inputs:
+  Chilled_Water_Return_Temperature_Sensor:
+    brick: Chilled_Water_Return_Temperature_Sensor
+  Chiller_Run_Status:
+    brick: Chiller_Run_Status
+
+params:
+  chwt_high: 22.0       # °C — upper plausible bound for entering CHWT during active cooling
+  chwt_low: 6.5         # °C — lower plausible bound for entering CHWT during active cooling
+  rolling_window: 12    # 12 consecutive 5-min samples = 1 h (matches 1-hour trigger period)
+
+expression: |
+  (
+    (normalize_cmd(Chiller_Run_Status) > 0)
+    & (
+      (Chilled_Water_Return_Temperature_Sensor > chwt_high)
+      | (Chilled_Water_Return_Temperature_Sensor <= chwt_low)
+    )
+  )

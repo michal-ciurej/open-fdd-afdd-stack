@@ -1,0 +1,30 @@
+# Pump status changes excessively within a rolling window, indicating short cycling.
+# Catches failed pressure control, oversized pump, faulty command logic, or stuck check valve.
+# Tuning: 60-min window = 12 samples at 5-min data; threshold of 8 transitions is conservative.
+name: pump_short_cycling
+description: Pump short cycling — too many on/off transitions in 60 min
+type: expression
+flag: pump_short_cycling_flag
+category: general
+severity: warning
+equipment_type:
+  - Pump
+  - Water_Pump
+
+inputs:
+  Pump_Status:
+    brick: Pump_Status
+  Pump_Command:
+    brick: Pump_Command
+
+params:
+  max_transitions: 8       # count — maximum allowed on/off state changes per window
+  rolling_window: 12       # 60 min at 5-min sampling (debounce window for transition count)
+
+expression: |
+  (
+    (
+      normalize_cmd(Pump_Status).diff().abs().fillna(0) +
+      normalize_cmd(Pump_Command).diff().abs().fillna(0)
+    ).rolling(window=rolling_window).sum() > max_transitions
+  )

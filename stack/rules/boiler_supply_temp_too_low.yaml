@@ -1,0 +1,24 @@
+# Boiler supply temperature persistently below minimum threshold while plant is expected to deliver heat.
+# Catches insufficient firing, failed burner, undersized plant, or sensor fault.
+# Tuning: 2-hour window (24 samples at 5-min) avoids nuisance trips during warm-up.
+name: boiler_supply_temp_too_low
+description: Boiler HW supply temperature below minimum threshold
+type: expression
+flag: boiler_supply_temp_too_low_flag
+category: general
+severity: warning
+equipment_type:
+  - Boiler
+
+inputs:
+  Hot_Water_Supply_Temperature_Sensor:
+    brick: Hot_Water_Supply_Temperature_Sensor
+  Hot_Water_Return_Temperature_Sensor:
+    brick: Hot_Water_Return_Temperature_Sensor
+
+params:
+  supply_temp_min: 44.0   # °C — minimum acceptable boiler supply temperature
+  rolling_window: 24      # 24 consecutive 5-min samples = 2 h (matches trigger period)
+
+expression: |
+  (Hot_Water_Supply_Temperature_Sensor < supply_temp_min)

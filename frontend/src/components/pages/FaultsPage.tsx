@@ -1,14 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Play, Clock, Layers, Server } from "lucide-react";
+import { Play, Clock, Layers, Server, Eye, EyeOff, ChevronRight } from "lucide-react";
 import { useSiteContext } from "@/contexts/site-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { apiFetchText } from "@/lib/api";
-import { useRulesList } from "@/hooks/use-rules";
+import { useRulesList, type RuleMeta } from "@/hooks/use-rules";
 import { useFddStatus } from "@/hooks/use-fdd-status";
-import { uploadRule, deleteRule, syncRuleDefinitions, triggerFddRun } from "@/lib/crud-api";
+import { uploadRule, deleteRule, syncRuleDefinitions, triggerFddRun, updateEquipment } from "@/lib/crud-api";
 import {
   Table,
   TableHeader,
@@ -19,29 +19,19 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { JsonPrettyPanel } from "@/components/ui/json-pretty-panel";
-import { timeAgo, severityVariant } from "@/lib/utils";
+import { timeAgo, severityVariant, isEquipmentObserved, cn } from "@/lib/utils";
 import { useAllEquipment, useEquipment, useSite, useSites } from "@/hooks/use-sites";
 import {
   useActiveFaults,
   useFaultDefinitions,
   useFaultSummary,
-  useFaultState,
-  useBacnetDevices,
   useSiteFaults,
-  useFaultResultsSeries,
-  useFaultResultsRaw,
   useFaultCountsByEquipment,
 } from "@/hooks/use-faults";
 import { FaultOverTimeChart } from "@/components/dashboard/FaultOverTimeChart";
 import { DateRangeSelect } from "@/components/site/DateRangeSelect";
 import type { DatePreset } from "@/components/site/DateRangeSelect";
-import type { FaultState, FaultDefinition, Equipment, Site, BacnetDevice } from "@/types/api";
-import {
-  computeFaultMatrixCellStatus,
-  computeDeviceLastFaultTs,
-  deviceRowKey,
-  matrixCellKey,
-} from "@/components/pages/fault-matrix-utils";
+import type { FaultState, FaultDefinition, Equipment, Site } from "@/types/api";
 import { isHotReloadBenchArtifact } from "@/lib/rule-files";
 
 function FaultsTable({
@@ -152,98 +142,6 @@ function FaultsTable({
   );
 }
 
-function FaultMatrixTable({
-  devices,
-  definitions,
-  state,
-  siteMap,
-}: {
-  devices: BacnetDevice[];
-  definitions: FaultDefinition[];
-  state: FaultState[];
-  siteMap?: Map<string, Site>;
-}) {
-  const cellStatus = useMemo(
-    () => computeFaultMatrixCellStatus(devices, definitions, state),
-    [devices, definitions, state],
-  );
-  const lastFaultByDevice = useMemo(
-    () => computeDeviceLastFaultTs(devices, state),
-    [devices, state],
-  );
-
-  if (devices.length === 0) {
-    return (
-      <div className="py-12 text-center text-sm text-muted-foreground" data-testid="fault-matrix-empty">
-        No devices in data model. Add points with a device identifier (and equipment) to see the matrix.
-      </div>
-    );
-  }
-
-  if (definitions.length === 0) {
-    return (
-      <div className="py-12 text-center text-sm text-muted-foreground">
-        No fault definitions. Add rule YAML files to rules_dir (platform config); each FDD run syncs them into the DB.
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <Table data-testid="fault-matrix-table">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="font-mono">Device</TableHead>
-            <TableHead>Equipment</TableHead>
-            {siteMap && <TableHead>Site</TableHead>}
-            <TableHead className="text-muted-foreground whitespace-nowrap">Last known fault</TableHead>
-            {definitions.map((d) => (
-              <TableHead key={d.fault_id} className="text-center font-medium">
-                {d.name}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {devices.map((dev) => (
-            <TableRow key={deviceRowKey(dev)}>
-              <TableCell className="font-mono">{dev.bacnet_device_id}</TableCell>
-              <TableCell>{dev.equipment_name}</TableCell>
-              {siteMap && (
-                <TableCell className="text-muted-foreground">
-                  {siteMap.get(dev.site_id)?.name ?? dev.site_name}
-                </TableCell>
-              )}
-              <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                {lastFaultByDevice.get(deviceRowKey(dev))
-                  ? timeAgo(lastFaultByDevice.get(deviceRowKey(dev))!)
-                  : "—"}
-              </TableCell>
-              {definitions.map((def) => {
-                const key = matrixCellKey(dev, def.fault_id);
-                const status = cellStatus.get(key) ?? "n_a";
-                return (
-                  <TableCell key={def.fault_id} className="text-center">
-                    {status === "active" && (
-                      <Badge variant="destructive" className="font-normal">Active</Badge>
-                    )}
-                    {status === "not_active" && (
-                      <span className="text-muted-foreground">Not active</span>
-                    )}
-                    {status === "n_a" && (
-                      <span className="text-muted-foreground/70">N/A</span>
-                    )}
-                  </TableCell>
-                );
-              })}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
-
 function AllFaultsView() {
   const { data: faults, isLoading } = useActiveFaults();
   const { data: definitions = [] } = useFaultDefinitions();
@@ -291,37 +189,88 @@ function FaultDefinitionsSection() {
       <h2 className="mb-3 text-sm font-medium text-muted-foreground">
         Fault definitions ({definitions.length})
       </h2>
-      <Card>
-        <CardContent className="pt-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Fault ID</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Severity</TableHead>
-                <TableHead className="text-right">Target equipment</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {definitions.map((d) => (
-                <TableRow key={d.fault_id}>
-                  <TableCell className="font-mono text-xs">{d.fault_id}</TableCell>
-                  <TableCell className="font-medium">{d.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{d.category ?? "—"}</TableCell>
-                  <TableCell>
-                    <Badge variant={severityVariant(d.severity)}>{d.severity}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right text-muted-foreground text-xs">
-                    {d.equipment_types?.length ? d.equipment_types.join(", ") : "—"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Fault ID</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Category</TableHead>
+            <TableHead>Severity</TableHead>
+            <TableHead className="text-right">Target equipment</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {definitions.map((d) => (
+            <TableRow key={d.fault_id}>
+              <TableCell className="font-mono text-xs">{d.fault_id}</TableCell>
+              <TableCell className="font-medium">{d.name}</TableCell>
+              <TableCell className="text-muted-foreground">{d.category ?? "—"}</TableCell>
+              <TableCell>
+                <Badge variant={severityVariant(d.severity)}>{d.severity}</Badge>
+              </TableCell>
+              <TableCell className="text-right text-muted-foreground text-xs">
+                {d.equipment_types?.length ? d.equipment_types.join(", ") : "—"}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
+  );
+}
+
+type EquipmentFaultRollup = {
+  equipment_id: string;
+  equipment_name: string;
+  equipment_type: string | null;
+  site_id: string;
+  total_count: number;
+  faults: {
+    fault_id: string;
+    fault_name: string;
+    fault_severity: string;
+    count: number;
+  }[];
+};
+
+function ObservationEyeButton({ equipment }: { equipment: Equipment | undefined }) {
+  const queryClient = useQueryClient();
+  const observed = isEquipmentObserved(equipment);
+  const mutation = useMutation({
+    mutationFn: (nextObserved: boolean) => {
+      if (!equipment) throw new Error("Equipment not found");
+      return updateEquipment(equipment.id, { metadata: { observed: nextObserved } });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+    },
+  });
+
+  return (
+    <button
+      type="button"
+      onClick={() => mutation.mutate(!observed)}
+      disabled={!equipment || mutation.isPending}
+      title={
+        !equipment
+          ? "Equipment not loaded"
+          : observed
+            ? "Stop tracking this equipment on the overview page"
+            : "Track fault frequency on the overview page"
+      }
+      className={cn(
+        "inline-flex h-8 w-8 items-center justify-center rounded-full border transition-colors",
+        observed
+          ? "border-warning/30 bg-warning/10 text-warning-foreground hover:bg-warning/20"
+          : "border-border/60 bg-background text-muted-foreground hover:bg-muted",
+        (!equipment || mutation.isPending) && "opacity-50",
+      )}
+      data-testid={`fault-counts-observe-${equipment?.id ?? "unknown"}`}
+      aria-pressed={observed}
+      aria-label={observed ? "Stop observing" : "Mark for observation"}
+    >
+      {observed ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+    </button>
   );
 }
 
@@ -339,6 +288,43 @@ function FaultCountsByEquipmentSection({
     startDate,
     endDate,
   );
+  const { data: equipmentAll = [] } = useAllEquipment();
+  const { data: equipmentSite = [] } = useEquipment(siteId);
+  const equipment = siteId ? equipmentSite : equipmentAll;
+  const equipById = useMemo(
+    () => new Map(equipment.map((e) => [e.id, e])),
+    [equipment],
+  );
+
+  const rollups: EquipmentFaultRollup[] = useMemo(() => {
+    const rows = data?.rows ?? [];
+    const acc = new Map<string, EquipmentFaultRollup>();
+    for (const r of rows) {
+      let entry = acc.get(r.equipment_id);
+      if (!entry) {
+        entry = {
+          equipment_id: r.equipment_id,
+          equipment_name: r.equipment_name,
+          equipment_type: r.equipment_type,
+          site_id: r.site_id,
+          total_count: 0,
+          faults: [],
+        };
+        acc.set(r.equipment_id, entry);
+      }
+      entry.total_count += r.count;
+      entry.faults.push({
+        fault_id: r.fault_id,
+        fault_name: r.fault_name,
+        fault_severity: r.fault_severity,
+        count: r.count,
+      });
+    }
+    const list = Array.from(acc.values());
+    for (const e of list) e.faults.sort((a, b) => b.count - a.count);
+    list.sort((a, b) => b.total_count - a.total_count);
+    return list;
+  }, [data]);
 
   if (isLoading) return <Skeleton className="h-40 w-full rounded-xl" />;
   if (error) {
@@ -348,8 +334,7 @@ function FaultCountsByEquipmentSection({
       </div>
     );
   }
-  const rows = data?.rows ?? [];
-  if (rows.length === 0) {
+  if (rollups.length === 0) {
     return (
       <section className="mb-8">
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">
@@ -364,208 +349,73 @@ function FaultCountsByEquipmentSection({
 
   return (
     <section className="mb-8">
-      <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+      <h2 className="mb-1 text-sm font-medium text-muted-foreground">
         Fault counts by equipment
       </h2>
-      <Card>
-        <CardContent className="pt-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Equipment</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Fault</TableHead>
-                <TableHead>Count</TableHead>
-                <TableHead className="text-right">Last seen</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={`${r.site_id}-${r.equipment_id}-${r.fault_id}`}>
-                  <TableCell className="font-medium">{r.equipment_name}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {r.equipment_type ?? "—"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span>{r.fault_name}</span>
-                      <Badge variant={severityVariant(r.fault_severity)}>
-                        {r.fault_severity}
-                      </Badge>
-                    </div>
-                    <div className="text-xs font-mono text-muted-foreground">
-                      {r.fault_id}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono tabular-nums">
-                    {r.count}
-                  </TableCell>
-                  <TableCell className="text-right text-muted-foreground">
-                    {r.last_ts ? timeAgo(r.last_ts) : "—"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </section>
-  );
-}
-
-const ROW_LIMIT_OPTIONS = [25, 50, 100] as const;
-const DEFAULT_ROW_LIMIT = 50;
-
-function FaultDataPreviewSection({
-  siteId,
-  startDate,
-  endDate,
-}: {
-  siteId: string | undefined;
-  startDate: string;
-  endDate: string;
-}) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [rowLimit, setRowLimit] = useState(DEFAULT_ROW_LIMIT);
-
-  const { data: seriesData, isLoading: seriesLoading } = useFaultResultsSeries(
-    siteId,
-    startDate,
-    endDate,
-  );
-  const series = seriesData?.series ?? [];
-  const effectiveIndex =
-    series.length === 0 ? 0 : Math.min(selectedIndex, series.length - 1);
-  const selected = series[effectiveIndex] ?? null;
-
-  const { data: rawData, isLoading: rawLoading } = useFaultResultsRaw(
-    selected?.fault_id ?? "",
-    selected?.site_id,
-    selected?.equipment_id,
-    rowLimit,
-  );
-  const rows = rawData?.rows ?? [];
-
-  return (
-    <details className="group mb-8 rounded-xl border border-border/80 bg-muted/30">
-      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-muted-foreground [&::-webkit-details-marker]:hidden">
-        <span className="inline-flex items-center gap-2">
-          Fault calculation data preview
-          <span className="text-xs font-normal">
-            (last N rows of fault_results per fault × device)
-          </span>
-        </span>
-      </summary>
-      <div className="border-t border-border/80 px-4 pb-4 pt-3">
-        {seriesLoading ? (
-          <Skeleton className="h-32 w-full rounded-lg" />
-        ) : series.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No fault result data in the selected time range. Run FDD and ensure fault_results exist.
-          </p>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <label className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">View data for</span>
-                <select
-                  value={effectiveIndex}
-                  onChange={(e) => setSelectedIndex(Number(e.target.value))}
-                  className="rounded-md border border-input bg-background px-2 py-1.5 text-sm font-medium"
-                >
-                  {series.map((s, i) => (
-                    <option key={`${s.fault_id}-${s.site_id}-${s.equipment_id}`} value={i}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Rows to show</span>
-                <select
-                  value={rowLimit}
-                  onChange={(e) => setRowLimit(Number(e.target.value))}
-                  className="rounded-md border border-input bg-background px-2 py-1.5 text-sm tabular-nums"
-                >
-                  {ROW_LIMIT_OPTIONS.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            {rawLoading ? (
-              <Skeleton className="h-64 w-full rounded-lg" />
-            ) : (
-              <div className="overflow-x-auto rounded-lg border border-border bg-background shadow-sm">
-                <table
-                  className="w-full min-w-[640px] border-collapse text-sm"
-                  data-testid="fault-data-preview-table"
-                >
-                  <thead>
-                    <tr className="border-b border-border bg-muted/60">
-                      <th className="sticky left-0 z-10 min-w-[180px] border-r border-border bg-muted/60 px-3 py-2 text-left font-semibold">
-                        Timestamp
-                      </th>
-                      <th className="min-w-[100px] border-r border-border px-3 py-2 text-left font-semibold">
-                        Site
-                      </th>
-                      <th className="min-w-[120px] border-r border-border px-3 py-2 text-left font-semibold">
-                        Equipment
-                      </th>
-                      <th className="min-w-[120px] border-r border-border px-3 py-2 text-left font-semibold">
-                        Fault ID
-                      </th>
-                      <th className="min-w-[80px] border-r border-border px-3 py-2 text-right font-semibold tabular-nums">
-                        Flag
-                      </th>
-                      <th className="min-w-[140px] px-3 py-2 text-left font-semibold">
-                        Evidence
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((r, i) => (
-                      <tr
-                        key={`${r.ts}-${i}`}
-                        className={`border-b border-border/60 ${
-                          i % 2 === 0 ? "bg-background" : "bg-muted/20"
-                        }`}
+      <p className="mb-3 text-xs text-muted-foreground">
+        Ranked by total fault count — highest first. Mark equipment for
+        observation to surface it on the overview page.
+      </p>
+      <Table data-testid="fault-counts-by-equipment-table">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[1%] whitespace-nowrap text-muted-foreground">#</TableHead>
+            <TableHead>Equipment</TableHead>
+            <TableHead>Faults</TableHead>
+            <TableHead className="text-right">Total</TableHead>
+            <TableHead className="w-[1%] whitespace-nowrap text-right">Observe</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rollups.map((row, idx) => {
+            const equip = equipById.get(row.equipment_id);
+            return (
+              <TableRow
+                key={row.equipment_id}
+                data-testid={`fault-counts-row-${row.equipment_id}`}
+              >
+                <TableCell className="text-muted-foreground tabular-nums">
+                  {idx + 1}
+                </TableCell>
+                <TableCell>
+                  <Link
+                    to={`/equipment/${row.equipment_id}`}
+                    className="font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    {row.equipment_name}
+                  </Link>
+                  <div className="text-xs text-muted-foreground">
+                    {row.equipment_type ?? "—"}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1.5">
+                    {row.faults.map((f) => (
+                      <Badge
+                        key={f.fault_id}
+                        variant={severityVariant(f.fault_severity)}
+                        title={`${f.fault_name} · severity ${f.fault_severity}`}
                       >
-                        <td className="sticky left-0 z-10 border-r border-border/60 bg-inherit px-3 py-1.5 font-mono text-xs tabular-nums">
-                          {r.ts}
-                        </td>
-                        <td className="border-r border-border/60 px-3 py-1.5 font-mono text-xs">
-                          {r.site_id}
-                        </td>
-                        <td className="border-r border-border/60 px-3 py-1.5 font-mono text-xs">
-                          {r.equipment_id}
-                        </td>
-                        <td className="border-r border-border/60 px-3 py-1.5 font-mono text-xs">
-                          {r.fault_id}
-                        </td>
-                        <td className="border-r border-border/60 px-3 py-1.5 text-right font-mono tabular-nums">
-                          {r.flag_value}
-                        </td>
-                        <td className="max-w-[min(28rem,40vw)] align-top px-3 py-1.5 text-muted-foreground">
-                          <FaultEvidenceCell evidence={r.evidence} />
-                        </td>
-                      </tr>
+                        {f.fault_name}
+                        <span className="ml-1.5 tabular-nums opacity-80">
+                          {f.count}
+                        </span>
+                      </Badge>
                     ))}
-                  </tbody>
-                </table>
-                {rows.length === 0 && !rawLoading && (
-                  <p className="py-8 text-center text-sm text-muted-foreground">
-                    No rows for this selection.
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </details>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right font-mono font-medium tabular-nums">
+                  {row.total_count}
+                </TableCell>
+                <TableCell className="text-right">
+                  <ObservationEyeButton equipment={equip} />
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </section>
   );
 }
 
@@ -593,22 +443,6 @@ function presetRange(preset: DatePreset): { start: string; end: string } {
       start.setDate(start.getDate() - 7);
   }
   return { start: start.toISOString(), end: end.toISOString() };
-}
-
-function FaultEvidenceCell({ evidence }: { evidence: unknown }) {
-  if (evidence == null) return "—";
-  if (typeof evidence === "string") {
-    return <span className="break-all font-mono text-xs text-muted-foreground">{evidence}</span>;
-  }
-  return (
-    <JsonPrettyPanel
-      value={evidence}
-      maxHeightClass="max-h-40"
-      compact
-      showCopy={false}
-      defaultExpandDepth={1}
-    />
-  );
 }
 
 function RuleFileContentPreview({ content }: { content: string }) {
@@ -645,6 +479,15 @@ function labelForPreset(preset: DatePreset): string {
   }
 }
 
+const EQUIP_UNSPECIFIED = "Unspecified";
+
+function prettyEquipType(key: string): string {
+  if (key === EQUIP_UNSPECIFIED) return "Unspecified / all equipment";
+  return key.replace(/_/g, " ");
+}
+
+type RuleGroup = { key: string; label: string; rules: RuleMeta[] };
+
 function RuleFilesSection() {
   const queryClient = useQueryClient();
   const { data, isLoading } = useRulesList();
@@ -655,6 +498,65 @@ function RuleFilesSection() {
   const [uploadFilename, setUploadFilename] = useState("");
   const [uploadContent, setUploadContent] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+
+  const { groups, benchRules, primaryCount, rulesDir } = useMemo(() => {
+    const files = data?.files ?? [];
+    const ruleMetas: RuleMeta[] = data?.rules?.length
+      ? data.rules
+      : files.map((f) => ({
+          filename: f,
+          name: null,
+          equipment_types: [],
+          category: null,
+          severity: null,
+          description: null,
+        }));
+    const primary = ruleMetas.filter((r) => !isHotReloadBenchArtifact(r.filename));
+    const bench = ruleMetas.filter((r) => isHotReloadBenchArtifact(r.filename));
+
+    const acc = new Map<string, RuleMeta[]>();
+    for (const r of primary) {
+      const key = r.equipment_types[0] ?? EQUIP_UNSPECIFIED;
+      const arr = acc.get(key);
+      if (arr) arr.push(r);
+      else acc.set(key, [r]);
+    }
+    const grouped: RuleGroup[] = Array.from(acc.entries()).map(([key, rules]) => ({
+      key,
+      label: prettyEquipType(key),
+      rules: rules.slice().sort((a, b) => a.filename.localeCompare(b.filename)),
+    }));
+    grouped.sort((a, b) => {
+      // "Unspecified" sinks to the bottom; everything else alphabetical.
+      const au = a.key === EQUIP_UNSPECIFIED ? 1 : 0;
+      const bu = b.key === EQUIP_UNSPECIFIED ? 1 : 0;
+      if (au !== bu) return au - bu;
+      return a.label.localeCompare(b.label);
+    });
+
+    return {
+      groups: grouped,
+      benchRules: bench,
+      primaryCount: primary.length,
+      rulesDir: data?.rules_dir ?? "",
+    };
+  }, [data]);
+
+  const toggleGroup = useCallback((key: string) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const expandAll = useCallback(
+    () => setOpenGroups(new Set(groups.map((g) => g.key))),
+    [groups],
+  );
+  const collapseAll = useCallback(() => setOpenGroups(new Set()), []);
 
   const openFile = useCallback((filename: string) => {
     setSelectedFile(filename);
@@ -738,11 +640,63 @@ function RuleFilesSection() {
     deleteMutation.mutate(filename);
   };
 
+  const renderRuleRow = (rule: RuleMeta) => {
+    const isSelected = selectedFile === rule.filename;
+    return (
+      <div
+        key={rule.filename}
+        className={cn(
+          "flex flex-wrap items-center gap-2 px-3 py-2 text-sm",
+          isSelected && "bg-primary/5",
+        )}
+        data-testid={`rule-row-${rule.filename}`}
+      >
+        <button
+          type="button"
+          onClick={() => openFile(rule.filename)}
+          className={cn(
+            "text-left font-medium transition-colors",
+            isSelected ? "text-primary underline" : "hover:text-primary",
+          )}
+          title={rule.description ?? undefined}
+        >
+          {rule.name ?? rule.filename}
+        </button>
+        <span className="font-mono text-xs text-muted-foreground">{rule.filename}</span>
+        {rule.category && (
+          <Badge variant="outline" className="text-xs">
+            {rule.category}
+          </Badge>
+        )}
+        {rule.severity && (
+          <Badge variant={severityVariant(rule.severity)} className="text-xs">
+            {rule.severity}
+          </Badge>
+        )}
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            type="button"
+            className="h-6 px-1.5 text-xs hover:text-primary"
+            onClick={() => handleDownload(rule.filename)}
+            title="Download"
+          >
+            ↓
+          </button>
+          <button
+            type="button"
+            className="h-6 px-1.5 text-xs text-destructive hover:text-destructive"
+            onClick={() => handleDelete(rule.filename)}
+            title="Delete"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) return <Skeleton className="h-40 w-full rounded-xl" />;
-  const files = data?.files ?? [];
-  const primaryRuleFiles = files.filter((f) => !isHotReloadBenchArtifact(f));
-  const benchArtifactFiles = files.filter((f) => isHotReloadBenchArtifact(f));
-  const rulesDir = data?.rules_dir ?? "";
+  const hasRules = primaryCount > 0 || benchRules.length > 0;
 
   return (
     <div className="mb-8">
@@ -803,57 +757,100 @@ function RuleFilesSection() {
             {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
           </form>
 
-          {files.length === 0 && !data?.error ? (
+          {!hasRules && !data?.error ? (
             <p className="text-sm text-muted-foreground">No .yaml files in rules_dir.</p>
           ) : (
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-2">
-                {primaryRuleFiles.map((name) => (
-                  <span key={name} className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/30 px-2 py-1">
+            <div className="space-y-2">
+              {/* Group controls */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
+                <p className="text-xs text-muted-foreground">
+                  {primaryCount} {primaryCount === 1 ? "rule" : "rules"} across{" "}
+                  {groups.length} equipment{" "}
+                  {groups.length === 1 ? "type" : "types"}
+                </p>
+                {groups.length > 0 && (
+                  <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => openFile(name)}
-                      className={`font-mono text-sm transition-colors ${
-                        selectedFile === name ? "text-primary underline" : "hover:text-primary"
-                      }`}
+                      onClick={expandAll}
+                      className="rounded-md border border-input bg-background px-2 py-1 text-xs hover:bg-muted"
                     >
-                      {name}
+                      Expand all
                     </button>
-                    <button type="button" className="h-6 px-1 text-xs hover:text-primary" onClick={() => handleDownload(name)} title="Download">
-                      ↓
+                    <button
+                      type="button"
+                      onClick={collapseAll}
+                      className="rounded-md border border-input bg-background px-2 py-1 text-xs hover:bg-muted"
+                    >
+                      Collapse all
                     </button>
-                    <button type="button" className="h-6 px-1 text-xs text-destructive hover:text-destructive" onClick={() => handleDelete(name)} title="Delete">
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-              {benchArtifactFiles.length > 0 && (
-                <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
-                  <p className="mb-2 text-xs font-medium text-amber-800 dark:text-amber-200">
-                    Bench / E2E rule copies ({benchArtifactFiles.length})
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {benchArtifactFiles.map((name) => (
-                      <span key={name} className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/30 px-2 py-1">
-                        <button
-                          type="button"
-                          onClick={() => openFile(name)}
-                          className={`font-mono text-sm transition-colors ${
-                            selectedFile === name ? "text-primary underline" : "hover:text-primary"
-                          }`}
-                        >
-                          {name}
-                        </button>
-                        <button type="button" className="h-6 px-1 text-xs hover:text-primary" onClick={() => handleDownload(name)} title="Download">
-                          ↓
-                        </button>
-                        <button type="button" className="h-6 px-1 text-xs text-destructive hover:text-destructive" onClick={() => handleDelete(name)} title="Delete">
-                          ×
-                        </button>
-                      </span>
-                    ))}
                   </div>
+                )}
+              </div>
+
+              {/* Accordions by equipment type */}
+              {groups.map((g) => {
+                const isOpen = openGroups.has(g.key);
+                return (
+                  <div
+                    key={g.key}
+                    className="overflow-hidden rounded-lg border border-border/70"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(g.key)}
+                      aria-expanded={isOpen}
+                      data-testid={`rule-group-${g.key}`}
+                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/50"
+                    >
+                      <ChevronRight
+                        className={cn(
+                          "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                          isOpen && "rotate-90",
+                        )}
+                      />
+                      <span className="font-medium">{g.label}</span>
+                      <Badge variant="outline" className="ml-1 tabular-nums">
+                        {g.rules.length}
+                      </Badge>
+                    </button>
+                    {isOpen && (
+                      <div className="divide-y divide-border/50 border-t border-border/70">
+                        {g.rules.map(renderRuleRow)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Bench / E2E artifacts */}
+              {benchRules.length > 0 && (
+                <div className="overflow-hidden rounded-lg border border-amber-500/30 bg-amber-500/5">
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup("__bench__")}
+                    aria-expanded={openGroups.has("__bench__")}
+                    data-testid="rule-group-bench"
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-amber-500/10"
+                  >
+                    <ChevronRight
+                      className={cn(
+                        "h-4 w-4 shrink-0 text-amber-700 transition-transform dark:text-amber-300",
+                        openGroups.has("__bench__") && "rotate-90",
+                      )}
+                    />
+                    <span className="font-medium text-amber-800 dark:text-amber-200">
+                      Bench / E2E rule copies
+                    </span>
+                    <Badge variant="outline" className="ml-1 tabular-nums">
+                      {benchRules.length}
+                    </Badge>
+                  </button>
+                  {openGroups.has("__bench__") && (
+                    <div className="divide-y divide-amber-500/20 border-t border-amber-500/30">
+                      {benchRules.map(renderRuleRow)}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1023,15 +1020,6 @@ export function FaultsPage() {
   );
   const periodLabel = labelForPreset(preset);
 
-  const { data: devices = [] } = useBacnetDevices(selectedSiteId ?? undefined);
-  const { data: faultState = [] } = useFaultState(selectedSiteId ?? undefined);
-  const { data: sites = [] } = useSites();
-  const { data: site } = useSite(selectedSiteId ?? "");
-  const matrixSiteMap = useMemo(() => {
-    if (selectedSiteId && site) return new Map([[site.id, site]]);
-    return new Map(sites.map((s) => [s.id, s]));
-  }, [selectedSiteId, site, sites]);
-
   return (
     <div className="flex flex-col">
       <h1 className="mb-4 text-2xl font-semibold tracking-tight">Faults</h1>
@@ -1093,32 +1081,6 @@ export function FaultsPage() {
         startDate={start}
         endDate={end}
       />
-
-      <section className="mb-8">
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-          Devices × fault definitions (from data model + rule YAML)
-        </h2>
-        <p className="mb-4 text-xs text-muted-foreground">
-          Rows = devices in the data model (BACnet, Niagara, Trend). Cols = faults from rule YAML in rules_dir (platform config). Fault definitions auto-populate when you add or edit .yaml files in that dir—each FDD run syncs them to the DB. Active = fault currently active; Not active = applies but clear; N/A = fault does not apply to this device (equipment_type).
-        </p>
-        <Card>
-          <CardContent className="pt-4">
-            <FaultMatrixTable
-              devices={devices}
-              definitions={definitions}
-              state={faultState}
-              siteMap={matrixSiteMap}
-            />
-          </CardContent>
-        </Card>
-      </section>
-
-      <FaultDataPreviewSection
-        siteId={selectedSiteId ?? undefined}
-        startDate={start.slice(0, 10)}
-        endDate={end.slice(0, 10)}
-      />
-
       <FaultDefinitionsSection />
       <RuleFilesSection />
 

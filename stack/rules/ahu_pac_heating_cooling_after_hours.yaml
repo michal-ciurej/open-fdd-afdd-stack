@@ -1,0 +1,46 @@
+# PAC unit running (heating or cooling) outside scheduled operating hours with significant ΔT between SAT and on-coil temp.
+# Catches after-hours HVAC operation: stuck commands, rogue schedules, BMS misconfiguration, or occupancy override left on.
+# Schedule window must be tuned per site; ΔT threshold of 3°C confirms active conditioning vs. idle drift.
+name: ahu_pac_heating_cooling_after_hours
+description: PAC unit heating or cooling after hours with SAT vs on-coil delta above threshold
+type: expression
+flag: ahu_pac_heating_cooling_after_hours_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Compressor_Command:
+    brick: Compressor_Command
+  Compressor_Status:
+    brick: Compressor_Status
+  Heating_Command:
+    brick: Heating_Command
+  Cooling_Command:
+    brick: Cooling_Command
+  Supply_Air_Temperature_Sensor:
+    brick: Supply_Air_Temperature_Sensor
+  On_Coil_Temperature_Sensor:
+    brick: On_Coil_Temperature_Sensor
+
+params:
+  sat_oct_delta_threshold: 3.0   # °C — minimum ΔT between SAT and on-coil temp to confirm active conditioning
+  rolling_window: 12             # 12 samples = 1 h at 5-min data (matches 1-hour trigger period)
+  schedule:
+    enabled: true
+    weekdays: [0, 1, 2, 3, 4]   # Mon–Fri; tune per site
+    start_hour: 8
+    end_hour: 18                 # last active minute is 17:59; tune per site
+
+expression: |
+  (
+    (
+      (normalize_cmd(Heating_Command) > 0) |
+      (normalize_cmd(Cooling_Command) > 0) |
+      (normalize_cmd(Compressor_Command) > 0) |
+      (Compressor_Status > 0)
+    ) &
+    (np.abs(Supply_Air_Temperature_Sensor - On_Coil_Temperature_Sensor) > sat_oct_delta_threshold) &
+    ~schedule_occupied
+  )

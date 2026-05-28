@@ -1,0 +1,28 @@
+# AHU supply air fan status changes excessively within a short period, indicating short cycling.
+# Catches failed contactors, VFD faults, control loop instability, or nuisance tripping of safeties.
+# Tuning: 8 state changes in 60 min (12 samples at 5-min data) is the trigger threshold.
+name: ahu_saf_short_cycling
+description: Supply air fan short cycling — excessive state changes within 60 min
+type: expression
+flag: ahu_saf_short_cycling_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Supply_Fan_Status:
+    brick: Supply_Fan_Status
+  Supply_Fan_Command:
+    brick: Supply_Fan_Command
+
+params:
+  max_state_changes: 8      # count — max allowable SAF status transitions in the window
+  rolling_window: 12        # 60 min at 5-min sampling (debounce / counting window)
+
+expression: |
+  (
+    Supply_Fan_Status.diff().abs().rolling(window=rolling_window).sum() > max_state_changes
+  ) & (
+    normalize_cmd(Supply_Fan_Command) > 0
+  )

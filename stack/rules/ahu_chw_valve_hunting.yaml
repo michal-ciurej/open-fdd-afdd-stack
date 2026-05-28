@@ -1,0 +1,30 @@
+# AHU CHW valve command oscillates with high amplitude and frequent direction reversals, indicating PID instability.
+# Catches aggressive PID tuning, undersized valve, sensor noise, or control loop misconfiguration.
+# Tuning: 60-min window at 5-min data = 12 samples; range threshold 0.20 (20%); cycle count threshold 12 reversals.
+name: ahu_chw_valve_hunting
+description: CHW valve command hunting — high oscillation range and cycle count
+type: expression
+flag: ahu_chw_valve_hunting_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Cooling_Valve_Command:
+    brick: Cooling_Valve_Command
+
+params:
+  rolling_window: 12        # 60 min at 5-min sampling (debounce — require sustained condition)
+  hunt_window: 12           # 60 min at 5-min sampling — window for range and reversal detection
+  range_threshold: 0.20     # fraction (0–1) — flag when peak-to-trough range exceeds 20%
+  cycle_threshold: 4        # slope direction reversals in window (~2 full cycles/h; max ~10 in a 12-sample window)
+
+expression: |
+  (
+    (normalize_cmd(Cooling_Valve_Command).rolling(window=hunt_window).max()
+     - normalize_cmd(Cooling_Valve_Command).rolling(window=hunt_window).min()) > range_threshold
+  ) & (
+    ((normalize_cmd(Cooling_Valve_Command).diff()
+      * normalize_cmd(Cooling_Valve_Command).diff().shift(1)) < 0).rolling(window=hunt_window).sum() > cycle_threshold
+  )

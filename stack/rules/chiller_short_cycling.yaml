@@ -1,0 +1,29 @@
+# Chiller status changes excessively within a rolling window, indicating short cycling.
+# Catches failed controls, oversized chiller for load, low-load hunting, or faulty enable logic.
+# Tuning: 60-min window at 5-min sampling = 12 samples; threshold of 8 transitions matches legacy rule.
+name: chiller_short_cycling
+description: Chiller short cycling — too many on/off state changes in 60 min
+type: expression
+flag: chiller_short_cycling_flag
+category: general
+severity: warning
+equipment_type:
+  - Chiller
+
+inputs:
+  Chiller_Status:
+    brick: Chiller_Status
+  Chiller_Run_Enable_Command:
+    brick: Chiller_Run_Enable_Command
+
+params:
+  state_change_threshold: 8   # count — max allowable on/off transitions per rolling window
+  rolling_window: 12          # 60 min at 5-min sampling (debounce window)
+
+expression: |
+  (
+    (
+      normalize_cmd(Chiller_Status).round().diff().abs().rolling(window=rolling_window).sum()
+      + normalize_cmd(Chiller_Run_Enable_Command).round().diff().abs().rolling(window=rolling_window).sum()
+    ) > state_change_threshold
+  )

@@ -12,8 +12,8 @@ inputs:
     brick: Chiller_Status
 
 params:
-  rolling_samples: 276
-  max_runtime_samples: 264
+  rolling_samples: 276       # samples in rolling window — 276 = ~23 h at 5-min sampling
+  max_runtime_samples: 264   # ON-sample threshold — 264 = ~22 h; flag when ON > 22 h of last 23 h
 
 expression: |
-  Chiller_Status.rolling(window=rolling_samples).sum() > max_runtime_samples
+  normalize_cmd(Chiller_Status).rolling(window=rolling_samples).sum() > max_runtime_samples

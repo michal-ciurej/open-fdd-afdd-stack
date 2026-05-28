@@ -1,0 +1,26 @@
+# Boiler hot water leaving temperature persistently exceeds its setpoint by more than the allowed delta.
+# Catches over-firing, failed modulation, stuck-open bypass valve, or incorrect setpoint configuration.
+# Tuning: 2-hour window (24 × 5-min samples) avoids nuisance trips during warm-up transients.
+name: boiler_hhwt_exceeds_setpoint
+description: HW leaving temp exceeds setpoint by more than threshold while boiler runs
+type: expression
+flag: boiler_hhwt_exceeds_sp_flag
+category: general
+severity: warning
+equipment_type:
+  - Boiler
+
+inputs:
+  Hot_Water_Supply_Temperature_Sensor:
+    brick: Hot_Water_Supply_Temperature_Sensor
+  Hot_Water_Supply_Temperature_Setpoint:
+    brick: Hot_Water_Supply_Temperature_Setpoint
+  Boiler_Status:
+    brick: Boiler_Status
+
+params:
+  temp_delta: 4.0        # °C — fault threshold above setpoint per legacy rule
+  rolling_window: 24     # 24 × 5-min samples = 2 h sustained fault (matches Trigger Period)
+
+expression: |
+  (Boiler_Status > 0) & ((Hot_Water_Supply_Temperature_Sensor - Hot_Water_Supply_Temperature_Setpoint) > temp_delta)

@@ -1,0 +1,39 @@
+# AHU supply fan running at near-maximum speed but duct static pressure remains well below setpoint.
+# Catches undersized ductwork, blocked filters/coils, damper stuck closed, duct leakage, or VSD fault.
+# Tuning: 4-hour consecutive window at 5-min sampling; 15% of setpoint and 20 Pa absolute deviation
+# must both be exceeded while fan is saturated (≥98%) to avoid nuisance trips during ramp-up.
+name: ahu_saf_static_pressure_below_setpoint
+description: Supply static pressure below setpoint while fan speed is saturated
+type: expression
+flag: ahu_saf_static_pressure_below_sp_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Supply_Air_Static_Pressure_Sensor:
+    brick: Supply_Air_Static_Pressure_Sensor
+  Supply_Air_Static_Pressure_Setpoint:
+    brick: Supply_Air_Static_Pressure_Setpoint
+  Supply_Fan_Speed_Command:
+    brick: Supply_Fan_Speed_Command
+
+params:
+  sp_deviation_ratio: 0.15      # fraction — pressure must be >15% below setpoint
+  sp_deviation_abs: 20.0        # Pa — absolute pressure deviation must exceed 20 Pa (0.020 kPa)
+  fan_speed_max_ratio: 0.98     # fraction — fan considered saturated at ≥98% of maximum speed
+  rolling_window: 48            # 4 h at 5-min sampling (debounce — must persist for full period)
+
+expression: |
+  (
+    (
+      (Supply_Air_Static_Pressure_Setpoint - Supply_Air_Static_Pressure_Sensor)
+      > (sp_deviation_ratio * Supply_Air_Static_Pressure_Setpoint)
+    )
+    & (
+      (Supply_Air_Static_Pressure_Setpoint - Supply_Air_Static_Pressure_Sensor)
+      > sp_deviation_abs
+    )
+    & (normalize_cmd(Supply_Fan_Speed_Command) >= fan_speed_max_ratio)
+  )

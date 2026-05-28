@@ -15,6 +15,9 @@ import {
   Sun,
   ChevronUp,
   PlugZap,
+  Wrench,
+  ShieldCheck,
+  Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useHealth } from "@/hooks/use-fdd-status";
@@ -37,6 +40,8 @@ const NAV_ITEMS: readonly NavItem[] = [
   { to: "/energy-engineering", label: "Energy Analysis", icon: Zap, end: false, roles: ["admin", "engineer"] },
   { to: "/equipment", label: "Equipment", icon: Boxes, end: false },
   { to: "/faults", label: "Faults", icon: AlertTriangle, end: false },
+  { to: "/maintenance", label: "Maintenance", icon: Wrench, end: false },
+  { to: "/compliance", label: "Compliance", icon: ShieldCheck, end: false },
   { to: "/my-building", label: "My Building", icon: Building, end: false, roles: ["admin", "engineer"] },
   { to: "/plots", label: "Charting", icon: LineChart, end: false },
   { to: "/analytics", label: "Analytics", icon: BarChart2, end: false },
@@ -46,6 +51,7 @@ const NAV_ITEMS: readonly NavItem[] = [
 const CONFIG_ITEMS: readonly NavItem[] = [
   { to: "/points", label: "Points", icon: CircleDot, end: false, roles: ["admin"] },
   { to: "/site-configuration", label: "Site Configuration", icon: PlugZap, end: false, roles: ["admin"] },
+  { to: "/user-access", label: "User Access", icon: Users, end: false, roles: ["admin"] },
   { to: "/data-model", label: "Data Modelling", icon: Database, end: false, roles: ["admin"] },
   { to: "/weather", label: "Weather data", icon: Sun, end: false, roles: ["admin"] },
   { to: "/config", label: "System Config", icon: Settings, end: false, roles: ["admin"] },

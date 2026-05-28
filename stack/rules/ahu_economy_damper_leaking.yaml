@@ -1,0 +1,38 @@
+# AHU outside air damper commanded closed but mixed air temperature diverges from return air,
+# indicating outside air is leaking past the damper while OAT has meaningful heating/cooling potential.
+# Catches stuck-open or leaking OA dampers, failed actuators, damper blade damage.
+# Tuning: 90-min trigger period → 18 consecutive 5-min samples; MAT-RAT delta threshold tunable.
+name: ahu_economy_damper_leaking
+description: OA damper commanded closed but MAT diverges from RAT — damper may be leaking
+type: expression
+flag: ahu_economy_damper_leaking_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Outside_Air_Damper_Command:
+    brick: Outside_Air_Damper_Command
+  Mixed_Air_Temperature_Sensor:
+    brick: Mixed_Air_Temperature_Sensor
+  Return_Air_Temperature_Sensor:
+    brick: Return_Air_Temperature_Sensor
+  Outside_Air_Temperature_Sensor:
+    brick: Outside_Air_Temperature_Sensor
+  Supply_Fan_Status:
+    brick: Supply_Fan_Status
+
+params:
+  damper_closed_threshold: 0.05   # fraction — damper treated as closed below 5% open
+  mat_rat_delta: 2.0              # °C — MAT vs RAT divergence indicating OA leakage
+  oat_rat_delta_min: 1.0          # °C — minimum OAT-RAT difference for OAT to have cooling/heating effect
+  rolling_window: 18              # ~90 min at 5-min sampling (debounce)
+
+expression: |
+  (
+    (normalize_cmd(Outside_Air_Damper_Command) < damper_closed_threshold)
+    & (Supply_Fan_Status > 0)
+    & (np.abs(Outside_Air_Temperature_Sensor - Return_Air_Temperature_Sensor) >= oat_rat_delta_min)
+    & (np.abs(Mixed_Air_Temperature_Sensor - Return_Air_Temperature_Sensor) > mat_rat_delta)
+  )

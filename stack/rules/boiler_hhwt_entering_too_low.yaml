@@ -1,0 +1,25 @@
+# Conventional boiler entering hot water temperature is persistently below the minimum
+# threshold while the boiler is running, risking condensation and thermal stress.
+# Catches failed mixing valve, incorrect setpoint, oversized system, or sensor fault.
+# Tuning: 2-hour trigger period → 24 consecutive samples at 5-min data.
+name: boiler_hhwt_entering_too_low
+description: Boiler entering HW temp below minimum threshold while boiler is running
+type: expression
+flag: boiler_hhwt_entering_too_low_flag
+category: general
+severity: warning
+equipment_type:
+  - Boiler
+
+inputs:
+  Hot_Water_Return_Temperature_Sensor:
+    brick: Hot_Water_Return_Temperature_Sensor
+  Boiler_Status:
+    brick: Boiler_Status
+
+params:
+  min_entering_temp: 53.0   # °C — minimum safe entering HW temp for conventional boilers (condensation risk below this)
+  rolling_window: 24        # 24 consecutive samples = 2 h at 5-min data (matches trigger period)
+
+expression: |
+  (Hot_Water_Return_Temperature_Sensor < min_entering_temp) & (normalize_cmd(Boiler_Status) > 0)

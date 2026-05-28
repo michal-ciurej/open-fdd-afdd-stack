@@ -1,0 +1,36 @@
+# AHU fan is running in cold outside air but the frost/preheat coil is commanded off,
+# risking freezing of the coil, downstream components, or supply air below safe limits.
+# Catches failed valve actuator, incorrect control sequence, or misconfigured OAT lockout.
+# Tuning: 1-hour window (12 samples at 5-min) avoids nuisance trips during brief transitions.
+name: ahu_frost_coil_not_operating_when_needed
+description: Frost coil off while fan runs in freezing OAT — risk to equipment
+type: expression
+flag: ahu_frost_coil_not_operating_flag
+category: general
+severity: critical
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Supply_Fan_Status:
+    brick: Supply_Fan_Status
+  Heating_Valve_Command:
+    brick: Heating_Valve_Command
+  Outside_Air_Temperature_Sensor:
+    brick: Outside_Air_Temperature_Sensor
+  Preheat_Supply_Air_Temperature_Sensor:
+    brick: Preheat_Supply_Air_Temperature_Sensor
+  Preheat_Supply_Air_Temperature_Setpoint:
+    brick: Preheat_Supply_Air_Temperature_Setpoint
+
+params:
+  oat_freeze_threshold: 5.0      # °C — frost protection required at or below this OAT
+  vlv_closed_threshold: 0.05     # fraction — below 5% considered commanded closed
+  rolling_window: 12             # 12 consecutive samples = ~1 h at 5-min data (debounce)
+
+expression: |
+  (
+    (Supply_Fan_Status > 0) &
+    (normalize_cmd(Heating_Valve_Command) < vlv_closed_threshold) &
+    (Outside_Air_Temperature_Sensor <= oat_freeze_threshold)
+  ).rolling(window=rolling_window).min().fillna(0) > 0

@@ -1,0 +1,33 @@
+# PAC unit is actively cooling while zone temperature is already below setpoint.
+# Catches misconfigured setpoints, failed zone sensors, stuck cooling valve, or control logic errors.
+# Tuning: 30-min trigger period → 6 consecutive 5-min samples; 1°C delta matches legacy threshold.
+name: ahu_cooling_while_zone_temp_below_setpoint
+description: Cooling active while zone temp is below setpoint
+type: expression
+flag: ahu_cooling_while_zt_below_sp_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Zone_Air_Temperature_Sensor:
+    brick: Zone_Air_Temperature_Sensor
+  Zone_Air_Temperature_Setpoint:
+    brick: Zone_Air_Temperature_Setpoint
+  Return_Air_Temperature_Sensor:
+    brick: Return_Air_Temperature_Sensor
+  Return_Air_Temperature_Setpoint:
+    brick: Return_Air_Temperature_Setpoint
+
+params:
+  zt_below_sp_delta: 1.0      # °C — zone temp must be this far below setpoint to flag
+  cooling_active_delta: 0.0   # °C — cooling considered active when RAT < RAT_SP (delta >= 0)
+  rolling_window: 6           # 6 consecutive 5-min samples = 30 min trigger period
+
+expression: |
+  (
+    (Zone_Air_Temperature_Setpoint - Zone_Air_Temperature_Sensor) > zt_below_sp_delta
+  ) & (
+    Return_Air_Temperature_Sensor < (Return_Air_Temperature_Setpoint - cooling_active_delta)
+  )

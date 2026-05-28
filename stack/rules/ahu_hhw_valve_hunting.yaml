@@ -1,0 +1,23 @@
+# AHU heating hot-water valve command oscillates with a range >20% and >12 direction reversals
+# in a 60-minute window, indicating PID control instability on the HHW loop.
+# Catches aggressive PID tuning, sensor noise, undersized valve, or conflicting control sequences.
+# Tuning note: window=12 samples (60 min at 5-min data); delta_os_max=12 cycles per window.
+name: ahu_hhw_valve_hunting
+description: HHW valve command hunting — oscillation range >20% with >12 cycles in 60 min
+type: hunting
+flag: ahu_hhw_valve_hunting_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Heating_Valve_Command:
+    brick: Heating_Valve_Command
+
+params:
+  delta_os_max: 12          # max direction reversals per window before flagging — >12 = hunting
+  ahu_min_oa_dpr: 0.0       # not applicable for valve-only hunting check; set to 0
+  window: 12                # samples — 60 min at 5-min data
+  rolling_window: 12        # ~60 min at 5-min sampling (debounce)
+  units: metric

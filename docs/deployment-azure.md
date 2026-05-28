@@ -14,7 +14,7 @@ Browser (https://brave-sand-044267903.7.azurestaticapps.net)
    │  /api/*  proxied through SWA linked-backend
    ▼
 SWA (predmain-frontend, Standard SKU, West Europe)
-   ├─ Entra OIDC (single-tenant)
+   ├─ Entra External ID OIDC (tenant 3mseio, ciamlogin.com endpoint)
    ├─ rolesSource → /api/auth/roles
    └─ linked backend → ACA app
                           │
@@ -62,6 +62,7 @@ Azure Files (stpredmain27016 / predmain-config)
 | ACA env | `cae-predmain` | Workload Profiles, VNet-integrated, LAW-linked, file-share `openfdd-config` registered |
 | ACA app | `predmain-api` | External ingress 8000. Image: `3msecontainers.azurecr.io/predmain-api:<sha>` |
 | ACA job | `predmain-fdd-loop` | Schedule trigger, cron `0 */3 * * *`. Same image registry. |
+| ACA job | `predmain-nightly-sync` | Schedule trigger, cron `0 3 * * *` UTC. **Shares the `predmain-fdd-loop` image**; command override runs `openfdd_stack.platform.drivers.run_nightly_sync`. Orchestrator for nightly maintenance (currently: Niagara + IQVision history sync, "yesterday" window). |
 | Storage account | `stpredmain27016` | Standard_LRS. File share `predmain-config` (5 GiB) mounted into API and Job at `/app/config` |
 | Log Analytics workspace | `law-predmain` | Wires ACA env logs |
 | Key Vault | `kv-predmain-27016` | RBAC-enabled. Currently underused — see "RBAC limits" section. |
@@ -69,7 +70,7 @@ Azure Files (stpredmain27016 / predmain-config)
 | Static Web App | `predmain-frontend` | Standard SKU, West Europe. Hostname `brave-sand-044267903.7.azurestaticapps.net`. Linked backend → `predmain-api`. |
 | ACR | `3mseContainers` (`3msecontainers.azurecr.io`) | Pre-existing. Admin user enabled (temporary, until MI/RBAC is resolved). |
 | ZT router VM | `ioProxyHandler` (10.0.3.4) | Maintenance entrypoint **and** ZeroTier router from ACA to on-prem. ZeroTier client running. |
-| Entra App Registration | client ID `5a7462d1-4816-4ba1-abda-7e917941b13b` | Tenant `fce6e120-a4ac-468f-bce8-0a9efa296639`. App Roles defined: `admin`, `engineer`, `user` (lowercase values). |
+| Entra App Registration | client ID `5a7462d1-4816-4ba1-abda-7e917941b13b` | Tenant `fce6e120-a4ac-468f-bce8-0a9efa296639` (Entra **External ID** tenant `3mseio`, *not* a workforce tenant — B2B guest invitations don't work; users must be created in the customer pool). App Roles defined: `admin`, `engineer`, `user` (lowercase values). Linked to user flow `predmain-signin`. |
 
 ## 3. First-time setup (high-level pointers)
 
@@ -82,36 +83,32 @@ This was done once and is captured in commit history. If recreating from scratch
 5. **ACA env** — workload-profiles env in aca-subnet, link LAW, register the file share
 6. **ACR images** — build `predmain-api` and `predmain-fdd-loop` images (see push plan below for the command)
 7. **ACA app + job** — create both with the image, inline secrets (DSN, API key, BACnet API key), ACR admin auth, file-share mount
-8. **SWA** — create Standard SWA, configure Entra OIDC via app settings (`AAD_CLIENT_ID`, `AAD_CLIENT_SECRET`), link the ACA app as backend; build SPA bundle with `AAD_TENANT_ID` injected and deploy
-9. **ZeroTier** — enable Azure NIC IP forwarding on ioProxyHandler; set Linux IP forwarding + iptables FORWARD rules; in ZT Central, add managed routes both directions; add UDR on aca-subnet for the ZT CIDR
+8. **Entra External ID** — in the External ID tenant: create user flow `predmain-signin` (Sign-up and sign-in, Email+password IdP, MFA via email OTP); link app registration `5a7462d1-…` to the flow via *User flows → predmain-signin → Applications*; verify app reg manifest has `accessTokenAcceptedVersion: 2`
+9. **SWA** — create Standard SWA, configure Entra OIDC via app settings (`AAD_CLIENT_ID`, `AAD_CLIENT_SECRET`), link the ACA app as backend; build SPA bundle with `AAD_TENANT_ID` injected and deploy
+10. **ZeroTier** — enable Azure NIC IP forwarding on ioProxyHandler; set Linux IP forwarding + iptables FORWARD rules; in ZT Central, add managed routes both directions; add UDR on aca-subnet for the ZT CIDR
 
 ## 4. Push plan — shipping changes to each component
 
-> All commands assume `az login` on the Pay-As-You-Go subscription and a Git
-> Bash shell on Windows. Prefix `MSYS_NO_PATHCONV=1` on any `az` command that
-> takes a `/subscriptions/...` resource ID; without it Git Bash mangles the
-> path. Prefix `PYTHONIOENCODING=utf-8` on `az acr build` to avoid the
-> Windows `colorama` UnicodeError on streamed build logs.
+> All commands assume `az login` on the Pay-As-You-Go subscription and a
+> PowerShell 7+ session on Windows. Set `$env:PYTHONIOENCODING = 'utf-8'`
+> once per session before running `az acr build` to avoid the Windows
+> `colorama` UnicodeError on streamed build logs. Commands run on
+> ioProxyHandler (section 4.4) are bash, since that's an Ubuntu VM —
+> the rest run locally in PowerShell.
 
 ### 4.1 API (`predmain-api` container app)
 
-```bash
+```powershell
 # 1. Build + push image (server-side build on ACR Tasks)
-SHA=$(git rev-parse --short HEAD)
-PYTHONIOENCODING=utf-8 az acr build -r 3mseContainers \
-  -t predmain-api:$SHA -t predmain-api:latest \
-  -f stack/Dockerfile.api .
+$SHA = git rev-parse --short HEAD
+$env:PYTHONIOENCODING = 'utf-8'
+az acr build -r 3mseContainers -t "predmain-api:$SHA" -t predmain-api:latest -f stack/Dockerfile.api .
 
 # 2. Roll the ACA revision to the new image
-MSYS_NO_PATHCONV=1 az containerapp update \
-  -g Live_Services -n predmain-api \
-  --image 3msecontainers.azurecr.io/predmain-api:$SHA \
-  --revision-suffix api$SHA
+az containerapp update -g Live_Services -n predmain-api --image "3msecontainers.azurecr.io/predmain-api:$SHA" --revision-suffix "api$SHA"
 
 # 3. Watch the new revision come up
-az containerapp revision show -g Live_Services -n predmain-api \
-  --revision predmain-api--api$SHA \
-  --query "{p:properties.provisioningState, h:properties.healthState, r:properties.runningState}" -o json
+az containerapp revision show -g Live_Services -n predmain-api --revision "predmain-api--api$SHA" --query '{p:properties.provisioningState, h:properties.healthState, r:properties.runningState}' -o json
 ```
 
 ACA env is in **Single revision mode**, so the new revision automatically gets
@@ -121,53 +118,72 @@ If you change anything in the API's **secrets** (DSN, API key, etc.) without
 changing the image, you still need a new revision so containers pick up the new
 secret value at start:
 
-```bash
-az containerapp secret set -g Live_Services -n predmain-api \
-  --secrets "db-dsn=$NEW_DSN"
-MSYS_NO_PATHCONV=1 az containerapp update -g Live_Services -n predmain-api \
-  --revision-suffix secret$(date +%H%M)
+```powershell
+az containerapp secret set -g Live_Services -n predmain-api --secrets "db-dsn=$NEW_DSN"
+$ts = Get-Date -Format HHmm
+az containerapp update -g Live_Services -n predmain-api --revision-suffix "secret$ts"
 ```
 
-### 4.2 fdd-loop (`predmain-fdd-loop` container app job)
+### 4.2 fdd-loop image (shared by `predmain-fdd-loop` and `predmain-nightly-sync`)
 
-```bash
+The two scheduled jobs share one image built from `stack/Dockerfile.fdd_loop`.
+Each job overrides the container command to invoke a different orchestrator,
+but the image SHA must be bumped on both at the same time — otherwise the
+job left behind drifts to old code.
+
+```powershell
 # 1. Build + push (separate image from the API)
-SHA=$(git rev-parse --short HEAD)
-PYTHONIOENCODING=utf-8 az acr build -r 3mseContainers \
-  -t predmain-fdd-loop:$SHA -t predmain-fdd-loop:latest \
-  -f stack/Dockerfile.fdd_loop .
+$SHA = git rev-parse --short HEAD
+$env:PYTHONIOENCODING = 'utf-8'
+az acr build -r 3mseContainers -t "predmain-fdd-loop:$SHA" -t predmain-fdd-loop:latest -f stack/Dockerfile.fdd_loop .
 
-# 2. Update the job's image
-MSYS_NO_PATHCONV=1 az containerapp job update \
-  -g Live_Services -n predmain-fdd-loop \
-  --image 3msecontainers.azurecr.io/predmain-fdd-loop:$SHA
+# 2. Update both jobs to the new image
+az containerapp job update -g Live_Services -n predmain-fdd-loop     --image "3msecontainers.azurecr.io/predmain-fdd-loop:$SHA"
+az containerapp job update -g Live_Services -n predmain-nightly-sync --image "3msecontainers.azurecr.io/predmain-fdd-loop:$SHA"
 
-# 3. Manually trigger one execution to validate before the next cron fire
+# 3. Manually trigger one execution of each to validate before the next cron fire
 az containerapp job start -g Live_Services -n predmain-fdd-loop
+az containerapp job start -g Live_Services -n predmain-nightly-sync
 
-# 4. Check the execution
-az containerapp job execution list -g Live_Services --name predmain-fdd-loop \
-  --query "[0].{name:name, status:properties.status, start:properties.startTime, end:properties.endTime}" -o json
+# 4. Check the executions
+az containerapp job execution list -g Live_Services --name predmain-fdd-loop     --query '[0].{name:name, status:properties.status, start:properties.startTime, end:properties.endTime}' -o json
+az containerapp job execution list -g Live_Services --name predmain-nightly-sync --query '[0].{name:name, status:properties.status, start:properties.startTime, end:properties.endTime}' -o json
 ```
 
 Job execution status `Succeeded` confirms one-shot completion. Failed
 executions retain logs via Log Analytics — query
-`ContainerAppConsoleLogs_CL | where ContainerGroupName_s startswith 'predmain-fdd-loop'`.
+`ContainerAppConsoleLogs_CL | where ContainerGroupName_s startswith 'predmain-fdd-loop'`
+(or `'predmain-nightly-sync'`).
+
+#### 4.2a `predmain-fdd-loop`
+
+- **Schedule:** `0 */3 * * *` UTC (every 3 hours).
+- **Command override:** `python -u -m openfdd_stack.platform.drivers.run_rule_loop` (one-shot mode — `--loop` is *not* passed in ACA).
+- **Purpose:** Open-Meteo fetch (when enabled) + FDD rule loop + energy opportunity recomputation. Reads YAML rules from the baked-in `stack/rules` dir and the graph from the mounted `data_model.ttl`.
+
+#### 4.2b `predmain-nightly-sync`
+
+- **Schedule:** `0 3 * * *` UTC (daily at 03:00).
+- **Command override:** `python -u -m openfdd_stack.platform.drivers.run_nightly_sync`.
+- **Purpose:** Nightly maintenance orchestrator. Currently runs history sync — iterates `site_niagara_endpoints` and `site_iqvision_endpoints` (enabled rows) and calls each driver's `run_*_sync(site_id, time_window="yesterday")`. Inserts are idempotent on `(point_id, ts)`, so a missed night is self-heals when the window is widened. Add further nightly steps as additional calls inside `run_nightly_sync.main()`.
+- **Recreate from scratch:** the job was created via YAML (see `az containerapp job create --yaml`). Mirrors `predmain-fdd-loop` for image, secrets (`db-dsn`, `registry-password`), ACR auth, env vars, and the `openfdd-config` file-share mount at `/app/config`. Only the trigger cron and the `args` differ.
 
 ### 4.3 Frontend (`predmain-frontend` SWA)
 
-```bash
+```powershell
 cd frontend
 
 # 1. Build with tenant GUID + production env (.env.production sets VITE_API_BASE=/api)
-AAD_TENANT_ID=fce6e120-a4ac-468f-bce8-0a9efa296639 npm run build:swa
+$env:AAD_TENANT_ID = 'fce6e120-a4ac-468f-bce8-0a9efa296639'
+npm run build:swa
 
 # 2. Deploy
-SWA_TOKEN=$(az staticwebapp secrets list -g Live_Services -n predmain-frontend \
-  --query properties.apiKey -o tsv)
-npx -y @azure/static-web-apps-cli@latest deploy ./dist \
-  --deployment-token "$SWA_TOKEN" --env production
+$SWA_TOKEN = az staticwebapp secrets list -g Live_Services -n predmain-frontend --query properties.apiKey -o tsv
+npx -y '@azure/static-web-apps-cli@latest' deploy ./dist --deployment-token $SWA_TOKEN --env production
 ```
+
+The `@azure/...@latest` package spec is quoted because PowerShell parses a
+leading `@` as the splat operator otherwise.
 
 After deploy, **hard-refresh the browser** (Ctrl+Shift+R) or test in incognito
 — SWA serves the JS bundle with cache headers, browsers reuse the old bundle
@@ -184,11 +200,13 @@ Migrations are SQL files in [stack/sql/](../stack/sql/), numbered 001 through 02
 (at time of writing). Apply new ones from ioProxyHandler (the only host with a
 clear network path to the private endpoint):
 
-```bash
-# On laptop — scp the new migration up
+```powershell
+# On laptop (PowerShell) — scp the new migration up. Windows 10+ ships OpenSSH.
 scp stack/sql/024_*.sql N4EM_USER@<ioproxy-host>:~/sherlock/sql/
+```
 
-# On ioProxyHandler
+```bash
+# On ioProxyHandler (Ubuntu)
 cd ~/sherlock/sql
 export PGHOST=predmain-postgres.postgres.database.azure.com
 export PGUSER=predmain_admin
@@ -208,11 +226,9 @@ then `psql --single-transaction -f file.sql`.
 After bulk inserts, restart the API revision so `data_model.ttl` re-syncs from
 the DB:
 
-```bash
-LATEST_REV=$(az containerapp show -g Live_Services -n predmain-api \
-  --query properties.latestRevisionName -o tsv | tr -d '\r')
-az containerapp revision restart -g Live_Services -n predmain-api \
-  --revision "$LATEST_REV"
+```powershell
+$LATEST_REV = (az containerapp show -g Live_Services -n predmain-api --query properties.latestRevisionName -o tsv).Trim()
+az containerapp revision restart -g Live_Services -n predmain-api --revision $LATEST_REV
 ```
 
 ### 4.5 Entra OIDC / SWA auth config
@@ -239,13 +255,8 @@ one or existing subnets get orphaned.
 
 For new on-prem ZT networks to be reachable from ACA, add a UDR:
 
-```bash
-MSYS_NO_PATHCONV=1 az network route-table route create \
-  -g Live_Services --route-table-name rt-aca-zerotier \
-  -n <descriptive-name> \
-  --address-prefix <ZT-CIDR> \
-  --next-hop-type VirtualAppliance \
-  --next-hop-ip-address 10.0.3.4
+```powershell
+az network route-table route create -g Live_Services --route-table-name rt-aca-zerotier -n <descriptive-name> --address-prefix <ZT-CIDR> --next-hop-type VirtualAppliance --next-hop-ip-address 10.0.3.4
 ```
 
 Then add the matching managed route in ZT Central

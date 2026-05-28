@@ -1,0 +1,34 @@
+# Electric meter power factor drops significantly below its own historical rolling average.
+# Catches degraded load power factor: added inductive loads, failed PF correction capacitors,
+# or harmonic distortion. Historical baseline is a long rolling window; short-term avg is compared.
+# Tuning: baseline_window uses 7-day rolling (2016 samples at 5-min); short_window is 1 h (12 samples).
+name: elec_meter_power_factor_below_historical_avg
+description: Power factor significantly below historical average while meter is energised
+type: expression
+flag: elec_meter_pf_below_hist_avg_flag
+category: general
+severity: warning
+equipment_type:
+  - Building_Electrical_Meter
+
+inputs:
+  Power_Factor_Sensor:
+    brick: Power_Factor_Sensor
+  Electrical_Power_Sensor:
+    brick: Electrical_Power_Sensor
+
+params:
+  pf_ratio_threshold: 0.80   # fraction — flag when short-term avg PF < 80% of historical avg PF
+  power_min: 0.0             # kW — meter must be drawing power (above zero) to evaluate PF
+  short_window: 12           # samples — ~1 h at 5-min sampling (short-term average)
+  baseline_window: 2016      # samples — ~7 days at 5-min sampling (historical average baseline)
+  rolling_window: 12         # samples — ~1 h consecutive debounce at 5-min sampling
+
+expression: |
+  (
+    (Electrical_Power_Sensor > power_min) &
+    (
+      Power_Factor_Sensor.rolling(window=short_window, min_periods=1).mean() <
+      (pf_ratio_threshold * Power_Factor_Sensor.rolling(window=baseline_window, min_periods=short_window).mean())
+    )
+  )

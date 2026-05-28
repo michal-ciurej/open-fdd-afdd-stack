@@ -1,0 +1,22 @@
+# Electric meter power sensor persistently reporting negative values, indicating a metering fault.
+# Catches reversed CT clamps, wiring errors, meter configuration issues, or faulty power transducers.
+# Tuning: 30-min window (6 samples at 5-min) avoids flagging on brief transient reversals.
+name: elec_meter_negative_power
+description: Power sensor reporting negative power on electric meter
+type: expression
+flag: elec_meter_negative_power_flag
+category: general
+severity: warning
+equipment_type:
+  - Building_Electrical_Meter
+
+inputs:
+  Electric_Power_Sensor:
+    brick: Electric_Power_Sensor
+
+params:
+  power_min: -0.1       # kW — readings below this threshold are considered erroneous negatives
+  rolling_window: 6     # 30 min at 5-min sampling (debounce)
+
+expression: |
+  (Electric_Power_Sensor < power_min)

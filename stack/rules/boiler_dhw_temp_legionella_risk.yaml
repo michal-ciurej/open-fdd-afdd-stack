@@ -1,0 +1,22 @@
+# Domestic HW leaving temperature persistently below safe threshold, posing a Legionella risk.
+# Catches failed heating element, undersized boiler, setpoint misconfiguration, or sensor fault.
+# Tuning: 24-hour window at 5-min sampling = 288 consecutive samples below 55 °C to fire.
+name: boiler_dhw_temp_legionella_risk
+description: DHW leaving temp below Legionella-safe threshold for >24 h
+type: expression
+flag: boiler_dhw_temp_legionella_risk_flag
+category: compliance
+severity: critical
+equipment_type:
+  - Boiler
+
+inputs:
+  Hot_Water_Supply_Temperature_Sensor:
+    brick: Hot_Water_Supply_Temperature_Sensor
+
+params:
+  dhw_min_temp: 55.0      # °C — minimum safe temperature to prevent Legionella growth
+  rolling_window: 288     # 288 samples = 24 h at 5-min data (debounce: all samples must be below threshold)
+
+expression: |
+  (Hot_Water_Supply_Temperature_Sensor.rolling(window=rolling_window, min_periods=rolling_window).max() < dhw_min_temp)

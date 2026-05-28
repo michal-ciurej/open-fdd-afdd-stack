@@ -1,0 +1,28 @@
+# AHU heat recovery operating when return and outside air temps suggest it is counterproductive,
+# causing the unit to condition against its own heat recovery and waste energy.
+# Catches stuck/misconfigured heat recovery wheel or bypass damper, incorrect control logic.
+# Tuning: only RAT and OAT required; delta_temp_min avoids nuisance trips near crossover.
+name: ahu_excessive_heat_recovery
+description: Return air temp vs outside air temp indicates counterproductive heat recovery
+type: expression
+flag: ahu_excessive_heat_recovery_flag
+category: general
+severity: warning
+equipment_type:
+  - Air_Handling_Unit
+
+inputs:
+  Return_Air_Temperature_Sensor:
+    brick: Return_Air_Temperature_Sensor
+  Outside_Air_Temperature_Sensor:
+    brick: Outside_Air_Temperature_Sensor
+
+params:
+  delta_temp_min: 1.5   # °C — minimum RAT/OAT difference to confirm counterproductive recovery (avoids crossover noise)
+  rolling_window: 6     # 6 samples = 30 min at 5-min data — matches Trigger Period
+
+expression: |
+  (
+    (Return_Air_Temperature_Sensor > (Outside_Air_Temperature_Sensor + delta_temp_min)) |
+    (Return_Air_Temperature_Sensor < (Outside_Air_Temperature_Sensor - delta_temp_min))
+  )

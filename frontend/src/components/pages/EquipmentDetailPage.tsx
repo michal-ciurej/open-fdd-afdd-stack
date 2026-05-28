@@ -426,6 +426,9 @@ export function EquipmentDetailPage() {
             <FaultsChartCard equipment={equipment} definitions={definitions} />
           </div>
 
+        <DataQueryWidget siteId={equipment.site_id} equipmentId={equipment.id} />
+
+
           <Card className="mb-6">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
@@ -487,7 +490,6 @@ export function EquipmentDetailPage() {
             </CardContent>
           </Card>
 
-          <DataQueryWidget siteId={equipment.site_id} equipmentId={equipment.id} />
         </>
       )}
 

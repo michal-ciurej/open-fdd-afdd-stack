@@ -310,7 +310,7 @@ def enforce_site_param(user: AuthUser, site_id_or_name: str | None) -> None:
             (str(site_id_or_name), str(site_id_or_name)),
         )
         row = cur.fetchone()
-    if not row or row[0] not in accessible:
+    if not row or row["id"] not in accessible:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"code": "FORBIDDEN", "message": "No permission for this site"},
@@ -331,4 +331,33 @@ def accessible_site_ids(user: AuthUser) -> list[str] | None:
             "SELECT site_id FROM user_site_permissions WHERE user_oid = %s",
             (user.oid,),
         )
-        return [row[0] for row in cur.fetchall()]
+        return [row["site_id"] for row in cur.fetchall()]
+
+
+def record_user_login(user: AuthUser) -> None:
+    """Upsert the user into app_users so the admin User-access page has a roster.
+
+    The SWA principal is our only signal about who exists — there is no Graph
+    integration — so we capture identity on each /auth/me call. Machine callers
+    are skipped (they aren't real directory users). Best-effort: a failure here
+    must never break the caller's /auth/me, so swallow and log.
+    """
+    if user.is_machine or not user.oid:
+        return
+    roles = sorted(r.value for r in user.roles)
+    try:
+        with get_conn() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO app_users (oid, email, roles, first_seen, last_seen)
+                VALUES (%s, %s, %s, NOW(), NOW())
+                ON CONFLICT (oid) DO UPDATE
+                    SET email = EXCLUDED.email,
+                        roles = EXCLUDED.roles,
+                        last_seen = NOW()
+                """,
+                (user.oid, user.email or None, roles),
+            )
+            conn.commit()
+    except Exception:  # noqa: BLE001 — roster capture is best-effort
+        logger.warning("record_user_login failed for oid=%s", user.oid, exc_info=True)
