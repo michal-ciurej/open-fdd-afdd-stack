@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Wrench, CalendarClock, CheckCircle2, X, ChevronRight, Eye } from "lucide-react";
+import { Wrench, CalendarClock, CheckCircle2, X, ChevronRight, Eye, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useSiteContext } from "@/contexts/site-context";
+import { EngineerReportModal } from "@/components/maintenance/EngineerReportModal";
 import {
   useLogMaintenanceEvent,
   useMaintenanceOverview,
@@ -150,6 +151,7 @@ function EquipmentRowControls({ row }: { row: MaintenanceEquipmentRow }) {
 export function MaintenancePage() {
   const { selectedSiteId } = useSiteContext();
   const [period, setPeriod] = useState<Period>(30);
+  const [reportOpen, setReportOpen] = useState(false);
   const { data, isLoading, isError } = useMaintenanceOverview(period);
 
   const rows = useMemo(() => {
@@ -158,12 +160,53 @@ export function MaintenancePage() {
     return all.filter((r) => r.site_id === selectedSiteId);
   }, [data, selectedSiteId]);
 
+  const scheduledRows = useMemo(
+    () => rows.filter((r) => r.scheduled),
+    [rows],
+  );
+
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Maintenance</h1>
-        <PeriodToggle value={period} onChange={setPeriod} />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setReportOpen(true)}
+            disabled={scheduledRows.length === 0}
+            title={
+              scheduledRows.length === 0
+                ? "Schedule equipment for maintenance to generate a report"
+                : "Generate the engineer planner report"
+            }
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-border/60 bg-background px-3 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
+            data-testid="generate-engineer-report"
+          >
+            <FileText className="h-4 w-4" />
+            Generate Engineer Report
+            {scheduledRows.length > 0 && (
+              <span className="rounded-full bg-primary/10 px-1.5 text-xs font-semibold text-primary">
+                {scheduledRows.length}
+              </span>
+            )}
+          </button>
+          <PeriodToggle value={period} onChange={setPeriod} />
+        </div>
       </div>
+
+      {reportOpen && (
+        <EngineerReportModal
+          items={scheduledRows.map((r) => ({
+            equipment_id: r.equipment_id,
+            site_id: r.site_id,
+            name: r.name,
+            equipment_type: r.equipment_type,
+          }))}
+          windowDays={period}
+          siteId={selectedSiteId ?? undefined}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
 
       <Card className="mb-4 border-primary/20 bg-primary/5">
         <CardHeader className="pb-2">

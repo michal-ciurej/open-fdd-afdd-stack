@@ -35,7 +35,7 @@ const FIELDS: FieldSpec[] = [
   { key: "motor_hp", label: "Motor HP", step: "0.1", min: 0 },
   { key: "motor_efficiency", label: "Motor η (0–1)", step: "0.01", min: 0, max: 1 },
   { key: "design_cfm", label: "Design CFM", step: "1", min: 0 },
-  { key: "design_sat_f", label: "Design SAT (°F)", step: "0.1" },
+  { key: "design_sat_f", label: "Design SAT (°C)", step: "0.1" },
   {
     key: "design_static_pressure_inwc",
     label: "Design static (inWC)",

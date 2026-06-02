@@ -91,7 +91,6 @@ printf '%s' 'YourSecurePassword' | ./scripts/bootstrap.sh \
   --password-stdin
 ```
 
-**LAN / firewall / ports:** See [Standard HTTP lab: remote LAN access](https://bbartling.github.io/open-fdd-afdd-stack/getting_started#standard-http-lab-remote-lan-access) in the Stack Docs (bearer keys in `stack/.env`, `http://` vs `https://`, ports **80** / **8880** / **8000**, and automatic **ufw**).
 
 ### Standard hardened stack — self-signed TLS (Caddy) and app login
 
@@ -158,6 +157,246 @@ pytest openfdd_stack/tests -v
 
 MIT
 
+---
+
+## Azure deployment
+
+This section documents the **per-change deploy workflow** for the production Azure tenant. For the one-time infrastructure build-out (resource groups, ACR, ACA environment, SWA, Postgres Flex Server, secrets, Entra App Roles), see [docs/deployment-azure.md](docs/deployment-azure.md).
+
+### What lives where
+
+| Artifact | Type | Built with | Deployed to |
+|---|---|---|---|
+| `predmain-api` | Docker image (`3msecontainers.azurecr.io/predmain-api`) | `az acr build -f stack/Dockerfile.api` | ACA container app `predmain-api`. Public ingress; SWA forwards `/api/*` to it. |
+| `predmain-fdd-loop` | Docker image (`3msecontainers.azurecr.io/predmain-fdd-loop`) | `az acr build -f stack/Dockerfile.fdd_loop` | **Two** ACA Jobs sharing this image: `predmain-fdd-loop` (rule loop, cron `0 */3 * * *`) and `predmain-nightly-sync` (history sync, cron `0 3 * * *`). They differ only in the command override. |
+| `predmain-frontend` | Static React bundle | `npm run build:swa` (frontend/) | Azure Static Web Apps `predmain-frontend`, environment `production`. |
+
+`stack/rules/*.yaml` rule files are **baked into the `predmain-fdd-loop` image** via `COPY stack/rules ./stack/rules` in the Dockerfile. There is no Azure Files mount for rules — every rule change requires rebuilding that image and rolling both jobs.
+
+### Prerequisites
+
+- `az login` on the Pay-As-You-Go subscription (Entra tenant `fce6e120-a4ac-468f-bce8-0a9efa296639`).
+- **PowerShell 7+** on Windows for the build/roll commands.
+- **Node 18+** for the frontend build.
+- A clean working tree (image tags are short git SHAs — see *Pre-flight* below).
+- The `.dockerignore` at the repo root is **required**. Without it every `az acr build` uploads ~200 MB of `frontend/node_modules` and ~15 MB of `.git` as build context. Keep it committed.
+
+### One-shot workflow
+
+The full cycle is: **commit → build images → roll API → roll both jobs → build + deploy frontend → verify**. Each step below is copy-pasteable PowerShell.
+
+#### 0. Pre-flight
+
+```powershell
+git status                              # tree must be clean — image tags are SHAs
+$SHA = git rev-parse --short HEAD
+$env:PYTHONUTF8 = '1'
+$env:PYTHONIOENCODING = 'utf-8'
+```
+
+Tags are pinned to short git SHAs (`predmain-api:c6d8dec`). Tagging an image with a SHA whose code isn't actually in the image is a footgun — rollbacks then lie. If you have to publish uncommitted work, tag with `dev-<UTC stamp>` instead and re-tag once you commit.
+
+#### 1. Build the two backend images (run in parallel)
+
+```powershell
+# API image
+az acr build -r 3mseContainers `
+  -t "predmain-api:$SHA" -t predmain-api:latest `
+  --no-logs -f stack/Dockerfile.api .
+
+# fdd-loop image (used by BOTH predmain-fdd-loop and predmain-nightly-sync)
+az acr build -r 3mseContainers `
+  -t "predmain-fdd-loop:$SHA" -t predmain-fdd-loop:latest `
+  --no-logs -f stack/Dockerfile.fdd_loop .
+```
+
+> **Why `--no-logs`?** On Windows the `az` CLI streams ACR build logs through `colorama`, which writes via `cp1252` and crashes on common build output even when `$env:PYTHONIOENCODING = 'utf-8'` is set. The remote ACR build still succeeds, but the local `az` process exits `1`, which is misleading. `--no-logs` skips the streaming path; `az` still waits for the build to finish and returns a real exit code. Inspect logs after the fact with `az acr task list-runs` + `az acr task logs --runner <runId>`, or via Log Analytics KQL on `ContainerAppConsoleLogs_CL`. **Don't rely on the older `PYTHONIOENCODING` workaround alone** — it's not enough when `az` runs with a captured pipe rather than a real console.
+
+Confirm both tags landed:
+
+```powershell
+az acr repository show-tags -n 3mseContainers --repository predmain-api      --orderby time_desc --top 3 -o tsv
+az acr repository show-tags -n 3mseContainers --repository predmain-fdd-loop --orderby time_desc --top 3 -o tsv
+```
+
+#### 2. Roll the API container app
+
+```powershell
+az containerapp update -g Live_Services -n predmain-api `
+  --image "3msecontainers.azurecr.io/predmain-api:$SHA" `
+  --revision-suffix "api$SHA"
+
+# Wait for the new revision to go Healthy before continuing.
+az containerapp revision show -g Live_Services -n predmain-api `
+  --revision "predmain-api--api$SHA" `
+  --query '{p:properties.provisioningState, h:properties.healthState, r:properties.runningState}' -o json
+```
+
+Single-revision mode is the default — the new revision takes 100% of ingress automatically when it reports `Healthy`.
+
+#### 3. Roll **both** jobs in lockstep
+
+```powershell
+az containerapp job update -g Live_Services -n predmain-fdd-loop `
+  --image "3msecontainers.azurecr.io/predmain-fdd-loop:$SHA"
+az containerapp job update -g Live_Services -n predmain-nightly-sync `
+  --image "3msecontainers.azurecr.io/predmain-fdd-loop:$SHA"
+
+# Smoke each before the next cron firing.
+az containerapp job start -g Live_Services -n predmain-fdd-loop
+az containerapp job start -g Live_Services -n predmain-nightly-sync
+
+# Confirm both succeeded.
+az containerapp job execution list -g Live_Services --name predmain-fdd-loop `
+  --query '[0].{status:properties.status, end:properties.endTime}' -o table
+az containerapp job execution list -g Live_Services --name predmain-nightly-sync `
+  --query '[0].{status:properties.status, end:properties.endTime}' -o table
+```
+
+> **⚠ Critical:** `predmain-nightly-sync` and `predmain-fdd-loop` share one image and differ only in the command override. **Always update both in lockstep.** Historically, updating one without the other left `predmain-nightly-sync` pointing at an image that didn't contain `run_nightly_sync.py`, which silently failed every night for two weeks before anyone noticed.
+
+#### 4. Build and deploy the frontend
+
+```powershell
+Set-Location frontend
+
+# Vite build + injects tenant GUID into dist/staticwebapp.config.json
+$env:AAD_TENANT_ID = 'fce6e120-a4ac-468f-bce8-0a9efa296639'
+npm run build:swa
+
+# Deploy
+$SWA_TOKEN = az staticwebapp secrets list -g Live_Services -n predmain-frontend `
+  --query properties.apiKey -o tsv
+npx -y '@azure/static-web-apps-cli@latest' deploy ./dist `
+  --deployment-token $SWA_TOKEN --env production
+
+Set-Location ..
+```
+
+> Quote `'@azure/...@latest'` in PowerShell — a bare leading `@` is the splat operator otherwise.
+
+After deploy, **hard-refresh** (Ctrl+Shift+R) or test in incognito. SWA serves the JS bundle with cache headers; browsers keep the old bundle otherwise.
+
+#### 5. Verify
+
+- **API:** open a page that exercises a recently-changed endpoint and check the network tab.
+- **Rules / fdd-loop:** the smoke-start in step 3 should have written new rows to `fault_results`. Open the Faults page in the SPA.
+- **Nightly-sync:** confirm a new row in `point_readings` from each Niagara/IQVision-backed site, dated within the configured `--window` (default `yesterday`). For a longer catch-up, override args once: `az containerapp job start -g Live_Services -n predmain-nightly-sync --args="--window lastweek"`.
+- **Frontend:** hard-refresh and exercise the new feature. Screens behind a new role/permission require sign-out + sign-in (incognito) — Entra tokens are minted at sign-in and hold stale claims for up to 1h.
+
+### Order matters
+
+| Change shape | Order |
+|---|---|
+| **API + frontend together** | Roll API **first**, then deploy frontend. The new frontend bundle usually calls new API endpoints; reversed order means seconds-to-minutes of 404s for users hitting the new UI before the new API is live. |
+| **Rules-only** | Only the `predmain-fdd-loop` image rebuild and **both job rolls** matter. API and SWA stay put. |
+| **Frontend-only** | Only `npm run build:swa && swa deploy`. |
+| **DB schema** | Always apply the migration **before** rolling any image that queries the new schema. |
+
+### DB schema migrations
+
+`stack/sql/0NN_*.sql` files auto-apply only on a **fresh** DB volume. For an existing deployment, apply via `psql` from the `ioProxyHandler` VM — the only host with a network path to the private Flex Server endpoint:
+
+```powershell
+# On your laptop (PowerShell)
+scp stack/sql/0NN_<name>.sql N4EM_USER@<ioproxy-host>:~/sherlock/sql/
+
+# Then SSH in (ZeroTier-equipped VM at 10.0.3.4)
+ssh N4EM_USER@<ioproxy-host>
+# Once on the VM:
+#   psql -v ON_ERROR_STOP=1 "$OFDD_DB_DSN" -f ~/sherlock/sql/0NN_<name>.sql
+```
+
+Migrations are written to be idempotent (`CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `DO ... EXCEPTION WHEN duplicate_object ...`).
+
+### Rollback
+
+Every successful build pushes a SHA-tagged image to ACR. Tags are immutable, so rollback is a one-liner per component:
+
+```powershell
+$PRIOR = '<prior short SHA, e.g. 6bfafa0>'
+
+# API
+az containerapp update -g Live_Services -n predmain-api `
+  --image "3msecontainers.azurecr.io/predmain-api:$PRIOR" `
+  --revision-suffix "rb$PRIOR"
+
+# Both jobs (lockstep — same as forward roll)
+az containerapp job update -g Live_Services -n predmain-fdd-loop `
+  --image "3msecontainers.azurecr.io/predmain-fdd-loop:$PRIOR"
+az containerapp job update -g Live_Services -n predmain-nightly-sync `
+  --image "3msecontainers.azurecr.io/predmain-fdd-loop:$PRIOR"
+```
+
+The frontend has no built-in rollback — rebuild from the prior commit:
+
+```powershell
+git checkout <prior SHA> -- frontend
+Set-Location frontend
+$env:AAD_TENANT_ID = 'fce6e120-a4ac-468f-bce8-0a9efa296639'
+npm run build:swa
+# …then swa deploy as in step 4
+```
+
+### Quick reference: which command for which change?
+
+| What changed | Build step | Roll step |
+|---|---|---|
+| API code (`openfdd_stack/platform/api/`) | `az acr build … predmain-api` | `az containerapp update predmain-api` |
+| FDD driver code (`openfdd_stack/platform/drivers/`, `…/loop.py`) | `az acr build … predmain-fdd-loop` | `az containerapp job update` **× 2** |
+| Rule YAML (`stack/rules/`) | `az acr build … predmain-fdd-loop` | `az containerapp job update` **× 2** |
+| Frontend (`frontend/src/`) | `npm run build:swa` | `swa deploy ./dist` |
+| `frontend/public/staticwebapp.config.json` (routes, auth) | `npm run build:swa` (tenant injection runs every time) | `swa deploy ./dist` |
+| DB schema (`stack/sql/`) | n/a | `scp` + `psql` via `ioProxyHandler` |
+| Secret value (DSN, API key) | n/a | `az containerapp secret set` + `containerapp update --revision-suffix` to force restart |
+| Entra App Role / user assignment | n/a | Entra portal directly; affected users must sign out + back in |
+
+### Pulling logs
+
+For real-time tailing of an ACA container app:
+
+```powershell
+az containerapp logs show -g Live_Services -n predmain-api --follow
+```
+
+For historical or job logs, query Log Analytics. The `log-analytics` `az` extension may fail to install on conda-bundled Python; the REST API works directly:
+
+```powershell
+$WS = az containerapp env show -g Live_Services -n cae-predmain `
+  --query 'properties.appLogsConfiguration.logAnalyticsConfiguration.customerId' -o tsv
+
+$KQL = @'
+union ContainerAppConsoleLogs_CL, ContainerAppSystemLogs_CL
+| where TimeGenerated > ago(2h)
+| where ContainerAppName_s == 'predmain-api'        // or filter by Log_s/Reason_s for jobs
+| project TimeGenerated, ContainerName_s, Reason_s=column_ifexists('Reason_s',''), Log_s
+| order by TimeGenerated asc
+| take 200
+'@
+$body = @{ query = $KQL } | ConvertTo-Json -Compress
+$body | Out-File -FilePath .\.tmp_kql.json -Encoding utf8 -NoNewline
+az rest --method post `
+  --url "https://api.loganalytics.io/v1/workspaces/$WS/query" `
+  --resource 'https://api.loganalytics.io' `
+  --headers 'Content-Type=application/json' `
+  --body '@.tmp_kql.json'
+Remove-Item .\.tmp_kql.json
+```
+
+ACA Jobs do not populate `ContainerAppName_s` — for nightly-sync / fdd-loop logs, filter by content (`where Log_s has 'nightly-sync'`) or by the `Reason_s` system events (`SuccessfulCreate`, `PullingImage`, `ContainerTerminated`, `BackoffLimitExceeded`).
+
+### Common pitfalls
+
+- **`--no-logs` is essential on Windows `az acr build`.** The colorama→`cp1252` crash makes the local `az` exit `1` even when the remote build succeeded.
+- **Never deploy `:latest` to ACA.** `:latest` is fine for the local docker-compose path (below), but ACA can't tell when `:latest` moves, so rollbacks become ambiguous. Always pin SHA tags.
+- **Always roll both jobs in lockstep.** `predmain-fdd-loop` and `predmain-nightly-sync` share one image. Updating one and not the other has caused silent multi-week production failures.
+- **Hard-refresh the browser after `swa deploy`** — SWA serves bundles with cache headers.
+- **Sign out + back in (incognito) after Entra changes.** Tokens hold stale role claims for up to 1h.
+- **`.dockerignore` is load-bearing.** Don't remove it.
+- **Apply migrations before rolling code that depends on the new schema.** The reverse order produces 5xx until the migration lands.
+- **Single-revision mode** means a bad revision becomes the only revision. Keep the prior SHA tag handy for rollback (see *Rollback* above).
+
+---
 
 commands to rebuild:
 

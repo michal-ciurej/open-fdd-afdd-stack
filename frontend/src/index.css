@@ -288,3 +288,60 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/** Engineer Planner print isolation. EngineerReportModal portals to <body> and
+   sets body.printing-engineer-report before window.print(). We hide the main
+   app (#root), flatten the modal chrome (fixed overlay, scroll clamp, max-width)
+   into normal document flow, and let the report grow to its natural height so
+   "Save as PDF" spans as many pages as the cards need. */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  body.printing-engineer-report {
+    background: #fff !important;
+  }
+
+  /* Hide the application behind the portaled report. */
+  body.printing-engineer-report > #root {
+    display: none !important;
+  }
+
+  /* The modal header / action bar is screen-only. */
+  body.printing-engineer-report .engineer-report-modal-header {
+    display: none !important;
+  }
+
+  /* Collapse the fixed overlay and its scroll clamp into normal flow so the
+     content paginates instead of being clipped to one viewport. */
+  body.printing-engineer-report .engineer-report-overlay,
+  body.printing-engineer-report .engineer-report-shell,
+  body.printing-engineer-report .engineer-report-scroll {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  body.printing-engineer-report #engineer-report-print {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* Keep each equipment card intact across page breaks. */
+  body.printing-engineer-report .engineer-report-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
