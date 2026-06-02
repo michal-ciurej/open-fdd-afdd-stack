@@ -1,12 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import type {
+  Capabilities,
   SystemHostResponse,
   SystemHostSeriesResponse,
   SystemContainersResponse,
   SystemContainersSeriesResponse,
   SystemDiskResponse,
 } from "@/types/api";
+
+/** GET /capabilities — version + feature flags (incl. ai_available for AI tagging). */
+export function useCapabilities() {
+  return useQuery<Capabilities>({
+    queryKey: ["capabilities"],
+    queryFn: () => apiFetch<Capabilities>("/capabilities"),
+    staleTime: 5 * 60 * 1000,
+  });
+}
 
 export function useSystemHost() {
   return useQuery<SystemHostResponse>({

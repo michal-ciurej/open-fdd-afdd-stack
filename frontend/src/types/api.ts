@@ -194,6 +194,60 @@ export interface SparqlResponse {
   bindings: Record<string, string | null>[];
 }
 
+/** POST /data-model/ai-tag request — operator pre-flight that steers polling/units. */
+export interface AiTagRequest {
+  site_id?: string | null;
+  /** Which Open-FDD faults/rules will run (drives polling). */
+  faults?: string | null;
+  /** Actual rule YAML or snippets — best input for polling decisions. */
+  rules_yaml?: string | null;
+  units_mode?: "imperial" | "metric" | null;
+  /** True for a live HVAC job, false for a bench/demo. */
+  production?: boolean | null;
+  weather?: boolean | null;
+  polling_mode?: "rules_only" | "rules_plus_trending" | null;
+  notes?: string | null;
+  /** Override the configured Anthropic model. */
+  model?: string | null;
+  correlation_id?: string | null;
+}
+
+/** One proposed point: the import row fields plus review-only confidence/rationale. */
+export interface TaggingProposalPoint extends DataModelExportRow {
+  /** 0..1 model confidence in this row's tags. Stripped before import. */
+  confidence?: number | null;
+  /** One-line evidence for the review screen. Stripped before import. */
+  rationale?: string | null;
+}
+
+export interface TaggingProposalEquipment {
+  equipment_id?: string | null;
+  equipment_name?: string | null;
+  equipment_type?: string | null;
+  site_id?: string | null;
+  feeds?: string[] | null;
+  fed_by?: string[] | null;
+  confidence?: number | null;
+  rationale?: string | null;
+}
+
+export interface AiTagTokenUsage {
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_input_tokens: number;
+  cache_creation_input_tokens: number;
+}
+
+/** POST /data-model/ai-tag response — ephemeral proposal for human review (no DB write). */
+export interface TaggingProposal {
+  points: TaggingProposalPoint[];
+  equipment: TaggingProposalEquipment[];
+  warnings: string[];
+  model: string;
+  chunks: number;
+  usage: AiTagTokenUsage;
+}
+
 export interface Capabilities {
   version: string;
   features: {
@@ -202,10 +256,10 @@ export interface Capabilities {
     jobs: boolean;
     bacnet_write: boolean;
   };
-  /** Always false in core Open-FDD; use external agents with /model-context and /mcp/manifest. */
+  /** True when AI-assisted tagging is configured (Anthropic key set on the backend). */
   ai_available: boolean;
-  /** Core API does not embed an LLM; value is always "disabled". */
-  ai_backend: "disabled";
+  /** "anthropic" when AI tagging is configured, else "disabled". */
+  ai_backend: "disabled" | "anthropic";
 }
 
 /** POST /bacnet/server_hello response (API returns { ok, body? } where body is JSON-RPC). */

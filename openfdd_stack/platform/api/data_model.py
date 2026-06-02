@@ -636,6 +636,81 @@ def get_vocabulary() -> VocabularyResponse:
     )
 
 
+# --- AI-assisted tagging: export -> Anthropic -> review proposal (no DB write) ---
+#
+# This endpoint holds NO tagging logic. It builds the structured export and hands
+# it to openfdd_stack.platform.ai.tagging.run_tagging, which owns every prompt,
+# the Anthropic call, validation, and retry. Audit the tagger by reading that one
+# module. The proposal returned here is ephemeral: the operator reviews/corrects
+# it in the UI, then approves it through the existing PUT /data-model/import.
+
+
+class AiTagRequest(BaseModel):
+    """Pre-flight job context for AI tagging. site_id scopes the export exactly
+    like GET /data-model/export. Everything else steers polling/unit choices and
+    is passed straight through to the tagger's JobContext."""
+
+    site_id: str | None = Field(
+        None, description="Scope tagging to this site (UUID, name, or description)."
+    )
+    faults: str | None = Field(None, description="Which Open-FDD faults/rules will run.")
+    rules_yaml: str | None = Field(None, description="Actual rule YAML/snippets — best input for polling.")
+    units_mode: Literal["imperial", "metric"] | None = None
+    production: bool | None = Field(None, description="True for a live HVAC job; False for bench/demo.")
+    weather: bool | None = Field(None, description="Whether weather rules/polling are in scope.")
+    polling_mode: Literal["rules_only", "rules_plus_trending"] | None = None
+    notes: str | None = Field(None, description="Free-text brief (topology, naming conventions).")
+    model: str | None = Field(None, description="Override the configured Anthropic model.")
+    correlation_id: str | None = Field(
+        None, description="Echoed on TOPIC ai.tag progress events so the UI can correlate."
+    )
+
+
+@router.post(
+    "/ai-tag",
+    summary="AI-assisted Brick tagging proposal (Anthropic; no DB write)",
+    response_description=(
+        "An ephemeral tagging proposal: {points, equipment} with per-row "
+        "confidence/rationale for review. Strip those two fields and PUT it to "
+        "/data-model/import to onboard. Requires OFDD_ANTHROPIC_API_KEY."
+    ),
+)
+def ai_tag(body: AiTagRequest):
+    """Build the structured export for ``site_id`` and return an AI tagging
+    proposal for human review. Does not write to the database — onboarding is the
+    operator approving the (edited) proposal via PUT /data-model/import."""
+    from openfdd_stack.platform.ai.tagging import (
+        AiTaggingError,
+        JobContext,
+        run_tagging,
+    )
+
+    export = StructuredExport(
+        equipment=_build_equipment_export(body.site_id),
+        points=_build_unified_export(body.site_id),
+    )
+    ctx = JobContext(
+        faults=body.faults,
+        rules_yaml=body.rules_yaml,
+        units_mode=body.units_mode,
+        production=body.production,
+        weather=body.weather,
+        polling_mode=body.polling_mode,
+        notes=body.notes,
+    )
+    try:
+        proposal = run_tagging(
+            export, ctx, model=body.model, correlation_id=body.correlation_id
+        )
+    except AiTaggingError as exc:
+        # Config/SDK problems -> 503 (feature unavailable); model/validation
+        # failures after retries -> 502 (upstream produced nothing usable).
+        msg = str(exc)
+        unavailable = "not configured" in msg or "not installed" in msg
+        raise HTTPException(503 if unavailable else 502, msg)
+    return proposal
+
+
 # --- Import: bulk update full BRICK data model (points, site, equipment, rule_input) ---
 
 

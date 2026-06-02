@@ -7,6 +7,8 @@ on API startup from data_model.ttl and on PUT /config.
 
 from typing import Optional
 
+from pydantic import AliasChoices, Field
+
 try:
     from pydantic_settings import BaseSettings
 except ImportError:
@@ -35,7 +37,7 @@ class PlatformSettings(BaseSettings):
     brick_ttl_path: str = (
         "config/data_model.ttl"  # unified graph: Brick + BACnet + config; auto-synced on CRUD
     )
-    app_title: str = "Open-FDD API"
+    app_title: str = "ThreeFDD API"
     app_version: str = "2.0.5"
     debug: bool = False
 
@@ -86,8 +88,24 @@ class PlatformSettings(BaseSettings):
     # Leave unset when ACA ingress is locked down to SWA outbound IPs (recommended).
     swa_ingress_secret: Optional[str] = None
 
-    # Reserved for RDF overlay compatibility (always "disabled" in core builds).
+    # Reserved for RDF overlay compatibility ("disabled" in core builds;
+    # reports "anthropic" via /capabilities when anthropic_api_key is set).
     ai_backend: str = "disabled"
+
+    # AI-assisted Brick tagging (Anthropic). The entire flow lives in
+    # openfdd_stack/platform/ai/tagging.py. Key is read from env / Key Vault and
+    # never sent to the browser. When unset, POST /data-model/ai-tag returns 503.
+    # Read from the Anthropic SDK's standard ANTHROPIC_API_KEY (so the bare name
+    # works locally and the SDK convention is honored), falling back to the
+    # OFDD_-prefixed name. validation_alias bypasses env_prefix for this field.
+    anthropic_api_key: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("ANTHROPIC_API_KEY", "OFDD_ANTHROPIC_API_KEY"),
+    )
+    ai_tag_model: str = "claude-sonnet-4-6"  # Opus 4.8 ("claude-opus-4-8") for hard sites
+    ai_tag_max_tokens: int = 8000
+    ai_tag_chunk_size: int = 60  # points per Anthropic call; grouped by BACnet device
+    ai_tag_max_retries: int = 2  # prompt-chained validation retries per chunk
 
     model_config = {"env_prefix": "OFDD_", "env_file": ".env"}
 

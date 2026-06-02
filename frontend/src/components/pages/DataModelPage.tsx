@@ -9,6 +9,8 @@ import { useSiteContext } from "@/contexts/site-context";
 import { useAllEquipment, useAllPoints, useEquipment, usePoints, useSites } from "@/hooks/use-sites";
 import { useActiveFaults, useSiteFaults } from "@/hooks/use-faults";
 import { EquipmentTable } from "@/components/site/EquipmentTable";
+import { AiTaggingPanel } from "@/components/site/AiTaggingPanel";
+import { useCapabilities } from "@/hooks/use-system";
 import { apiFetch, apiFetchText } from "@/lib/api";
 import { writeTtlToPopup } from "@/lib/ttl-popup";
 import {
@@ -54,6 +56,7 @@ export function DataModelPage() {
   const { data: faultsAll = [] } = useActiveFaults();
   const { data: faultsSite = [] } = useSiteFaults(selectedSiteId ?? undefined);
   const { data: sites = [] } = useSites();
+  const { data: capabilities } = useCapabilities();
   const equipment = selectedSiteId ? equipmentSite : equipmentAll;
   const points = selectedSiteId ? pointsSite : pointsAll;
   const faults = selectedSiteId ? faultsSite : faultsAll;
@@ -368,6 +371,9 @@ export function DataModelPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* AI tagging (Anthropic) — embedded export → tag → review → onboard */}
+        <AiTaggingPanel available={capabilities?.ai_available} />
 
         {/* Import */}
         <Card>

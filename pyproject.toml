@@ -29,6 +29,9 @@ dependencies = [
     "PyJWT>=2.8,<3",
     "argon2-cffi>=23.1",
     "docker>=7.0,<8",
+    # AI-assisted Brick tagging (openfdd_stack/platform/ai/tagging.py). Optional
+    # at runtime — the endpoint returns 503 until OFDD_ANTHROPIC_API_KEY is set.
+    "anthropic>=0.40",
 ]
 
 [project.optional-dependencies]

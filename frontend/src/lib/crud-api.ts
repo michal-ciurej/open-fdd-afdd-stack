@@ -1,8 +1,10 @@
 import { apiFetch } from "@/lib/api";
 import type {
+  AiTagRequest,
   DataModelExportRow,
   DataModelImportBody,
   DataModelImportResponse,
+  TaggingProposal,
   EnergyCalculation,
   EnergyCalculationCreateBody,
   EnergyCalculationPatchBody,
@@ -180,6 +182,15 @@ export function dataModelExport() {
 export function dataModelImport(body: DataModelImportBody) {
   return apiFetch<DataModelImportResponse>("/data-model/import", {
     method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/** POST /data-model/ai-tag — Anthropic-assisted tagging proposal (no DB write). */
+export function dataModelAiTag(body: AiTagRequest) {
+  return apiFetch<TaggingProposal>("/data-model/ai-tag", {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });

@@ -23,15 +23,16 @@ class CapabilityResponse(BaseModel):
         ...,
         description="Feature flags: websocket, fault_state, jobs, bacnet_write",
     )
-    # Built-in LLM endpoints are not part of Open-FDD; use external tooling +
-    # GET /model-context/docs and GET /mcp/manifest for discovery.
+    # This AFDD stack embeds AI-assisted Brick tagging (Anthropic). It reports
+    # available only when OFDD_ANTHROPIC_API_KEY is configured; otherwise the
+    # POST /data-model/ai-tag endpoint returns 503 and the UI hides the feature.
     ai_available: bool = Field(
         False,
-        description="Always false in core Open-FDD; use an external agent stack.",
+        description="True when AI-assisted tagging is configured (Anthropic key set).",
     )
-    ai_backend: Literal["disabled"] = Field(
+    ai_backend: Literal["disabled", "anthropic"] = Field(
         "disabled",
-        description="Core API does not embed an LLM; value is always disabled.",
+        description="'anthropic' when AI tagging is configured, else 'disabled'.",
     )
 
 

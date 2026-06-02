@@ -20,6 +20,7 @@ TOPIC_NIAGARA_SCAN = "niagara.scan"
 TOPIC_IQVISION_SYNC = "iqvision.sync"
 TOPIC_IQVISION_SCAN = "iqvision.scan"
 TOPIC_ENERGY_RECOMPUTE = "energy.recompute"
+TOPIC_AI_TAG = "ai.tag"  # AI-assisted tagging progress (see ai/tagging.py)
 
 
 def _ts() -> str:

@@ -332,6 +332,18 @@ def health():
     return out
 
 
+def _ai_tagging_available() -> bool:
+    """True when AI-assisted tagging is configured. The actual check lives in the
+    tagging module (single source of truth); imported lazily so the optional
+    anthropic dependency never affects app startup."""
+    try:
+        from openfdd_stack.platform.ai.tagging import ai_tagging_available
+
+        return ai_tagging_available()
+    except Exception:
+        return False
+
+
 @app.get(
     "/capabilities",
     response_model=CapabilityResponse,
@@ -353,8 +365,8 @@ def capabilities():
             "jobs": True,
             "bacnet_write": True,
         },
-        ai_available=False,
-        ai_backend="disabled",
+        ai_available=_ai_tagging_available(),
+        ai_backend="anthropic" if _ai_tagging_available() else "disabled",
     )
 
 
