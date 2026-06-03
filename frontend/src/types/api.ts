@@ -234,7 +234,7 @@ export interface AiTagTokenUsage {
   cache_creation_input_tokens: number;
 }
 
-/** POST /data-model/ai-tag response — ephemeral proposal for human review (no DB write). */
+/** The ephemeral proposal for human review (no DB write). Returned inside a run. */
 export interface TaggingProposal {
   points: TaggingProposalPoint[];
   equipment: TaggingProposalEquipment[];
@@ -242,6 +242,32 @@ export interface TaggingProposal {
   model: string;
   chunks: number;
   usage: AiTagTokenUsage;
+}
+
+/** POST /data-model/ai-tag — starts a background run, returns immediately. */
+export interface AiTagRunStart {
+  run_id: string;
+  status: "running";
+  points: number;
+  chunks: number;
+}
+
+export interface AiTagRunProgress {
+  phase?: string;
+  chunk?: number;
+  chunks?: number | null;
+}
+
+/** GET /data-model/ai-tag/runs/{run_id} — poll until status is done|error. */
+export interface AiTagRunState {
+  run_id: string;
+  status: "running" | "done" | "error";
+  points: number;
+  progress?: AiTagRunProgress | null;
+  /** Present when status === "done". */
+  proposal?: TaggingProposal | null;
+  /** Present when status === "error". */
+  error?: string | null;
 }
 
 export interface Capabilities {

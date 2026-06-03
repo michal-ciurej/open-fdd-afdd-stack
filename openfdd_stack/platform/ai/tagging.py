@@ -36,7 +36,11 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Optional
+import threading
+import time
+import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Callable, Optional
 
 from pydantic import BaseModel, Field
 
@@ -391,12 +395,15 @@ def _tag_chunk(
     model: str,
     max_tokens: int,
     max_retries: int,
-    usage: TokenUsage,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], TokenUsage]:
     """Tag one chunk: force the emit_tagging_proposal tool, validate the result
     against the import contract, and on failure prompt-chain the error back to
-    the model (the documented retry loop) until it validates or retries run
-    out."""
+    the model (the documented retry loop) until it validates or retries run out.
+
+    Returns ``(tool_input, usage)``. Usage is per-chunk so callers can run chunks
+    concurrently and sum the deltas without sharing mutable state across threads.
+    """
+    usage = TokenUsage()
     system = [
         {"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}},
         {"type": "text", "text": _vocabulary_block(), "cache_control": {"type": "ephemeral"}},
@@ -450,7 +457,7 @@ def _tag_chunk(
             tool_input = tool_use.input if isinstance(tool_use.input, dict) else {}
             err = _validate_proposal_chunk(tool_input)
             if err is None:
-                return tool_input
+                return tool_input, usage
             last_error = err
 
         if attempt >= max_retries:
@@ -531,25 +538,30 @@ def run_tagging(
     *,
     model: str | None = None,
     correlation_id: str | None = None,
+    progress_cb: Callable[[dict[str, Any]], None] | None = None,
 ) -> TaggingProposal:
     """Tag a structured export and return an ephemeral proposal for human review.
 
     ``structured_export`` may be a ``StructuredExport`` pydantic model or a plain
     ``{"equipment": [...], "points": [...]}`` dict. This function performs NO
-    database writes — it only proposes. Progress is emitted on TOPIC_AI_TAG.
+    database writes — it only proposes. Chunks are tagged concurrently (up to
+    ``OFDD_AI_TAG_CONCURRENCY`` at a time) so a 500-point site finishes in a few
+    waves rather than dozens of serial calls. Progress is reported via
+    ``progress_cb`` (for the run store) and emitted on TOPIC_AI_TAG.
     """
     settings = get_platform_settings()
     api_key = (getattr(settings, "anthropic_api_key", None) or "").strip()
     if not api_key:
         raise AiTaggingError(
-            "AI tagging is not configured. Set OFDD_ANTHROPIC_API_KEY on the "
+            "AI tagging is not configured. Set ANTHROPIC_API_KEY on the "
             "backend to enable it."
         )
 
     model = model or getattr(settings, "ai_tag_model", "claude-sonnet-4-6")
-    max_tokens = int(getattr(settings, "ai_tag_max_tokens", 8000))
-    chunk_size = int(getattr(settings, "ai_tag_chunk_size", 60))
+    max_tokens = int(getattr(settings, "ai_tag_max_tokens", 20000))
+    chunk_size = int(getattr(settings, "ai_tag_chunk_size", 20))
     max_retries = int(getattr(settings, "ai_tag_max_retries", 2))
+    concurrency = max(1, int(getattr(settings, "ai_tag_concurrency", 5)))
 
     # Accept either a pydantic model or a dict; normalize to a plain dict.
     if hasattr(structured_export, "model_dump"):
@@ -567,26 +579,54 @@ def run_tagging(
         )
 
     chunks = _chunk_points(export, chunk_size)
-    usage = TokenUsage()
+    total = len(chunks)
     warnings: list[str] = []
     client = _anthropic_client(api_key)
 
-    _emit(correlation_id, {"phase": "start", "points": n_points, "chunks": len(chunks), "model": model})
+    _progress(correlation_id, progress_cb,
+              {"phase": "start", "points": n_points, "chunks": total, "model": model})
 
-    chunk_outputs: list[dict[str, Any]] = []
-    for i, chunk in enumerate(chunks):
-        _emit(correlation_id, {
-            "phase": "tagging",
-            "chunk": i + 1,
-            "chunks": len(chunks),
-            "chunk_points": len(chunk.get("points") or []),
-        })
-        out = _tag_chunk(
-            client, chunk, ctx,
-            model=model, max_tokens=max_tokens, max_retries=max_retries, usage=usage,
+    # Tag chunks concurrently. Each _tag_chunk returns its own usage so there is
+    # no shared mutable state between workers; we sum deltas as results land.
+    usage = TokenUsage()
+    results: list[dict[str, Any] | None] = [None] * total
+    done = 0
+    done_lock = threading.Lock()
+
+    def work(i: int) -> tuple[int, dict[str, Any], TokenUsage]:
+        out, u = _tag_chunk(
+            client, chunks[i], ctx,
+            model=model, max_tokens=max_tokens, max_retries=max_retries,
         )
-        chunk_outputs.append(out)
+        return i, out, u
 
+    def record(i: int, out: dict[str, Any], u: TokenUsage) -> None:
+        nonlocal done
+        results[i] = out
+        usage.input_tokens += u.input_tokens
+        usage.output_tokens += u.output_tokens
+        usage.cache_read_input_tokens += u.cache_read_input_tokens
+        usage.cache_creation_input_tokens += u.cache_creation_input_tokens
+        with done_lock:
+            done += 1
+            d = done
+        _progress(correlation_id, progress_cb,
+                  {"phase": "tagging", "chunk": d, "chunks": total})
+
+    if total == 1 or concurrency == 1:
+        for i in range(total):
+            _, out, u = work(i)
+            record(i, out, u)
+    else:
+        with ThreadPoolExecutor(max_workers=min(concurrency, total)) as ex:
+            futures = [ex.submit(work, i) for i in range(total)]
+            for fut in as_completed(futures):
+                # .result() re-raises a chunk's AiTaggingError (truncation /
+                # never-validated); it propagates out and marks the run failed.
+                i, out, u = fut.result()
+                record(i, out, u)
+
+    chunk_outputs = [r for r in results if r is not None]
     points, equipment = _merge_chunks(chunk_outputs)
 
     # Stage 1 is structure-only: enforce the invariant in code, not just the
@@ -617,7 +657,7 @@ def run_tagging(
     # contract (raises AiTaggingError if not — the endpoint surfaces it).
     proposal.to_import_body()
 
-    _emit(correlation_id, {
+    _progress(correlation_id, progress_cb, {
         "phase": "done",
         "points": len(points),
         "equipment": len(equipment),
@@ -625,6 +665,21 @@ def run_tagging(
         "usage": usage.model_dump(),
     })
     return proposal
+
+
+def _progress(
+    correlation_id: str | None,
+    cb: Callable[[dict[str, Any]], None] | None,
+    data: dict[str, Any],
+) -> None:
+    """Report progress to the run store (cb) and the realtime WS (emit). Both are
+    best-effort — telemetry must never break a run."""
+    if cb is not None:
+        try:
+            cb(data)
+        except Exception:  # pragma: no cover
+            logger.debug("ai-tag progress callback failed", exc_info=True)
+    _emit(correlation_id, data)
 
 
 def _emit(correlation_id: str | None, data: dict[str, Any]) -> None:
@@ -635,3 +690,96 @@ def _emit(correlation_id: str | None, data: dict[str, Any]) -> None:
         emit(TOPIC_AI_TAG, data, correlation_id=correlation_id)
     except Exception:  # pragma: no cover - telemetry must not fail the run
         logger.debug("ai-tag progress emit failed", exc_info=True)
+
+
+# ---------------------------------------------------------------------------
+# 10. Background run store — so the HTTP request returns immediately and the UI
+#     polls for progress/result. A multi-minute synchronous request cannot
+#     survive the SWA→ACA gateway timeout, so POST /ai-tag starts a run here and
+#     GET /ai-tag/runs/{id} reads it. Runs are held in memory: this assumes the
+#     API runs a SINGLE replica (poll must hit the same process that started the
+#     run). If predmain-api ever scales >1 replica, back this with a table.
+# ---------------------------------------------------------------------------
+_RUNS: dict[str, dict[str, Any]] = {}
+_RUNS_LOCK = threading.Lock()
+_RUN_TTL_SEC = 3600  # forget finished runs after an hour
+_RUN_MAX = 50  # hard cap on retained runs
+
+
+def _prune_runs() -> None:
+    now = time.time()
+    with _RUNS_LOCK:
+        for k in [k for k, v in _RUNS.items() if now - v.get("_ts", now) > _RUN_TTL_SEC]:
+            _RUNS.pop(k, None)
+        if len(_RUNS) > _RUN_MAX:
+            for k in sorted(_RUNS, key=lambda k: _RUNS[k].get("_ts", 0.0))[: len(_RUNS) - _RUN_MAX]:
+                _RUNS.pop(k, None)
+
+
+def _set_run(run_id: str, **fields: Any) -> None:
+    with _RUNS_LOCK:
+        st = _RUNS.get(run_id, {})
+        st.update(fields)
+        st["run_id"] = run_id
+        st["_ts"] = time.time()
+        _RUNS[run_id] = st
+
+
+def get_run(run_id: str) -> dict[str, Any] | None:
+    """Return a copy of the run state (status, progress, proposal|error) or None."""
+    with _RUNS_LOCK:
+        st = _RUNS.get(run_id)
+        return {k: v for k, v in st.items() if k != "_ts"} if st else None
+
+
+def start_run(
+    structured_export: Any,
+    ctx: JobContext | None = None,
+    *,
+    model: str | None = None,
+) -> dict[str, Any]:
+    """Kick off a tagging run in a background thread and return its id immediately.
+    Raises AiTaggingError synchronously only when tagging is not configured (so
+    the endpoint can map that to 503); all other failures are recorded on the run
+    and surfaced via GET /ai-tag/runs/{id}."""
+    if not ai_tagging_available():
+        raise AiTaggingError(
+            "AI tagging is not configured. Set ANTHROPIC_API_KEY on the backend "
+            "to enable it."
+        )
+
+    export = (
+        structured_export.model_dump()
+        if hasattr(structured_export, "model_dump")
+        else dict(structured_export)
+    )
+    n_points = len(export.get("points") or [])
+    chunk_size = int(getattr(get_platform_settings(), "ai_tag_chunk_size", 20))
+    total_chunks = len(_chunk_points(export, chunk_size)) if n_points else 0
+
+    run_id = uuid.uuid4().hex
+    _prune_runs()
+    _set_run(
+        run_id,
+        status="running",
+        points=n_points,
+        progress={"phase": "queued", "chunks": total_chunks},
+        proposal=None,
+        error=None,
+    )
+
+    def _execute() -> None:
+        try:
+            proposal = run_tagging(
+                export, ctx, model=model, correlation_id=run_id,
+                progress_cb=lambda data: _set_run(run_id, progress=data),
+            )
+            _set_run(run_id, status="done", proposal=proposal.model_dump(), error=None)
+        except AiTaggingError as exc:
+            _set_run(run_id, status="error", error=str(exc))
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.exception("ai-tag run %s failed", run_id)
+            _set_run(run_id, status="error", error=f"{type(exc).__name__}: {exc}")
+
+    threading.Thread(target=_execute, name=f"ai-tag-{run_id}", daemon=True).start()
+    return {"run_id": run_id, "status": "running", "points": n_points, "chunks": total_chunks}

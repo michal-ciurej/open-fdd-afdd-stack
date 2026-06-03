@@ -665,39 +665,67 @@ class AiTagRequest(BaseModel):
 
 @router.post(
     "/ai-tag",
-    summary="AI-assisted Brick tagging proposal (Anthropic; no DB write)",
+    summary="Start an AI-assisted Brick tagging run (Anthropic; background; no DB write)",
     response_description=(
-        "An ephemeral tagging proposal: {points, equipment} with per-row "
-        "confidence/rationale for review. Strip those two fields and PUT it to "
-        "/data-model/import to onboard. Requires OFDD_ANTHROPIC_API_KEY."
+        "Starts a background tagging run and returns {run_id, status: 'running', "
+        "points, chunks} immediately. Poll GET /data-model/ai-tag/runs/{run_id} "
+        "for progress and the finished proposal. Tagging can take minutes for "
+        "large sites, so it does not block the HTTP request. Requires ANTHROPIC_API_KEY."
     ),
 )
 def ai_tag(body: AiTagRequest):
-    """Build the structured export for ``site_id`` and return an AI tagging
-    proposal for human review. Does not write to the database — onboarding is the
-    operator approving the (edited) proposal via PUT /data-model/import."""
+    """Build the structured export for ``site_id`` and start a background tagging
+    run. Returns a run id immediately; the proposal is fetched via the runs
+    endpoint once status is 'done'. Does not write to the database — onboarding
+    is the operator approving the (edited) proposal via PUT /data-model/import."""
     from openfdd_stack.platform.ai.tagging import (
         AiTaggingError,
         JobContext,
-        run_tagging,
+        ai_tagging_available,
+        start_run,
     )
+
+    if not ai_tagging_available():
+        raise HTTPException(
+            503,
+            "AI tagging is not configured. Set ANTHROPIC_API_KEY on the backend to enable it.",
+        )
 
     export = StructuredExport(
         equipment=_build_equipment_export(body.site_id),
         points=_build_unified_export(body.site_id),
     )
-    ctx = JobContext(notes=body.notes)
     try:
-        proposal = run_tagging(
-            export, ctx, model=body.model, correlation_id=body.correlation_id
-        )
+        return start_run(export, JobContext(notes=body.notes), model=body.model)
     except AiTaggingError as exc:
-        # Config/SDK problems -> 503 (feature unavailable); model/validation
-        # failures after retries -> 502 (upstream produced nothing usable).
-        msg = str(exc)
-        unavailable = "not configured" in msg or "not installed" in msg
-        raise HTTPException(503 if unavailable else 502, msg)
-    return proposal
+        raise HTTPException(503, str(exc))
+
+
+@router.get(
+    "/ai-tag/runs/{run_id}",
+    summary="Poll an AI tagging run (status, progress, finished proposal)",
+    response_description=(
+        "Run state: {status: running|done|error, progress, proposal?, error?}. "
+        "When status='done', proposal is {points, equipment, warnings, usage} with "
+        "per-row confidence/rationale — strip those and PUT to /data-model/import."
+    ),
+)
+def ai_tag_run(run_id: str):
+    """Return the current state of a background tagging run started by POST
+    /data-model/ai-tag. 404 if unknown (expired, or — if the API ever runs more
+    than one replica — the poll hit a different process than the one that started
+    the run)."""
+    from openfdd_stack.platform.ai.tagging import get_run
+
+    state = get_run(run_id)
+    if state is None:
+        raise HTTPException(
+            404,
+            "Unknown ai-tag run id. It may have expired, or this request reached a "
+            "different API replica than the one that started the run (ensure the API "
+            "runs a single replica, or back runs with a table).",
+        )
+    return state
 
 
 # --- Import: bulk update full BRICK data model (points, site, equipment, rule_input) ---

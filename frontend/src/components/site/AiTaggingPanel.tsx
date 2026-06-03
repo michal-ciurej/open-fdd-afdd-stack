@@ -1,14 +1,16 @@
-import { useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sparkles, Loader2, Check, AlertTriangle, Wand2, Unlink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useSiteContext } from "@/contexts/site-context";
 import { useAllPoints } from "@/hooks/use-sites";
-import { dataModelAiTag, dataModelImport } from "@/lib/crud-api";
+import { dataModelAiTag, dataModelAiTagRun, dataModelImport } from "@/lib/crud-api";
 import { BRICK_14_QUERY_CLASS_ALLOWLIST } from "@/data/brick-1.4-query-class-allowlist";
 import type {
   AiTagRequest,
+  AiTagRunStart,
+  AiTagRunState,
   DataModelImportBody,
   DataModelImportResponse,
   TaggingProposal,
@@ -77,20 +79,58 @@ export function AiTaggingPanel({ available }: { available: boolean | undefined }
   const [meta, setMeta] = useState<Pick<TaggingProposal, "warnings" | "model" | "usage" | "chunks"> | null>(null);
   const [importResult, setImportResult] = useState<DataModelImportResponse | null>(null);
 
-  const tagMutation = useMutation<TaggingProposal, Error, AiTagRequest>({
+  // Background run: POST starts it and returns a run id; we poll for progress and
+  // the finished proposal (a full-site run runs minutes — too long to hold the
+  // HTTP request open behind the SWA/ACA gateway).
+  const [runId, setRunId] = useState<string | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
+
+  const tagMutation = useMutation<AiTagRunStart, Error, AiTagRequest>({
     mutationFn: dataModelAiTag,
-    onSuccess: (proposal) => {
-      setPoints(proposal.points);
-      setEquipment(proposal.equipment);
-      setMeta({
-        warnings: proposal.warnings,
-        model: proposal.model,
-        usage: proposal.usage,
-        chunks: proposal.chunks,
-      });
-      setImportResult(null);
+    onSuccess: (started) => {
+      setRunError(null);
+      setRunId(started.run_id);
     },
   });
+
+  const runQuery = useQuery<AiTagRunState>({
+    queryKey: ["ai-tag-run", runId],
+    queryFn: () => dataModelAiTagRun(runId as string),
+    enabled: !!runId,
+    refetchInterval: (q) => (q.state.data?.status === "running" ? 1500 : false),
+  });
+
+  // Resolve the run: seed the editable proposal on done, surface the message on
+  // error. Seeding fetched data into local editable state is the same pattern as
+  // ConfigPage's GET /config sync, hence the matching rule disable.
+  /* eslint-disable react-hooks/set-state-in-effect -- seed editable proposal from the completed run */
+  useEffect(() => {
+    const d = runQuery.data;
+    if (!runId || !d) return;
+    if (d.status === "done" && d.proposal) {
+      setPoints(d.proposal.points);
+      setEquipment(d.proposal.equipment);
+      setMeta({
+        warnings: d.proposal.warnings,
+        model: d.proposal.model,
+        usage: d.proposal.usage,
+        chunks: d.proposal.chunks,
+      });
+      setImportResult(null);
+      setRunId(null);
+    } else if (d.status === "error") {
+      setRunError(d.error ?? "Tagging failed");
+      setRunId(null);
+    }
+  }, [runQuery.data, runId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const running = tagMutation.isPending || !!runId;
+  const progress = runQuery.data?.progress;
+  const progressLabel =
+    progress?.chunks != null && progress.chunks > 0
+      ? `chunk ${progress.chunk ?? 0}/${progress.chunks}`
+      : "starting…";
 
   const importMutation = useMutation<DataModelImportResponse, Error, DataModelImportBody>({
     mutationFn: dataModelImport,
@@ -106,6 +146,7 @@ export function AiTaggingPanel({ available }: { available: boolean | undefined }
   });
 
   function runTagging() {
+    setRunError(null);
     const body: AiTagRequest = {
       site_id: selectedSiteId ?? null,
       notes: notes.trim() || null,
@@ -280,22 +321,23 @@ export function AiTaggingPanel({ available }: { available: boolean | undefined }
                   />
                 </label>
 
-                {tagMutation.isError && (
+                {(tagMutation.isError || runError) && (
                   <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    <span className="font-medium">Tagging failed:</span> {tagMutation.error.message}
+                    <span className="font-medium">Tagging failed:</span>{" "}
+                    {runError ?? tagMutation.error?.message}
                   </div>
                 )}
 
                 <button
                   type="button"
                   onClick={runTagging}
-                  disabled={tagMutation.isPending}
+                  disabled={running}
                   className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {tagMutation.isPending ? (
+                  {running ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Tagging… this can take a moment for large sites
+                      Tagging… {progressLabel} (runs in the background; safe to wait)
                     </>
                   ) : (
                     <>

@@ -1,10 +1,11 @@
 import { apiFetch } from "@/lib/api";
 import type {
   AiTagRequest,
+  AiTagRunStart,
+  AiTagRunState,
   DataModelExportRow,
   DataModelImportBody,
   DataModelImportResponse,
-  TaggingProposal,
   EnergyCalculation,
   EnergyCalculationCreateBody,
   EnergyCalculationPatchBody,
@@ -187,13 +188,18 @@ export function dataModelImport(body: DataModelImportBody) {
   });
 }
 
-/** POST /data-model/ai-tag — Anthropic-assisted tagging proposal (no DB write). */
+/** POST /data-model/ai-tag — start a background tagging run (returns a run id). */
 export function dataModelAiTag(body: AiTagRequest) {
-  return apiFetch<TaggingProposal>("/data-model/ai-tag", {
+  return apiFetch<AiTagRunStart>("/data-model/ai-tag", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+/** GET /data-model/ai-tag/runs/{run_id} — poll a tagging run for progress/result. */
+export function dataModelAiTagRun(runId: string) {
+  return apiFetch<AiTagRunState>(`/data-model/ai-tag/runs/${encodeURIComponent(runId)}`);
 }
 
 export function dataModelSerialize() {

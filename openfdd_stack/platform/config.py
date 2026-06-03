@@ -108,6 +108,7 @@ class PlatformSettings(BaseSettings):
     ai_tag_max_tokens: int = 20000
     ai_tag_chunk_size: int = 20  # points per Anthropic call; grouped by BACnet device
     ai_tag_max_retries: int = 2  # prompt-chained validation retries per chunk
+    ai_tag_concurrency: int = 5  # chunks tagged in parallel (background run)
 
     model_config = {"env_prefix": "OFDD_", "env_file": ".env"}
 

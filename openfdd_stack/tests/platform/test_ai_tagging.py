@@ -45,15 +45,19 @@ def _tool_resp(payload, tool_id="tu"):
 
 
 class _FakeMessages:
-    """Returns queued responses in order; records every create() call."""
+    """Returns queued responses in order; records every create() call.
+    Thread-safe because chunks are now tagged concurrently."""
 
     def __init__(self, responses):
         self._responses = list(responses)
         self.calls: list[dict] = []
+        self._lock = __import__("threading").Lock()
 
     def create(self, **kw):
-        self.calls.append(kw)
-        return self._responses[min(len(self.calls) - 1, len(self._responses) - 1)]
+        with self._lock:
+            idx = len(self.calls)
+            self.calls.append(kw)
+        return self._responses[min(idx, len(self._responses) - 1)]
 
 
 class _FakeClient:
@@ -249,6 +253,41 @@ def test_chunk_helper_keeps_device_objects_together():
 def test_strip_review_fields_only_removes_review_keys():
     row = {"point_id": "x", "brick_type": "Y", "confidence": 0.5, "rationale": "z"}
     assert t._strip_review_fields(row) == {"point_id": "x", "brick_type": "Y"}
+
+
+def test_background_run_lifecycle(with_key):
+    # start_run returns immediately with a run id; the run completes in a thread
+    # and get_run reports status=done with the proposal.
+    import time as _time
+
+    _patch_client(with_key, [_tool_resp(_GOOD)])
+    started = t.start_run(_EXPORT, t.JobContext())
+    assert started["status"] == "running"
+    run_id = started["run_id"]
+
+    deadline = 5.0
+    state = None
+    while deadline > 0:
+        state = t.get_run(run_id)
+        if state and state["status"] in ("done", "error"):
+            break
+        _time.sleep(0.05)
+        deadline -= 0.05
+
+    assert state is not None and state["status"] == "done", state
+    assert state["proposal"]["points"][0]["polling"] is False
+    assert "_ts" not in state  # internal field stripped from the public view
+
+
+def test_start_run_unconfigured_raises(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("OFDD_ANTHROPIC_API_KEY", raising=False)
+    with pytest.raises(t.AiTaggingError):
+        t.start_run(_EXPORT, None)
+
+
+def test_get_run_unknown_id_is_none():
+    assert t.get_run("does-not-exist") is None
 
 
 def test_system_prompt_and_tool_are_stable_contract():
