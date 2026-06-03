@@ -73,7 +73,8 @@ _GOOD = {
     "points": [{
         "point_id": _VALID_UUID,
         "brick_type": "Supply_Air_Temperature_Sensor",
-        "polling": True,
+        "equipment_name": "AHU-1",
+        "unit": "degC",
         "confidence": 0.9,
         "rationale": "object_name SA-T matches supply air temp",
     }],
@@ -105,7 +106,7 @@ def _patch_client(monkeypatch, responses):
 # --- Tests ------------------------------------------------------------------
 def test_happy_path_round_trips_through_import_contract(with_key):
     client = _patch_client(with_key, [_tool_resp(_GOOD)])
-    proposal = t.run_tagging(_EXPORT, t.JobContext(faults="sensor-bounds"))
+    proposal = t.run_tagging(_EXPORT, t.JobContext(notes="AHU-1 is the rooftop unit"))
 
     assert len(proposal.points) == 1
     assert len(proposal.equipment) == 1
@@ -119,6 +120,25 @@ def test_happy_path_round_trips_through_import_contract(with_key):
     assert "rationale" not in body["points"][0]
     assert body["equipment"][0]["equipment_type"] == "Air_Handling_Unit"
     assert client.messages.calls  # the model was actually called
+
+
+def test_stage1_forces_polling_false_and_drops_rule_input(with_key):
+    # Even if the model returns polling=true / a rule_input, stage 1 strips them.
+    payload = {
+        "points": [{
+            "point_id": _VALID_UUID,
+            "brick_type": "Supply_Air_Temperature_Sensor",
+            "polling": True,
+            "rule_input": "sat",
+        }],
+        "equipment": [],
+    }
+    _patch_client(with_key, [_tool_resp(payload)])
+    proposal = t.run_tagging(_EXPORT, None)
+    assert proposal.points[0]["polling"] is False
+    assert "rule_input" not in proposal.points[0]
+    # And the contract the operator onboards keeps polling explicitly false.
+    assert proposal.to_import_body()["points"][0]["polling"] is False
 
 
 def test_invalid_first_response_is_prompt_chained_then_succeeds(with_key):
@@ -223,6 +243,11 @@ def test_system_prompt_and_tool_are_stable_contract():
     assert props["equipment"]["items"]["additionalProperties"] is False
     for k in ("confidence", "rationale"):
         assert k in t._POINT_PROPERTIES and k in t._EQUIPMENT_PROPERTIES
-    # The canonical instructions must keep the conservative-polling HARD RULE.
-    assert "HARD RULE" in t.SYSTEM_PROMPT
+    # Stage 1 is structure-only: the model is never asked for polling, rule_input,
+    # or feeds/fed_by — keeping those out of the schema is the contract.
+    assert "polling" not in t._POINT_PROPERTIES
+    assert "rule_input" not in t._POINT_PROPERTIES
+    assert "feeds" not in t._EQUIPMENT_PROPERTIES
+    assert "fed_by" not in t._EQUIPMENT_PROPERTIES
+    assert "STAGE 1" in t.SYSTEM_PROMPT
     assert "emit_tagging_proposal" in t.SYSTEM_PROMPT

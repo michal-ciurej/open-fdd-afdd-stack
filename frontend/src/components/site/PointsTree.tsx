@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import type { Point, Equipment, Site } from "@/types/api";
 import { parseUtcTimestamp } from "@/lib/utils";
-import { Circle, CircleDot, ChevronRight, ChevronDown, Server, Box, CircleDotIcon, Radio, CircleOff } from "lucide-react";
+import { Circle, CircleDot, ChevronRight, ChevronDown, Server, Box, CircleDotIcon, Radio, CircleOff, Unlink } from "lucide-react";
 
 /** Format ts for display (API timestamps are UTC; we show relative time). */
 function formatLastUpdated(ts: string | null): string {
@@ -110,6 +110,8 @@ export interface PointsTreeProps {
   onDeletePoint?: (pointId: string) => void;
   onDeleteEquipment?: (equipmentId: string, name: string) => void;
   onDeleteSite?: (siteId: string, name: string) => void;
+  /** Dissolve equipment: return its points to Unassigned (keeps points + history) and remove the empty shell. */
+  onDissolveEquipment?: (equipmentId: string, name: string) => void;
   /** Set polling for this point (true = BACnet scraper includes it). Shown as "Poll true" / "Poll false" on right-click. */
   onSetPolling?: (pointId: string, polling: boolean) => void;
 }
@@ -121,6 +123,7 @@ export const POINTS_CONTEXT_MENU_TEST_IDS = {
   DELETE_POINT: "points-context-menu-delete-point",
   DELETE_EQUIPMENT: "points-context-menu-delete-equipment",
   DELETE_SITE: "points-context-menu-delete-site",
+  DISSOLVE_EQUIPMENT: "points-context-menu-dissolve-equipment",
 } as const;
 
 type ContextMenuState = { x: number; y: number; type: "point"; id: string; name: string } | { x: number; y: number; type: "equipment"; id: string; name: string } | { x: number; y: number; type: "site"; id: string; name: string } | null;
@@ -133,6 +136,7 @@ export function PointsTree({
   onDeletePoint,
   onDeleteEquipment,
   onDeleteSite,
+  onDissolveEquipment,
   onSetPolling,
 }: PointsTreeProps) {
   const tree = useMemo(
@@ -163,13 +167,13 @@ export function PointsTree({
       e.preventDefault();
       if (
         (type === "point" && (onDeletePoint || onSetPolling)) ||
-        (type === "equipment" && onDeleteEquipment) ||
+        (type === "equipment" && (onDeleteEquipment || onDissolveEquipment)) ||
         (type === "site" && onDeleteSite)
       ) {
         setContextMenu({ x: e.clientX, y: e.clientY, type, id, name });
       }
     },
-    [onDeletePoint, onDeleteEquipment, onDeleteSite, onSetPolling],
+    [onDeletePoint, onDeleteEquipment, onDeleteSite, onDissolveEquipment, onSetPolling],
   );
 
   if (points.length === 0) {
@@ -255,6 +259,20 @@ export function PointsTree({
                   Poll false
                 </button>
               </>
+            )}
+            {contextMenu.type === "equipment" && onDissolveEquipment && (
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
+                data-testid={POINTS_CONTEXT_MENU_TEST_IDS.DISSOLVE_EQUIPMENT}
+                onClick={() => {
+                  onDissolveEquipment(contextMenu.id, contextMenu.name);
+                  setContextMenu(null);
+                }}
+              >
+                <Unlink className="h-4 w-4 text-muted-foreground" />
+                Dissolve (unassign points)
+              </button>
             )}
             <button
               type="button"

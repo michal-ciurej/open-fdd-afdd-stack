@@ -30,6 +30,12 @@ describe("PointsTree", () => {
         "points-context-menu-delete-site",
       );
     });
+
+    it("exposes the dissolve-equipment test id (unassign points, keep them)", () => {
+      expect(POINTS_CONTEXT_MENU_TEST_IDS.DISSOLVE_EQUIPMENT).toBe(
+        "points-context-menu-dissolve-equipment",
+      );
+    });
   });
 
   describe("point context menu labels", () => {

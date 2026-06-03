@@ -194,18 +194,14 @@ export interface SparqlResponse {
   bindings: Record<string, string | null>[];
 }
 
-/** POST /data-model/ai-tag request — operator pre-flight that steers polling/units. */
+/**
+ * POST /data-model/ai-tag request — Stage 1 (structure only).
+ * Stage 1 organises points into equipment + Brick types; units are metric and
+ * all points stay unpolled, so the only steering input is a free-text brief.
+ */
 export interface AiTagRequest {
   site_id?: string | null;
-  /** Which Open-FDD faults/rules will run (drives polling). */
-  faults?: string | null;
-  /** Actual rule YAML or snippets — best input for polling decisions. */
-  rules_yaml?: string | null;
-  units_mode?: "imperial" | "metric" | null;
-  /** True for a live HVAC job, false for a bench/demo. */
-  production?: boolean | null;
-  weather?: boolean | null;
-  polling_mode?: "rules_only" | "rules_plus_trending" | null;
+  /** Free-text brief: equipment naming conventions / grouping hints. */
   notes?: string | null;
   /** Override the configured Anthropic model. */
   model?: string | null;

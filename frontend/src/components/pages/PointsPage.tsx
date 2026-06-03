@@ -6,8 +6,9 @@ import { useAllPoints, useAllEquipment, usePoints, useEquipment, useSites } from
 import { useTimeseriesLatest } from "@/hooks/use-timeseries-latest";
 import { PointsTree } from "@/components/site/PointsTree";
 import { deletePoint, deleteEquipment, deleteSite, updatePoint } from "@/lib/crud-api";
+import type { Point } from "@/types/api";
 
-function useTreeMutations() {
+function useTreeMutations(points: Point[]) {
   const queryClient = useQueryClient();
   const deletePointMutation = useMutation<{ status: string }, Error, string>({
     mutationFn: deletePoint,
@@ -41,6 +42,28 @@ function useTreeMutations() {
       queryClient.invalidateQueries({ queryKey: ["data-model"] });
     },
   });
+  // Dissolve = detach every point from the equipment (equipment_id -> null), then
+  // delete the now-empty shell. Points and their history are kept; they return to
+  // Unassigned so they can be re-tagged. Order matters: unassign before delete so
+  // the equipment delete does not cascade the points away.
+  const dissolveEquipmentMutation = useMutation<
+    { status: string },
+    Error,
+    { equipmentId: string; pointIds: string[] }
+  >({
+    mutationFn: async ({ equipmentId, pointIds }) => {
+      for (const pid of pointIds) {
+        await updatePoint(pid, { equipment_id: null });
+      }
+      await deleteEquipment(equipmentId);
+      return { status: "ok" };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+      queryClient.invalidateQueries({ queryKey: ["points"] });
+      queryClient.invalidateQueries({ queryKey: ["data-model"] });
+    },
+  });
   return {
     onSetPolling: (id: string, polling: boolean) =>
       setPollingMutation.mutate({ pointId: id, polling }),
@@ -59,12 +82,23 @@ function useTreeMutations() {
         deleteSiteMutation.mutate(id);
       }
     },
+    onDissolveEquipment: (id: string, name: string) => {
+      const pointIds = points.filter((p) => p.equipment_id === id).map((p) => p.id);
+      if (
+        window.confirm(
+          `Dissolve "${name}"? Its ${pointIds.length} point(s) return to Unassigned and the empty ` +
+            `equipment is removed. Points and their history are kept — use this to re-tag.`,
+        )
+      ) {
+        dissolveEquipmentMutation.mutate({ equipmentId: id, pointIds });
+      }
+    },
   };
 }
 
 function AllPointsView() {
-  const treeMutations = useTreeMutations();
   const { data: points, isLoading } = useAllPoints();
+  const treeMutations = useTreeMutations(points ?? []);
   const { data: equipment = [] } = useAllEquipment();
   const { data: sites = [] } = useSites();
   const { data: latestList = [] } = useTimeseriesLatest(undefined);
@@ -91,8 +125,8 @@ function AllPointsView() {
 }
 
 function SitePointsView({ siteId }: { siteId: string }) {
-  const treeMutations = useTreeMutations();
   const { data: points = [], isLoading } = usePoints(siteId);
+  const treeMutations = useTreeMutations(points);
   const { data: equipment = [] } = useEquipment(siteId);
   const { data: latestList = [] } = useTimeseriesLatest(siteId);
   const latestByPointId = useMemo(
@@ -122,7 +156,7 @@ export function PointsPage() {
     <div>
       <h1 className="mb-2 text-2xl font-semibold tracking-tight">Points</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        Replicating Niagara's polling point situation but with auto historising. each point has a last value which comes from the latest entry into its history. Right-click a point for Poll true, Poll false, or Delete. BACnet discovery is on the Data model page.
+        Replicating Niagara's polling point situation but with auto historising. each point has a last value which comes from the latest entry into its history. Right-click a point for Poll true, Poll false, or Delete; right-click an equipment to Dissolve it (returns its points to Unassigned, keeping points + history) ready for re-tagging, or Delete it. BACnet discovery is on the Data model page.
       </p>
       {selectedSiteId ? <SitePointsView siteId={selectedSiteId} /> : <AllPointsView />}
     </div>

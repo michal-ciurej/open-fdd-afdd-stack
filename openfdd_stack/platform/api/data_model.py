@@ -646,20 +646,17 @@ def get_vocabulary() -> VocabularyResponse:
 
 
 class AiTagRequest(BaseModel):
-    """Pre-flight job context for AI tagging. site_id scopes the export exactly
-    like GET /data-model/export. Everything else steers polling/unit choices and
-    is passed straight through to the tagger's JobContext."""
+    """Stage 1 AI tagging request. site_id scopes the export exactly like
+    GET /data-model/export. Stage 1 is structure-only (metric units, all points
+    unpolled, no feeds/fed_by), so the only steering input is an optional
+    free-text brief passed through to the tagger's JobContext."""
 
     site_id: str | None = Field(
         None, description="Scope tagging to this site (UUID, name, or description)."
     )
-    faults: str | None = Field(None, description="Which Open-FDD faults/rules will run.")
-    rules_yaml: str | None = Field(None, description="Actual rule YAML/snippets — best input for polling.")
-    units_mode: Literal["imperial", "metric"] | None = None
-    production: bool | None = Field(None, description="True for a live HVAC job; False for bench/demo.")
-    weather: bool | None = Field(None, description="Whether weather rules/polling are in scope.")
-    polling_mode: Literal["rules_only", "rules_plus_trending"] | None = None
-    notes: str | None = Field(None, description="Free-text brief (topology, naming conventions).")
+    notes: str | None = Field(
+        None, description="Free-text brief: equipment naming conventions / grouping hints."
+    )
     model: str | None = Field(None, description="Override the configured Anthropic model.")
     correlation_id: str | None = Field(
         None, description="Echoed on TOPIC ai.tag progress events so the UI can correlate."
@@ -689,15 +686,7 @@ def ai_tag(body: AiTagRequest):
         equipment=_build_equipment_export(body.site_id),
         points=_build_unified_export(body.site_id),
     )
-    ctx = JobContext(
-        faults=body.faults,
-        rules_yaml=body.rules_yaml,
-        units_mode=body.units_mode,
-        production=body.production,
-        weather=body.weather,
-        polling_mode=body.polling_mode,
-        notes=body.notes,
-    )
+    ctx = JobContext(notes=body.notes)
     try:
         proposal = run_tagging(
             export, ctx, model=body.model, correlation_id=body.correlation_id

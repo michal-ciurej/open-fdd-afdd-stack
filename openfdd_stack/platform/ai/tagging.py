@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Literal, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -60,41 +60,27 @@ class AiTaggingError(RuntimeError):
 
 
 # ---------------------------------------------------------------------------
-# 1. Canonical system prompt
+# 1. System prompt — STAGE 1 of the data-modeling flow: structure only.
 #
-# This is the same tagging contract published in docs/modeling/llm_workflow.md
-# ("Copy/paste prompt template"). It is embedded verbatim here so the running
-# auto-tagger and the docs cannot drift, and so an auditor sees the exact
-# instructions the model is given. The only deviation from the doc text is the
-# OUTPUT section: instead of "return raw JSON", the model returns its result by
-# calling the emit_tagging_proposal tool (see TAGGING_TOOL), which guarantees a
-# structurally valid payload. tests/ asserts this string stays in sync.
+# Stage 1 organises scanned points into structured equipment and assigns Brick
+# types to both. It deliberately does NOT decide polling (everything stays
+# unpolled), does NOT set rule_input, and does NOT assign feeds/fed_by — those
+# belong to later stages (rules/polling and topology). The prompt is embedded
+# verbatim here so an auditor sees the exact instructions the model is given;
+# the model returns its result by calling the emit_tagging_proposal tool, which
+# guarantees a structurally valid payload. tests/ asserts this stays in sync.
 # ---------------------------------------------------------------------------
 SYSTEM_PROMPT = """\
-You are transforming Open-FDD export JSON into an Open-FDD tagging proposal.
+You are STAGE 1 of the Open-FDD data-modeling flow. Your only job is to organise
+scanned points into structured equipment and assign Brick types. You do NOT
+decide polling, you do NOT set rule_input, and you do NOT assign feeds/fed-by
+relationships — those are later stages.
 
 You receive JSON shaped like GET /data-model/export?shape=structured:
 { "equipment": [...], "points": [...] }
 
-You return your result by calling the emit_tagging_proposal tool exactly once
-with { "points": [...], "equipment": [...] }. Do not return prose, markdown, or
-any commentary outside the tool call.
-
---------------------------------------------------
-PRE-FLIGHT / JOB CONTEXT (drives polling decisions)
---------------------------------------------------
-Polling must be driven by the actual faults and rules the operator plans to run
-in Open-FDD — not by "this point looks generally useful". The operator's job
-context (faults, rule YAML, units mode, production-vs-bench, weather scope) is
-supplied in the user message under JOB CONTEXT.
-
-HARD RULE — if fault/rule context is missing or thin:
-- Return a conservative draft: set polling=false for every point unless it is
-  clearly essential. Do not enable broad polling by guesswork.
-If YAML rules or snippets ARE provided:
-- Align brick_type, rule_input, unit, and polling with those rules' inputs.
-- Set polling=true primarily for points required by the selected faults, plus
-  any points the operator explicitly approved for plotting/trending.
+Return your result by calling the emit_tagging_proposal tool exactly once with
+{ "points": [...], "equipment": [...] }. Do not return prose or markdown.
 
 --------------------------------------------------
 POINT RULES (for each row in points)
@@ -102,46 +88,31 @@ POINT RULES (for each row in points)
 1. KEEP every identity field exactly as provided, character-for-character:
    point_id, bacnet_device_id, object_identifier, object_name, external_id,
    site_id, site_name, equipment_id. Never replace site_id with a site name.
-2. ADD or FILL: brick_type, rule_input, unit, polling, equipment_name,
-   equipment_type, confidence, rationale.
-3. brick_type: the best matching Brick POINT class as a bare local name, e.g.
+2. brick_type: the best matching Brick POINT class as a bare local name, e.g.
    Supply_Air_Temperature_Sensor, Return_Air_Temperature_Sensor,
    Mixed_Air_Temperature_Sensor, Zone_Air_Temperature_Sensor,
    Damper_Position_Command, Supply_Air_Flow_Sensor, Static_Pressure_Sensor,
-   Occupancy_Command. No "brick:" prefix.
-4. equipment assignment: assign points to equipment by NAME only
-   (equipment_name), never by inventing UUIDs. Only set/change equipment_name
-   when strongly supported by BACnet device grouping and consistent object_name
-   / external_id patterns. If grouping is unclear, keep the export's existing
-   relationship as-is rather than inventing AHUs/VAVs.
-5. equipment_type: the most specific defensible Brick 1.4 EQUIPMENT class as a
-   bare local name, chosen ONLY from the allowlist in the system context. Use
-   the generic fallback "Equipment" when unclear — never mis-type a VAV as a
-   Chiller.
-6. unit: fill when known using standard abbreviations consistent with the job's
-   units mode (degF/degC, percent, cfm, "0/1" for binary, W, "W/m2"). Prefer
-   null over a confident-looking guess for ambiguous power/flow/energy points.
-7. polling: see PRE-FLIGHT. true only for points the selected faults/rules need
-   or that the operator approved; false otherwise.
-8. rule_input: populate only when needed to disambiguate two same-Brick points
-   in one equipment, or for an explicit alias a rule requires (e.g. sat_pre vs
-   sat_post). Otherwise null. Do not invent rule_input for every point.
-9. fallback when uncertain: brick_type=null, rule_input=null, unit=null,
-   polling=false, equipment_type omitted/null.
+   Occupancy_Command. No "brick:" prefix. null if genuinely unclear.
+3. equipment_name: assign the point to ONE equipment by NAME (never a UUID),
+   based on BACnet device grouping and consistent object_name / external_id
+   patterns. If you cannot confidently group a point, leave equipment_name null
+   — it stays "Unassigned" for the operator to place during review. Better to
+   leave a point Unassigned than to invent or mis-assign an equipment.
+4. unit: units are METRIC. Use degC for temperature, percent (or %) for
+   percentage, the metric airflow convention, "0/1" for binary, W for power,
+   "W/m2" for irradiance. Use null when unknown; do not guess ambiguous
+   power/flow/energy units.
 
 --------------------------------------------------
-EQUIPMENT RULES (the equipment array)
+EQUIPMENT RULES (the equipment array — one entry per equipment you reference)
 --------------------------------------------------
-Return one entry per equipment using:
+For each equipment_name you assign to points, return an equipment row:
   { "equipment_name": "AHU-1", "equipment_type": "Air_Handling_Unit",
-    "site_id": "<same site_id as the points>", "feeds": ["VAV-1"] }
-or fed_by for the reverse. Rules:
-- Names only, never UUIDs for relationships. Preserve the exact site_id.
-- Set equipment_type from the allowlist on every row.
-- Include feeds/fed_by ONLY when supported by the export or operator brief; omit
-  rather than guessing ductwork topology.
-- Do not invent equipment, devices, points, or numeric engineering ratings that
-  are not present in the export or explicitly supplied by the operator.
+    "site_id": "<same site_id as its points>" }
+- equipment_type: the most specific defensible Brick 1.4 EQUIPMENT class as a
+  bare local name, chosen ONLY from the allowlist in the system context. Use the
+  generic fallback "Equipment" when unclear — never mis-type a VAV as a Chiller.
+- Names only, never UUIDs. Preserve the exact site_id from the points.
 
 --------------------------------------------------
 CONFIDENCE & RATIONALE (proposal only — for human review)
@@ -150,17 +121,19 @@ On every point and equipment row, also set:
 - confidence: a number from 0.0 to 1.0 for how sure you are of this row's
   brick_type / equipment_type / equipment_name assignment.
 - rationale: one short sentence (max ~140 chars) explaining the evidence you
-  used (e.g. object_name pattern, device grouping, member brick types). Be
-  honest: low confidence + "ambiguous name, best guess" is better than a
-  confident-sounding fabrication. These two fields are for the operator's
-  review screen only and are stripped before anything is written.
+  used (object_name pattern, device grouping, member brick types). Be honest:
+  low confidence + "ambiguous name, best guess" beats a confident fabrication.
+  These two fields are for the review screen only and are stripped before write.
 
 --------------------------------------------------
-REAL-JOB / CONSERVATIVE MODE
+HARD CONSTRAINTS
 --------------------------------------------------
-On a live HVAC job do not drift from discoverable truth. When unsure prefer the
-safer default (null brick_type/unit, polling=false, omit feeds/fed_by). Saying
-"cannot determine X from export" in the rationale is better than fabricating X.
+- Do NOT emit polling, rule_input, feeds, or fed_by — they are not part of
+  stage 1 (the platform keeps every point unpolled until a later stage).
+- Do NOT invent equipment, devices, points, or engineering values that are not
+  present in the export. When unsure, prefer null / Unassigned over fabrication.
+- Saying "cannot determine X from export" in the rationale is always better than
+  guessing X.
 """
 
 
@@ -182,20 +155,17 @@ _POINT_PROPERTIES: dict[str, Any] = {
     "object_identifier": {"type": ["string", "null"], "description": "Keep verbatim."},
     "object_name": {"type": ["string", "null"], "description": "Keep verbatim."},
     "brick_type": {"type": ["string", "null"], "description": "Brick point class, bare local name (e.g. Supply_Air_Temperature_Sensor)."},
-    "rule_input": {"type": ["string", "null"], "description": "FDD rule alias; null unless needed to disambiguate."},
-    "unit": {"type": ["string", "null"]},
-    "polling": {"type": "boolean", "description": "true only when a selected fault/rule needs the point or the operator approved trending."},
+    "unit": {"type": ["string", "null"], "description": "Metric unit (degC, percent, W, …) or null."},
     "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Review-only: confidence 0..1. Stripped before import."},
     "rationale": {"type": ["string", "null"], "description": "Review-only: one short sentence of evidence. Stripped before import."},
 }
 
+# Stage 1 is structure-only: no polling, no rule_input, no feeds/fed_by.
 _EQUIPMENT_PROPERTIES: dict[str, Any] = {
     "equipment_id": {"type": ["string", "null"], "description": "Keep verbatim if present; otherwise resolve/create by equipment_name + site_id."},
     "equipment_name": {"type": ["string", "null"]},
     "equipment_type": {"type": ["string", "null"], "description": "Brick 1.4 equipment class (bare local name) from the allowlist."},
     "site_id": {"type": ["string", "null"], "description": "Site UUID from the export. Keep verbatim."},
-    "feeds": {"type": ["array", "null"], "items": {"type": "string"}, "description": "Equipment names this one feeds. Omit unless supported by the export/brief."},
-    "fed_by": {"type": ["array", "null"], "items": {"type": "string"}, "description": "Equipment names that feed this one. Omit unless supported."},
     "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Review-only. Stripped before import."},
     "rationale": {"type": ["string", "null"], "description": "Review-only. Stripped before import."},
 }
@@ -214,7 +184,6 @@ TAGGING_TOOL: dict[str, Any] = {
                 "items": {
                     "type": "object",
                     "properties": _POINT_PROPERTIES,
-                    "required": ["polling"],
                     "additionalProperties": False,
                 },
             },
@@ -241,17 +210,14 @@ _REVIEW_ONLY_KEYS = ("confidence", "rationale")
 # 3. Request / response models (what the endpoint passes in and gets back).
 # ---------------------------------------------------------------------------
 class JobContext(BaseModel):
-    """Operator pre-flight that steers polling and unit decisions. Everything
-    here is rendered into the user message by :func:`_job_context_block` — it is
-    the only per-run input besides the export itself."""
+    """Stage 1 operator input. Faults, units mode, and polling were deliberately
+    removed: stage 1 is structure-only (metric units, all points unpolled). The
+    only steering input is a free-text brief with naming/grouping hints, rendered
+    into the user message by :func:`_job_context_block`."""
 
-    faults: Optional[str] = Field(None, description="Which Open-FDD faults/rules will run.")
-    rules_yaml: Optional[str] = Field(None, description="Actual rule YAML or snippets — best input for polling.")
-    units_mode: Optional[Literal["imperial", "metric"]] = None
-    production: Optional[bool] = Field(None, description="True for a live HVAC job, False for a bench/demo.")
-    weather: Optional[bool] = Field(None, description="Whether weather-related rules/polling are in scope.")
-    polling_mode: Optional[Literal["rules_only", "rules_plus_trending"]] = None
-    notes: Optional[str] = Field(None, description="Free-text brief (e.g. feeds/fed_by topology, naming conventions).")
+    notes: Optional[str] = Field(
+        None, description="Free-text brief: equipment naming conventions, grouping hints."
+    )
 
 
 class TokenUsage(BaseModel):
@@ -306,33 +272,19 @@ def _vocabulary_block() -> str:
 
 
 def _job_context_block(ctx: JobContext | None) -> str:
-    """Render the operator pre-flight into the user message. When empty, tells
-    the model to fall back to the conservative-draft HARD RULE."""
-    if ctx is None:
-        ctx = JobContext()
-    lines: list[str] = ["JOB CONTEXT (drives polling — see PRE-FLIGHT):"]
-    has_rule_context = bool((ctx.faults or "").strip() or (ctx.rules_yaml or "").strip())
-    if ctx.faults:
-        lines.append(f"- Faults/rules to run: {ctx.faults}")
-    if ctx.rules_yaml:
-        lines.append("- Rule YAML / snippets:\n" + ctx.rules_yaml.strip())
-    if ctx.units_mode:
-        lines.append(f"- Units mode: {ctx.units_mode}")
-    if ctx.production is not None:
-        lines.append(f"- Production live job: {ctx.production}")
-    if ctx.weather is not None:
-        lines.append(f"- Weather rules/polling in scope: {ctx.weather}")
-    if ctx.polling_mode:
-        lines.append(f"- Polling mode: {ctx.polling_mode}")
-    if ctx.notes:
-        lines.append(f"- Operator notes: {ctx.notes.strip()}")
-    if not has_rule_context:
-        lines.append(
-            "- No fault/rule context provided: follow the HARD RULE — return a "
-            "conservative draft with polling=false unless a point is clearly "
-            "essential."
+    """Render the stage-1 operator brief into the user message. There is no
+    polling/units context to convey (stage 1 is structure-only); the only input
+    is an optional free-text brief with naming/grouping hints."""
+    notes = (ctx.notes or "").strip() if ctx else ""
+    if notes:
+        return (
+            "OPERATOR BRIEF (equipment naming conventions / grouping hints):\n"
+            f"{notes}"
         )
-    return "\n".join(lines)
+    return (
+        "No operator brief provided — group strictly from BACnet device grouping "
+        "and object_name / external_id patterns; leave unclear points Unassigned."
+    )
 
 
 def _user_message(export_chunk: dict[str, Any], ctx: JobContext | None) -> str:
@@ -624,6 +576,14 @@ def run_tagging(
         chunk_outputs.append(out)
 
     points, equipment = _merge_chunks(chunk_outputs)
+
+    # Stage 1 is structure-only: enforce the invariant in code, not just the
+    # prompt. Every proposed point is unpolled and carries no rule_input; polling
+    # and rule inputs are decided in a later stage. (On import, an explicit
+    # polling=false also overrides the create-time default of true.)
+    for p in points:
+        p["polling"] = False
+        p.pop("rule_input", None)
 
     # Sanity: the model should return one proposal row per input point.
     if len(points) != n_points:
