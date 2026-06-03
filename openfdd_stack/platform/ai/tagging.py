@@ -427,6 +427,18 @@ def _tag_chunk(
             usage.cache_read_input_tokens += getattr(u, "cache_read_input_tokens", 0) or 0
             usage.cache_creation_input_tokens += getattr(u, "cache_creation_input_tokens", 0) or 0
 
+        # Truncation is deterministic — the tool-call JSON was cut off mid-array,
+        # so the result is unusable and retrying the same chunk won't help. Fail
+        # fast with an actionable message instead of bouncing through retries and
+        # surfacing a misleading "missing 'points' array".
+        if getattr(resp, "stop_reason", None) == "max_tokens":
+            n = len(export_chunk.get("points") or [])
+            raise AiTaggingError(
+                f"Model output was truncated at max_tokens={max_tokens} for a "
+                f"{n}-point chunk (the tool call was cut off before finishing). "
+                "Lower OFDD_AI_TAG_CHUNK_SIZE or raise OFDD_AI_TAG_MAX_TOKENS."
+            )
+
         tool_use = next(
             (b for b in resp.content if getattr(b, "type", None) == "tool_use"
              and getattr(b, "name", None) == TAGGING_TOOL["name"]),

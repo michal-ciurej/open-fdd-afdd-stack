@@ -32,9 +32,10 @@ class _Usage:
 
 
 class _Resp:
-    def __init__(self, content):
+    def __init__(self, content, stop_reason="tool_use"):
         self.content = content
         self.usage = _Usage()
+        self.stop_reason = stop_reason
 
 
 def _tool_resp(payload, tool_id="tu"):
@@ -166,6 +167,21 @@ def test_usage_accumulates_across_attempts(with_key):
     assert proposal.usage.input_tokens == 200
     assert proposal.usage.output_tokens == 100
     assert proposal.usage.cache_read_input_tokens == 160
+
+
+def test_truncated_output_fails_fast_with_actionable_message(with_key):
+    # stop_reason=max_tokens means the tool call was cut off — fail immediately
+    # with guidance, do NOT burn retries or report a misleading "missing points".
+    truncated = _Resp(
+        [_Blk(type="tool_use", name=t.TAGGING_TOOL["name"], id="tu", input={})],
+        stop_reason="max_tokens",
+    )
+    client = _patch_client(with_key, [truncated])
+    with pytest.raises(t.AiTaggingError) as exc:
+        t.run_tagging(_EXPORT, None)
+    assert "truncated" in str(exc.value).lower()
+    assert "CHUNK_SIZE" in str(exc.value) or "MAX_TOKENS" in str(exc.value)
+    assert len(client.messages.calls) == 1, "must not retry a truncated chunk"
 
 
 def test_all_attempts_invalid_raises_and_writes_nothing(with_key):

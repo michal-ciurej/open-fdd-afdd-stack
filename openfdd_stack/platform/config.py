@@ -103,8 +103,10 @@ class PlatformSettings(BaseSettings):
         validation_alias=AliasChoices("ANTHROPIC_API_KEY", "OFDD_ANTHROPIC_API_KEY"),
     )
     ai_tag_model: str = "claude-sonnet-4-6"  # Opus 4.8 ("claude-opus-4-8") for hard sites
-    ai_tag_max_tokens: int = 8000
-    ai_tag_chunk_size: int = 60  # points per Anthropic call; grouped by BACnet device
+    # Output budget per chunk. Each point echoes its identity fields back, so the
+    # tool-call JSON is large; too small a budget truncates it (no 'points' array).
+    ai_tag_max_tokens: int = 20000
+    ai_tag_chunk_size: int = 20  # points per Anthropic call; grouped by BACnet device
     ai_tag_max_retries: int = 2  # prompt-chained validation retries per chunk
 
     model_config = {"env_prefix": "OFDD_", "env_file": ".env"}

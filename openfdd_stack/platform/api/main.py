@@ -370,6 +370,15 @@ def capabilities():
     )
 
 
+@app.get("/api/capabilities", response_model=CapabilityResponse)
+def api_capabilities():
+    """Same as `/capabilities` — exposed under /api for SPA same-origin calls via
+    the SWA linked-backend (which preserves the /api prefix). Without this the
+    frontend's useCapabilities() hits a 404 and AI-tagging gating can't read
+    ai_available."""
+    return capabilities()
+
+
 @app.post(
     "/bacnet-test",
     summary="Test BACnet server connection (for config UI)",
