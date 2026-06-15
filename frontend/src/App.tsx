@@ -21,6 +21,7 @@ import { MyBuildingPage } from "@/components/pages/MyBuildingPage";
 import { PlotsPage } from "@/components/pages/PlotsPage";
 import { AnalyticsPage } from "@/components/pages/AnalyticsPage";
 import { WeatherDataPage } from "@/components/pages/WeatherDataPage";
+import { LoginPage } from "@/components/pages/LoginPage";
 import { useWebSocket } from "@/hooks/use-websocket";
 
 const queryClient = new QueryClient({
@@ -101,8 +102,9 @@ function AuthGate() {
       </div>
     );
   }
-  // AuthProvider redirects to /login on 401; render nothing while that's in flight.
-  if (!user) return null;
+  // No session — show the landing/login screen. The user must click "Sign on"
+  // to start the SWA → Entra redirect (no automatic bounce).
+  if (!user) return <LoginPage />;
   return <AppRoutes />;
 }
 

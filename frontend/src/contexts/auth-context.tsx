@@ -22,6 +22,7 @@ interface AuthContextValue {
   isLoading: boolean;
   error: string | null;
   reload: () => Promise<void>;
+  signIn: () => void;
   signOut: () => void;
   hasRole: (...roles: Role[]) => boolean;
   canAccessSite: (siteId: string) => boolean;
@@ -63,8 +64,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: { Accept: "application/json" },
       });
       if (res.status === 401) {
-        // Not signed in — bounce to SWA's Entra redirect.
-        window.location.assign(LOGIN_URL);
+        // Not signed in. Leave user null so the login screen renders; the
+        // user must click "Sign on" to start the SWA → Entra redirect.
+        setUser(null);
         return;
       }
       if (!res.ok) {
@@ -99,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       error,
       reload,
+      signIn: () => window.location.assign(LOGIN_URL),
       signOut: () => window.location.assign(LOGOUT_URL),
       hasRole: (...required: Role[]) => required.some((r) => roles.includes(r)),
       canAccessSite: (siteId: string) =>
