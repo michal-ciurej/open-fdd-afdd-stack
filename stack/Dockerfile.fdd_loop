@@ -1,4 +1,7 @@
-FROM python:3.14-slim
+# BASE_IMAGE overridable so cloud builds pull the base from ACR (Docker Hub
+# rate-limits anonymous pulls on ACR build agents). See stack/Dockerfile.api.
+ARG BASE_IMAGE=python:3.14-slim
+FROM ${BASE_IMAGE}
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app

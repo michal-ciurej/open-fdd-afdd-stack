@@ -192,9 +192,17 @@ git status                              # tree must be clean — image tags are 
 $SHA = git rev-parse --short HEAD
 $env:PYTHONUTF8 = '1'
 $env:PYTHONIOENCODING = 'utf-8'
+$BASE = '3msecontainers.azurecr.io/python:3.14-slim'   # base image pulled from ACR, not Docker Hub
 ```
 
 Tags are pinned to short git SHAs (`predmain-api:c6d8dec`). Tagging an image with a SHA whose code isn't actually in the image is a footgun — rollbacks then lie. If you have to publish uncommitted work, tag with `dev-<UTC stamp>` instead and re-tag once you commit.
+
+> **One-time: mirror the base image into ACR.** ACR build agents pull the `FROM` base from Docker Hub **anonymously**, which hits Docker's pull rate limit (`toomanyrequests: You have reached your unauthenticated pull rate limit`) and fails the build. Both Dockerfiles take a `BASE_IMAGE` build-arg (default `python:3.14-slim` for local builds) so cloud builds can pull the base from ACR instead. Import it once (re-run only when bumping the Python version):
+> ```powershell
+> az acr import -n 3mseContainers --source docker.io/library/python:3.14-slim --image python:3.14-slim
+> # If the import itself is rate-limited, authenticate with any Docker Hub account + PAT:
+> #   az acr import -n 3mseContainers --source docker.io/library/python:3.14-slim --image python:3.14-slim --username <user> --password <PAT>
+> ```
 
 #### 1. Build the two backend images (run in parallel)
 
@@ -202,13 +210,17 @@ Tags are pinned to short git SHAs (`predmain-api:c6d8dec`). Tagging an image wit
 # API image
 az acr build -r 3mseContainers `
   -t "predmain-api:$SHA" -t predmain-api:latest `
+  --build-arg BASE_IMAGE=$BASE `
   --no-logs -f stack/Dockerfile.api .
 
 # fdd-loop image (used by BOTH predmain-fdd-loop and predmain-nightly-sync)
 az acr build -r 3mseContainers `
   -t "predmain-fdd-loop:$SHA" -t predmain-fdd-loop:latest `
+  --build-arg BASE_IMAGE=$BASE `
   --no-logs -f stack/Dockerfile.fdd_loop .
 ```
+
+> **Why `--build-arg BASE_IMAGE=$BASE`?** It points `FROM` at the ACR-mirrored base (see the one-time import above) so the build agent pulls it from `3msecontainers.azurecr.io` — where it's already authenticated — instead of anonymously from Docker Hub. Omitting it falls back to the Docker Hub default and risks the `toomanyrequests` failure. Local `docker build` needs no arg; the Dockerfile default handles it.
 
 > **Why `--no-logs`?** On Windows the `az` CLI streams ACR build logs through `colorama`, which writes via `cp1252` and crashes on common build output even when `$env:PYTHONIOENCODING = 'utf-8'` is set. The remote ACR build still succeeds, but the local `az` process exits `1`, which is misleading. `--no-logs` skips the streaming path; `az` still waits for the build to finish and returns a real exit code. Inspect logs after the fact with `az acr task list-runs` + `az acr task logs --runner <runId>`, or via Log Analytics KQL on `ContainerAppConsoleLogs_CL`. **Don't rely on the older `PYTHONIOENCODING` workaround alone** — it's not enough when `az` runs with a captured pipe rather than a real console.
 

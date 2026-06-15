@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { apiFetch } from "@/lib/api";
 import { updateSite } from "@/lib/crud-api";
+import { SiteScheduleEditor } from "@/components/site/SiteScheduleEditor";
 import { useSiteContext } from "@/contexts/site-context";
 import {
   useSiteEnergyRates,
@@ -37,7 +38,6 @@ const inputBase =
 type SiteForm = {
   description: string;
   floorspace_sqm: string;
-  core_occupancy_hours_per_year: string;
   electric_rate_per_kwh: string;
   demand_charge_per_kw: string;
   therm_rate_usd: string;
@@ -47,7 +47,6 @@ type SiteForm = {
 const EMPTY_FORM: SiteForm = {
   description: "",
   floorspace_sqm: "",
-  core_occupancy_hours_per_year: "",
   electric_rate_per_kwh: "",
   demand_charge_per_kw: "",
   therm_rate_usd: "",
@@ -82,10 +81,6 @@ function SiteSummaryCard() {
       description: selectedSite.description ?? "",
       floorspace_sqm:
         metadata.floorspace_sqm == null ? "" : String(metadata.floorspace_sqm),
-      core_occupancy_hours_per_year:
-        metadata.core_occupancy_hours_per_year == null
-          ? ""
-          : String(metadata.core_occupancy_hours_per_year),
       electric_rate_per_kwh:
         rates?.electric_rate_per_kwh != null
           ? String(rates.electric_rate_per_kwh)
@@ -116,7 +111,6 @@ function SiteSummaryCard() {
     setSaveOk(false);
 
     const floorspace = numOrUndefined(form.floorspace_sqm);
-    const occHours = numOrUndefined(form.core_occupancy_hours_per_year);
     const electric = numOrUndefined(form.electric_rate_per_kwh);
     const demand = numOrUndefined(form.demand_charge_per_kw);
     const therm = numOrUndefined(form.therm_rate_usd);
@@ -127,12 +121,7 @@ function SiteSummaryCard() {
     const currentMetadata = (selectedSite?.metadata ?? {}) as Record<string, unknown>;
     const nextMetadata: Record<string, unknown> = {};
     if (floorspace !== undefined) nextMetadata.floorspace_sqm = floorspace;
-    if (occHours !== undefined) nextMetadata.core_occupancy_hours_per_year = occHours;
-    if (
-      nextMetadata.floorspace_sqm !== currentMetadata.floorspace_sqm ||
-      nextMetadata.core_occupancy_hours_per_year !==
-        currentMetadata.core_occupancy_hours_per_year
-    ) {
+    if (nextMetadata.floorspace_sqm !== currentMetadata.floorspace_sqm) {
       sitePatch.metadata = nextMetadata;
     }
     if (form.description.trim() !== (selectedSite?.description ?? "")) {
@@ -238,32 +227,11 @@ function SiteSummaryCard() {
                 data-testid="building-floorspace-input"
               />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                Core occupancy hrs / yr
-              </label>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                max="8784"
-                step="1"
-                value={form.core_occupancy_hours_per_year}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    core_occupancy_hours_per_year: e.target.value,
-                  }))
-                }
-                className={`${inputBase} w-full`}
-                data-testid="building-occupancy-input"
-              />
-              <p className="mt-1 text-xs text-muted-foreground/80">
-                e.g. 2600 for Mon–Fri 8 to 18.
-              </p>
-            </div>
           </div>
         </section>
+
+        {/* Core occupancy schedule — replaces the old hrs/year scalar. */}
+        <SiteScheduleEditor siteId={selectedSiteId} />
 
         {/* Energy rates section */}
         <section>

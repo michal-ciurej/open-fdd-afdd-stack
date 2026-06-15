@@ -27,6 +27,7 @@ import type {
   Site,
   SiteEnergyRates,
   SiteEnergyRatesUpdateBody,
+  SiteScheduleBody,
 } from "@/types/api";
 
 export interface SiteCreate {
@@ -605,6 +606,20 @@ export function updateSiteEnergyRates(
   body: SiteEnergyRatesUpdateBody,
 ) {
   return apiFetch<SiteEnergyRates>(`/sites/${siteId}/energy-rates`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/** GET /sites/{site_id}/schedule — the weekly core-occupancy windows. */
+export function getSiteSchedule(siteId: string) {
+  return apiFetch<SiteScheduleBody>(`/sites/${siteId}/schedule`);
+}
+
+/** PUT /sites/{site_id}/schedule — replaces the full weekly schedule. */
+export function updateSiteSchedule(siteId: string, body: SiteScheduleBody) {
+  return apiFetch<SiteScheduleBody>(`/sites/${siteId}/schedule`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
