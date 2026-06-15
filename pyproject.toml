@@ -32,6 +32,7 @@ dependencies = [
     # AI-assisted Brick tagging (openfdd_stack/platform/ai/tagging.py). Optional
     # at runtime — the endpoint returns 503 until OFDD_ANTHROPIC_API_KEY is set.
     "anthropic>=0.40",
+    "pandas>=2,<3",
 ]
 
 [project.optional-dependencies]
