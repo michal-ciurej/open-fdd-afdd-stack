@@ -44,6 +44,10 @@ _OPP_COLS = (
     "calc_type, fdd_rule_id, delta_params, capex_usd, enabled, created_at, updated_at"
 )
 
+# Same columns, alias-qualified for queries that JOIN `equipment` (which also has
+# `id`/`name`) — otherwise those references are ambiguous.
+_OPP_COLS_O = ", ".join(f"o.{c.strip()}" for c in _OPP_COLS.split(","))
+
 _RESULT_COLS = (
     "baseline_annual_cost_usd, projected_annual_cost_usd, annual_savings_usd, "
     "annual_kwh_saved, annual_therms_saved, peak_kw_reduced, simple_payback_years, "
@@ -245,7 +249,7 @@ def list_opportunities(
                 _check_site_access(str(eq["site_id"]), user)
                 cur.execute(
                     f"""
-                    SELECT {_OPP_COLS}, {_RESULT_COLS}
+                    SELECT {_OPP_COLS_O}, {_RESULT_COLS}
                       FROM energy_opportunities o
                       LEFT JOIN energy_opportunity_results r ON r.opportunity_id = o.id
                      WHERE o.equipment_id = %s
@@ -257,7 +261,7 @@ def list_opportunities(
                 _check_site_access(str(site_id), user)
                 cur.execute(
                     f"""
-                    SELECT {_OPP_COLS}, {_RESULT_COLS}
+                    SELECT {_OPP_COLS_O}, {_RESULT_COLS}
                       FROM energy_opportunities o
                       LEFT JOIN energy_opportunity_results r ON r.opportunity_id = o.id
                       JOIN equipment e ON e.id = o.equipment_id

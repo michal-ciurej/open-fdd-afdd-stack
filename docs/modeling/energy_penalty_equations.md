@@ -17,7 +17,7 @@ The stack ships **18 engineering narratives** for common HVAC faults, ordered fr
 | **Per-site enabled/disabled rows, equipment link** | Postgres `energy_calculations`; UI: **Energy Engineering** → tree (same enable/disable/delete pattern as the points tree) |
 | **Knowledge graph / SPARQL** | `config/data_model.ttl`: `ofdd:EnergyCalculation` (+ optional `ofdd:penaltyCatalogSeq` when `_penalty_catalog_seq` is in parameters) |
 | **Weather (Open-Meteo)** | `ofdd:platform_config` / site — **one** Open-Meteo config per deployment (see [Configuration](../configuration)) |
-| **Utility $/kWh, $/therm** | Enter in **calc parameters** (defaults in seed rows) or centralize via site/platform config over time; export bundle carries whatever you saved |
+| **Utility £/kWh, $/therm** | Enter in **calc parameters** (defaults in seed rows) or centralize via site/platform config over time; export bundle carries whatever you saved |
 
 ## Seeding the 18 defaults
 

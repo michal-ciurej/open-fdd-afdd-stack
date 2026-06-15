@@ -22,7 +22,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "hours_fault", "label": "Excess hours (e.g. per year)", "type": "float", "min": 0},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -40,7 +40,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "hours_fault", "label": "Excess hours (e.g. per year)", "type": "float", "min": 0},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -58,7 +58,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "hours", "label": "Operating hours in fault/improved scenario", "type": "float", "min": 0},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -88,7 +88,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "cop", "label": "Plant / chiller COP", "type": "float", "min": 0.1, "default": 3.5},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -108,7 +108,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "boiler_efficiency", "label": "Boiler η (if gas assign)", "type": "float", "min": 0.01, "max": 1, "default": 0.8},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -125,7 +125,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "hours_saved", "label": "Hours saved (e.g. per year)", "type": "float", "min": 0},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -145,7 +145,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "cop", "label": "Cooling COP", "type": "float", "min": 0.1, "default": 3.5},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -163,7 +163,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "hours", "label": "Hours", "type": "float", "min": 0},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -181,7 +181,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "cop", "label": "Cooling COP", "type": "float", "min": 0.1, "default": 3.5},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -200,7 +200,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "hours", "label": "Hours", "type": "float", "min": 0},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -219,7 +219,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "cop", "label": "Cooling COP", "type": "float", "min": 0.1, "default": 3.5},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -237,7 +237,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "cop", "label": "Cooling COP (if cooling)", "type": "float", "min": 0.1, "default": 3.5},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -257,7 +257,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "heating_efficiency", "label": "Heating η (gas)", "type": "float", "min": 0.01, "max": 1, "default": 0.8},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -293,7 +293,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "hours", "label": "Hours", "type": "float", "min": 0},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -312,7 +312,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "therm_rate_usd", "label": "Gas rate ($/therm)", "type": "float", "min": 0, "default": 1.0},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -330,7 +330,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "kwh_in_period", "label": "kWh over analysis window", "type": "float", "min": 0},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -348,7 +348,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "hours", "label": "Hours", "type": "float", "min": 0},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
@@ -366,7 +366,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
             {"key": "hours", "label": "Hours", "type": "float", "min": 0},
             {
                 "key": "electric_rate_per_kwh",
-                "label": "Electric rate ($/kWh)",
+                "label": "Electric rate (£/kWh)",
                 "type": "float",
                 "min": 0,
                 "default": 0.12,
