@@ -10,6 +10,7 @@ import { useAllEquipment, useAllPoints, useEquipment, usePoints, useSites } from
 import { useActiveFaults, useSiteFaults } from "@/hooks/use-faults";
 import { EquipmentTable } from "@/components/site/EquipmentTable";
 import { AiTaggingPanel } from "@/components/site/AiTaggingPanel";
+import { BuildingQueriesCard } from "@/components/site/BuildingQueriesCard";
 import { useCapabilities } from "@/hooks/use-system";
 import { apiFetch, apiFetchText } from "@/lib/api";
 import { writeTtlToPopup } from "@/lib/ttl-popup";
@@ -600,6 +601,10 @@ export function DataModelPage() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      <div className="mt-8">
+        <BuildingQueriesCard />
       </div>
     </div>
   );

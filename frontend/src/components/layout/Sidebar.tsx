@@ -18,6 +18,7 @@ import {
   Wrench,
   ShieldCheck,
   Users,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useHealth } from "@/hooks/use-fdd-status";
@@ -35,24 +36,50 @@ type NavItem = {
   roles?: Role[]; // omit = visible to all signed-in users
 };
 
-const NAV_ITEMS: readonly NavItem[] = [
-  { to: "/", label: "Overview", icon: LayoutDashboard, end: true },
-  { to: "/energy-engineering", label: "Energy Analysis", icon: Zap, end: false, roles: ["admin", "engineer"] },
-  { to: "/equipment", label: "Equipment", icon: Boxes, end: false },
-  { to: "/faults", label: "Faults", icon: AlertTriangle, end: false },
-  { to: "/maintenance", label: "Maintenance", icon: Wrench, end: false },
-  { to: "/compliance", label: "Compliance", icon: ShieldCheck, end: false },
-  { to: "/my-building", label: "My Building", icon: Building, end: false, roles: ["admin", "engineer"] },
-  { to: "/plots", label: "Charting", icon: LineChart, end: false },
-  { to: "/analytics", label: "Analytics", icon: BarChart2, end: false },
+type NavSection = {
+  /** Uppercase group heading; omit for the top (Home) section. */
+  header?: string;
+  /** Hide the whole group unless the user has one of these roles. */
+  roles?: Role[];
+  items: readonly NavItem[];
+};
+
+// Grouped around the FM work-loop: triage/fix (Operate) → optimise → investigate.
+const NAV_SECTIONS: readonly NavSection[] = [
+  {
+    items: [{ to: "/", label: "Home", icon: LayoutDashboard, end: true }],
+  },
+  {
+    header: "Operate",
+    items: [
+      { to: "/faults", label: "Faults", icon: AlertTriangle, end: false },
+      { to: "/equipment", label: "Equipment", icon: Boxes, end: false },
+      { to: "/maintenance", label: "Maintenance", icon: Wrench, end: false },
+      { to: "/compliance", label: "Compliance", icon: ShieldCheck, end: false },
+    ],
+  },
+  {
+    header: "Optimise",
+    roles: ["admin", "engineer"],
+    items: [
+      { to: "/energy-performance", label: "Energy Performance", icon: BarChart2, end: false, roles: ["admin", "engineer"] },
+      { to: "/energy-engineering", label: "Opportunities", icon: Zap, end: false, roles: ["admin", "engineer"] },
+      { to: "/my-building", label: "Building Setup", icon: Building, end: false, roles: ["admin", "engineer"] },
+    ],
+  },
+  {
+    header: "Investigate",
+    items: [{ to: "/plots", label: "Charting", icon: LineChart, end: false }],
+  },
 ] as const;
 
 // Entire Config submenu is admin-only.
 const CONFIG_ITEMS: readonly NavItem[] = [
   { to: "/points", label: "Points", icon: CircleDot, end: false, roles: ["admin"] },
   { to: "/site-configuration", label: "Site Configuration", icon: PlugZap, end: false, roles: ["admin"] },
-  { to: "/user-access", label: "User Access", icon: Users, end: false, roles: ["admin"] },
+  { to: "/fdd-rules", label: "FDD & Rules", icon: SlidersHorizontal, end: false, roles: ["admin"] },
   { to: "/data-model", label: "Data Modelling", icon: Database, end: false, roles: ["admin"] },
+  { to: "/user-access", label: "User Access", icon: Users, end: false, roles: ["admin"] },
   { to: "/weather", label: "Weather data", icon: Sun, end: false, roles: ["admin"] },
   { to: "/config", label: "System Config", icon: Settings, end: false, roles: ["admin"] },
   { to: "/system", label: "System resources", icon: Cpu, end: false, roles: ["admin"] },
@@ -69,8 +96,14 @@ export function Sidebar() {
   const { data: config } = useConfig();
   const { data: faults } = useActiveFaults();
   const { hasRole } = useAuth();
-  const visibleNav = useMemo(
-    () => NAV_ITEMS.filter((i) => !i.roles || hasRole(...i.roles)),
+  const visibleSections = useMemo(
+    () =>
+      NAV_SECTIONS.filter((s) => !s.roles || hasRole(...s.roles))
+        .map((s) => ({
+          ...s,
+          items: s.items.filter((i) => !i.roles || hasRole(...i.roles)),
+        }))
+        .filter((s) => s.items.length > 0),
     [hasRole],
   );
   const visibleConfig = useMemo(
@@ -127,31 +160,40 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-0.5 px-3 py-2">
-        {visibleNav.map(({ to, label, icon: Icon, end }) => (
-          <NavLink
-            key={to}
-            to={{ pathname: to, search }}
-            end={end}
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-150 ${
-                isActive
-                  ? "bg-muted/70 font-medium text-foreground"
-                  : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-              }`
-            }
-          >
-            <Icon className="h-4 w-4 shrink-0" />
-            <span>{label}</span>
-            {label === "Faults" && faults && faults.length > 0 && (
-              <Badge
-                variant="destructive"
-                className="ml-auto h-5 min-w-5 justify-center px-1.5 text-[10px]"
-              >
-                {faults.length}
-              </Badge>
+      <nav className="flex-1 space-y-2 px-3 py-2">
+        {visibleSections.map((section, idx) => (
+          <div key={section.header ?? `section-${idx}`} className="space-y-0.5">
+            {section.header && (
+              <p className="px-3 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                {section.header}
+              </p>
             )}
-          </NavLink>
+            {section.items.map(({ to, label, icon: Icon, end }) => (
+              <NavLink
+                key={to}
+                to={{ pathname: to, search }}
+                end={end}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-150 ${
+                    isActive
+                      ? "bg-muted/70 font-medium text-foreground"
+                      : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                  }`
+                }
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span>{label}</span>
+                {label === "Faults" && faults && faults.length > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="ml-auto h-5 min-w-5 justify-center px-1.5 text-[10px]"
+                  >
+                    {faults.length}
+                  </Badge>
+                )}
+              </NavLink>
+            ))}
+          </div>
         ))}
 
         {visibleConfig.length > 0 && (

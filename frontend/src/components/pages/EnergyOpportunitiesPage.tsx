@@ -151,7 +151,7 @@ export function EnergyOpportunitiesPage() {
     return (
       <div className="flex flex-col">
         <header className="mb-6 flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">Energy Analysis</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Opportunities</h1>
         </header>
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
@@ -166,7 +166,7 @@ export function EnergyOpportunitiesPage() {
     <div className="flex flex-col">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Energy Analysis</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Opportunities</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Cross-equipment opportunities for{" "}
             <span className="font-medium">{selectedSite?.name ?? selectedSiteId}</span>. Click a
@@ -174,7 +174,7 @@ export function EnergyOpportunitiesPage() {
           </p>
         </div>
         <Link
-          to="/site-configuration#site-energy-rates"
+          to="/my-building"
           className="text-sm font-medium text-primary underline-offset-4 hover:underline"
         >
           Edit site rates →

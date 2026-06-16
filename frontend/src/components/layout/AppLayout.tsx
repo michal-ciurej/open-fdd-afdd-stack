@@ -17,6 +17,8 @@ const PAGE_BACKGROUNDS: Record<string, string> = {
   "/plots": "/data/images/plots.jpg",
   "/weather": "/data/images/weather.jpg",
   "/analytics": "/data/images/analytics.jpg",
+  "/energy-performance": "/data/images/analytics.jpg",
+  "/fdd-rules": "/data/images/faults.jpg",
   "/system": "/data/images/system.jpg",
   "/data-model": "/data/images/data-model.jpg",
   "/energy-engineering": "/data/images/energy-engineering.jpg",

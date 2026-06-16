@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { useSiteContext } from "@/contexts/site-context";
 import { EngineerReportModal } from "@/components/maintenance/EngineerReportModal";
+import { EquipmentHealthMatrix } from "@/components/maintenance/EquipmentHealthMatrix";
 import {
   useLogMaintenanceEvent,
   useMaintenanceOverview,
@@ -221,6 +222,10 @@ export function MaintenancePage() {
           </p>
         </CardHeader>
       </Card>
+
+      {!isLoading && !isError && rows.length > 0 && (
+        <EquipmentHealthMatrix rows={rows} period={period} />
+      )}
 
       {isLoading ? (
         <Skeleton className="h-72 w-full rounded-2xl" />

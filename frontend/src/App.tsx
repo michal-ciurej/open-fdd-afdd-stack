@@ -17,9 +17,10 @@ import { SiteConfigurationPage } from "@/components/pages/SiteConfigurationPage"
 import { UserAccessPage } from "@/components/pages/UserAccessPage";
 import { DataModelPage } from "@/components/pages/DataModelPage";
 import { EnergyOpportunitiesPage } from "@/components/pages/EnergyOpportunitiesPage";
+import { EnergyPerformancePage } from "@/components/pages/EnergyPerformancePage";
+import { FddRulesPage } from "@/components/pages/FddRulesPage";
 import { MyBuildingPage } from "@/components/pages/MyBuildingPage";
 import { PlotsPage } from "@/components/pages/PlotsPage";
-import { AnalyticsPage } from "@/components/pages/AnalyticsPage";
 import { WeatherDataPage } from "@/components/pages/WeatherDataPage";
 import { LoginPage } from "@/components/pages/LoginPage";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -71,12 +72,14 @@ function AppRoutes() {
           <Route path="equipment/:equipmentId" element={<EquipmentDetailPage />} />
           <Route path="points" element={adminOnly(<PointsPage />)} />
           <Route path="faults" element={<FaultsPage />} />
+          <Route path="fdd-rules" element={adminOnly(<FddRulesPage />)} />
           <Route path="maintenance" element={<MaintenancePage />} />
           <Route path="compliance" element={<CompliancePage />} />
           <Route path="plots" element={<PlotsPage />} />
           <Route path="weather" element={adminOnly(<WeatherDataPage />)} />
-          <Route path="analytics" element={<AnalyticsPage />} />
-          <Route path="diagnostics" element={<Navigate to="/analytics" replace />} />
+          <Route path="energy-performance" element={engineerOrAdmin(<EnergyPerformancePage />)} />
+          <Route path="analytics" element={<Navigate to="/energy-performance" replace />} />
+          <Route path="diagnostics" element={<Navigate to="/energy-performance" replace />} />
           <Route path="system" element={adminOnly(<SystemResourcesPage />)} />
           <Route path="data-model" element={adminOnly(<DataModelPage />)} />
           <Route path="energy-engineering" element={engineerOrAdmin(<EnergyOpportunitiesPage />)} />
