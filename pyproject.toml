@@ -11,8 +11,11 @@ license = { text = "MIT" }
 requires-python = ">=3.9"
 authors = [{ name = "Michal Ciurej", email = "mike.ciurej@email.com" }]
 dependencies = [
-    # Pin to latest published engine on PyPI; bump lower bound after each open-fdd release.
-    "open-fdd>=2.0.13",
+    # Cap below 3.x: open-fdd 3.x is a pyarrow/datafusion rewrite that removed the
+    # open_fdd.engine package and dropped pandas as a hard dep — incompatible with
+    # this stack (which imports open_fdd.engine.runner and uses pandas directly).
+    # Bump the lower bound after each compatible 2.x release.
+    "open-fdd>=2.3.0,<3",
     # Brick TTL → column_map (stack-only; not a dependency of the engine wheel).
     "rdflib>=7.5.0,<8",
     # rdflib 7.x + pyparsing 3.2+ can break SPARQL parsing; pin compatible range.
