@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from openfdd_stack.platform.brick_vocabulary import normalize_or_raise
 
@@ -112,6 +112,23 @@ class PointUpdate(BaseModel):
     @classmethod
     def _validate_modbus_config_update(cls, v: Any) -> Any:
         return _validate_modbus_config_common(v)
+
+
+class PointUnassign(BaseModel):
+    """Bulk-detach points from equipment (equipment_id -> NULL) in one statement.
+
+    Provide exactly one of equipment_id (unassign every point under it) or
+    point_ids (unassign that explicit set).
+    """
+
+    equipment_id: Optional[UUID] = None
+    point_ids: Optional[list[UUID]] = None
+
+    @model_validator(mode="after")
+    def _exactly_one(self) -> "PointUnassign":
+        if (self.equipment_id is None) == (not self.point_ids):
+            raise ValueError("Provide exactly one of equipment_id or point_ids")
+        return self
 
 
 class PointRead(BaseModel):

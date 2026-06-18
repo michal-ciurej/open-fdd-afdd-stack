@@ -752,6 +752,16 @@ class PointImportRow(BaseModel):
         None,
         description="Equipment name (e.g. AHU-1, VAV-1). When equipment_id is omitted, import finds or creates this equipment and assigns the point (on create and on update by point_id).",
     )
+    equipment_source_ref: str | None = Field(
+        None,
+        description=(
+            "Stable equipment identity key (e.g. the Niagara device path). When set, "
+            "the point is linked to the equipment whose metadata.source_ref matches "
+            "(created with equipment_name if none exists). This is preferred over "
+            "equipment_name so the equipment can be freely renamed without re-tagging "
+            "creating a duplicate."
+        ),
+    )
     equipment_type: str | None = Field(
         None,
         description=(
@@ -834,6 +844,15 @@ class EquipmentImportRow(BaseModel):
     equipment_name: str | None = Field(
         None,
         description="Equipment name (e.g. AHU-1, VAV-1). With site_id, import finds or creates this equipment then sets feeds/fed_by.",
+    )
+    source_ref: str | None = Field(
+        None,
+        description=(
+            "Stable equipment identity key (e.g. the Niagara device path), stored as "
+            "metadata.source_ref. When set, the row reconciles to the equipment with "
+            "the matching source_ref (independent of name) — created if missing — so "
+            "re-tagging after a rename updates the same equipment instead of duplicating."
+        ),
     )
     equipment_type: str | None = Field(
         None,
@@ -1012,6 +1031,75 @@ def _get_equipment_id_by_name(cur: Any, site_id: UUID, name: str) -> str | None:
     return str(row["id"]) if row else None
 
 
+def _ensure_equipment_by_source_ref(
+    cur: Any,
+    site_id: UUID,
+    source_ref: str,
+    name: str,
+    equipment_type: str = "Equipment",
+) -> str:
+    """Find equipment by (site_id, metadata.source_ref) or create it; return its id.
+
+    ``source_ref`` is the stable identity (e.g. a Niagara device path), decoupled
+    from the user-editable ``name`` — so re-tagging after a rename reconciles to
+    the SAME equipment instead of creating a duplicate. On a source_ref match the
+    name/type are left untouched (user edits win). Falls back to name-based when
+    source_ref is empty. Same conn/cur => same transaction."""
+    source_ref = (source_ref or "").strip()
+    if not source_ref:
+        return _ensure_equipment(cur, site_id, name, equipment_type)
+
+    cur.execute(
+        "SELECT id FROM equipment WHERE site_id = %s AND metadata->>'source_ref' = %s",
+        (str(site_id), source_ref),
+    )
+    row = cur.fetchone()
+    if row:
+        return str(row["id"])
+
+    base_name = (name or source_ref).strip() or source_ref
+    et = (equipment_type or "Equipment").strip() or "Equipment"
+    # Create under base_name. On a name collision, adopt an existing equipment that
+    # has no source_ref yet (migration from name-based identity); otherwise the
+    # name belongs to a DIFFERENT device, so disambiguate with a numbered suffix so
+    # two devices sharing a leaf name don't merge.
+    for attempt in range(1, 64):
+        candidate = base_name if attempt == 1 else f"{base_name} ({attempt})"
+        try:
+            cur.execute("SAVEPOINT eq_src_ins")
+            cur.execute(
+                """INSERT INTO equipment (site_id, name, description, equipment_type, metadata, feeds_equipment_id, fed_by_equipment_id)
+                   VALUES (%s, %s, NULL, %s, %s, NULL, NULL) RETURNING id""",
+                (str(site_id), candidate, et, Json({"source_ref": source_ref})),
+            )
+            return str(cur.fetchone()["id"])
+        except psycopg2.IntegrityError as e:
+            if e.pgcode != "23505":  # not a unique violation
+                raise
+            cur.execute("ROLLBACK TO SAVEPOINT eq_src_ins")
+            cur.execute(
+                "SELECT id, metadata FROM equipment WHERE site_id = %s AND name = %s",
+                (str(site_id), candidate),
+            )
+            ex = cur.fetchone()
+            if not ex:
+                continue
+            md = ex.get("metadata") if isinstance(ex.get("metadata"), dict) else {}
+            existing_ref = (md or {}).get("source_ref")
+            if existing_ref in (None, "", source_ref):
+                if existing_ref != source_ref:  # adopt name-based equipment, stamp key
+                    new_md = dict(md or {})
+                    new_md["source_ref"] = source_ref
+                    cur.execute(
+                        "UPDATE equipment SET metadata = %s WHERE id = %s",
+                        (Json(new_md), str(ex["id"])),
+                    )
+                return str(ex["id"])
+            continue  # name taken by a different device -> try next candidate
+    # Pathological collision count — fall back to plain name-based create.
+    return _ensure_equipment(cur, site_id, base_name, et)
+
+
 def _deep_merge_dict(base: dict | None, overlay: dict | None) -> dict:
     """Recursively merge overlay into base (overlay wins; unknown keys preserved)."""
     out = dict(base or {})
@@ -1141,21 +1229,31 @@ def _create_or_upsert_without_point_id(
         "site_id",
         "from GET /sites or use GET /data-model/export?site_id=YourSite to pre-fill",
     )
-    if point_row.equipment_id:
-        equip_uuid_str = str(
-            _parse_uuid_or_400(
-                point_row.equipment_id,
-                "equipment_id",
-                "from GET /equipment",
-            )
+    # source_ref-first (stable identity), then name (find-or-create), then a
+    # supplied equipment_id only if it exists — never write a dangling FK.
+    _eq_sr_c = (getattr(point_row, "equipment_source_ref", None) or "").strip()
+    _eq_name_c = (point_row.equipment_name or "").strip()
+    if _eq_sr_c:
+        equip_uuid_str = _ensure_equipment_by_source_ref(
+            cur,
+            site_uuid,
+            _eq_sr_c,
+            _eq_name_c or _eq_sr_c,
+            point_row.equipment_type or "Equipment",
         )
-    elif point_row.equipment_name:
+    elif _eq_name_c:
         equip_uuid_str = _ensure_equipment(
             cur,
             site_uuid,
-            point_row.equipment_name,
+            _eq_name_c,
             point_row.equipment_type or "Equipment",
         )
+    elif point_row.equipment_id:
+        _eq_u = _parse_uuid_or_400(
+            point_row.equipment_id, "equipment_id", "from GET /equipment"
+        )
+        cur.execute("SELECT 1 FROM equipment WHERE id = %s", (str(_eq_u),))
+        equip_uuid_str = str(_eq_u) if cur.fetchone() else None
     else:
         equip_uuid_str = None
     _polling = point_row.polling if point_row.polling is not None else True
@@ -1326,6 +1424,29 @@ def import_data_model(body: DataModelImportBody):
             inferred_payload_site_id: str | None = (
                 next(iter(payload_site_ids)) if len(payload_site_ids) == 1 else None
             )
+
+            # Reconcile equipment on the stable metadata.source_ref BEFORE linking
+            # points, so identity survives renames and re-tags never duplicate.
+            # Builds source_ref -> id for the points loop to link against.
+            source_ref_to_id: dict[str, str] = {}
+            for eq in body.equipment:
+                _sr = (getattr(eq, "source_ref", None) or "").strip()
+                if not _sr:
+                    continue
+                _eq_site = (
+                    str(eq.site_id).strip()
+                    if (eq.site_id and str(eq.site_id).strip())
+                    else (inferred_payload_site_id or default_site_id_str)
+                )
+                if not _eq_site:
+                    continue  # site unresolved here; equipment loop will warn/skip
+                _su = _parse_uuid_or_400(
+                    _eq_site, "site_id", "from GET /sites (equipment array)"
+                )
+                source_ref_to_id[_sr] = _ensure_equipment_by_source_ref(
+                    cur, _su, _sr, eq.equipment_name or _sr, eq.equipment_type or "Equipment"
+                )
+
             for row in body.points:
                 if row.point_id:
                     # Update existing point
@@ -1342,65 +1463,80 @@ def import_data_model(body: DataModelImportBody):
                                 )
                             )
                         )
-                    if row.equipment_id is not None:
-                        updates.append("equipment_id = %s")
-                        params.append(
-                            str(
-                                _parse_uuid_or_400(
-                                    row.equipment_id,
-                                    "equipment_id",
-                                    "from GET /equipment",
-                                )
-                            )
+                    # Equipment resolution precedence:
+                    #  1) equipment_source_ref — stable identity (metadata.source_ref);
+                    #     rename-safe, the preferred path for tagged Niagara points.
+                    #  2) equipment_name — find-or-create by name.
+                    #  3) equipment_id — only if it actually exists (a stale/fabricated
+                    #     id would otherwise write a dangling FK and 500 the UPDATE).
+                    _eq_sr = (getattr(row, "equipment_source_ref", None) or "").strip()
+                    _eq_name = (row.equipment_name or "").strip()
+                    if _eq_sr or _eq_name:
+                        _eff_site = (
+                            row.site_id
+                            if (row.site_id and str(row.site_id).strip())
+                            else (inferred_payload_site_id or default_site_id_str)
                         )
-                    elif row.equipment_name is not None:
-                        # Create/link equipment by name on update (same as create path). Without this,
-                        # export rows with point_id never run _ensure_equipment, so equipment[] feeds/fed_by
-                        # name resolution fails (e.g. VAV-1 not found when AHU lists feeds: VAV-1).
-                        _eq_name = (row.equipment_name or "").strip()
-                        if _eq_name:
-                            _eff_site = (
-                                row.site_id
-                                if (row.site_id and str(row.site_id).strip())
-                                else (inferred_payload_site_id or default_site_id_str)
+                        if (
+                            not _eff_site
+                            and getattr(row, "site_name", None)
+                            and str(row.site_name).strip()
+                        ):
+                            _eff_site = _resolve_site_id_by_name(cur, row.site_name)
+                        if not _eff_site:
+                            cur.execute(
+                                "SELECT site_id FROM points WHERE id = %s",
+                                (str(point_uuid),),
                             )
-                            if (
-                                not _eff_site
-                                and getattr(row, "site_name", None)
-                                and str(row.site_name).strip()
-                            ):
-                                _eff_site = _resolve_site_id_by_name(cur, row.site_name)
-                            if not _eff_site:
-                                cur.execute(
-                                    "SELECT site_id FROM points WHERE id = %s",
-                                    (str(point_uuid),),
-                                )
-                                _srow = cur.fetchone()
-                                if _srow:
-                                    _eff_site = str(_srow["site_id"])
-                            if not _eff_site:
-                                warnings.append(
-                                    {
-                                        "point_id": row.point_id,
-                                        "reason": "equipment_name set but site_id could not be resolved (include site_id, site_name, or a single site in the payload)",
-                                    }
+                            _srow = cur.fetchone()
+                            if _srow:
+                                _eff_site = str(_srow["site_id"])
+                        if not _eff_site:
+                            warnings.append(
+                                {
+                                    "point_id": row.point_id,
+                                    "reason": "equipment set but site_id could not be resolved (include site_id, site_name, or a single site in the payload)",
+                                }
+                            )
+                        else:
+                            _site_u = _parse_uuid_or_400(
+                                _eff_site, "site_id", "from GET /sites"
+                            )
+                            _eq_t = (
+                                (row.equipment_type or "Equipment").strip() or "Equipment"
+                            )
+                            if _eq_sr:
+                                _eid = source_ref_to_id.get(
+                                    _eq_sr
+                                ) or _ensure_equipment_by_source_ref(
+                                    cur, _site_u, _eq_sr, _eq_name or _eq_sr, _eq_t
                                 )
                             else:
-                                _site_u = _parse_uuid_or_400(
-                                    _eff_site,
-                                    "site_id",
-                                    "from GET /sites",
-                                )
-                                _eq_t = (
-                                    (row.equipment_type or "Equipment").strip()
-                                    or "Equipment"
-                                )
-                                updates.append("equipment_id = %s")
-                                params.append(
-                                    _ensure_equipment(
-                                        cur, _site_u, _eq_name, _eq_t
-                                    )
-                                )
+                                _eid = _ensure_equipment(cur, _site_u, _eq_name, _eq_t)
+                            updates.append("equipment_id = %s")
+                            params.append(_eid)
+                    elif row.equipment_id is not None:
+                        _eq_u = _parse_uuid_or_400(
+                            row.equipment_id, "equipment_id", "from GET /equipment"
+                        )
+                        cur.execute(
+                            "SELECT 1 FROM equipment WHERE id = %s", (str(_eq_u),)
+                        )
+                        if cur.fetchone():
+                            updates.append("equipment_id = %s")
+                            params.append(str(_eq_u))
+                        else:
+                            warnings.append(
+                                {
+                                    "point_id": row.point_id,
+                                    "reason": (
+                                        f"equipment_id {row.equipment_id} not found in the equipment "
+                                        "table and no equipment_name provided to resolve; equipment "
+                                        "link left unchanged. Assign by equipment_name (import creates "
+                                        "it) or use a real UUID from GET /equipment."
+                                    ),
+                                }
+                            )
                     if row.external_id is not None:
                         updates.append("external_id = %s")
                         params.append(row.external_id)
@@ -1505,7 +1641,21 @@ def import_data_model(body: DataModelImportBody):
                     else (inferred_payload_site_id or default_site_id_str)
                 )
                 eq_type = (eq.equipment_type or "Equipment").strip() or "Equipment"
-                if eq.equipment_id:
+                _eq_sr = (getattr(eq, "source_ref", None) or "").strip()
+                if _eq_sr and effective_eq_site_id:
+                    # Reconcile by stable source_ref (reuses the early pass result)
+                    # so a renamed equipment is updated, not duplicated by name.
+                    site_uuid_eq = _parse_uuid_or_400(
+                        effective_eq_site_id,
+                        "site_id",
+                        "from GET /sites (equipment array)",
+                    )
+                    eq_id = source_ref_to_id.get(
+                        _eq_sr
+                    ) or _ensure_equipment_by_source_ref(
+                        cur, site_uuid_eq, _eq_sr, eq.equipment_name or _eq_sr, eq_type
+                    )
+                elif eq.equipment_id:
                     eq_id = str(
                         _parse_uuid_or_400(
                             eq.equipment_id,
@@ -1523,7 +1673,7 @@ def import_data_model(body: DataModelImportBody):
                         cur, site_uuid_eq, eq.equipment_name, eq_type
                     )
                 else:
-                    continue  # skip row without equipment_id or (equipment_name + site_id)
+                    continue  # skip row without source_ref/equipment_id/(name + site_id)
                 site_uuid_for_names = (
                     _parse_uuid_or_400(
                         effective_eq_site_id, "site_id", "from GET /sites"
@@ -1538,8 +1688,13 @@ def import_data_model(body: DataModelImportBody):
                     eq.fed_by[0] if getattr(eq, "fed_by", None) else None
                 )
                 updates, params = [], []
-                if eq.equipment_type is not None and (
-                    eq.equipment_id or (eq.equipment_name and effective_eq_site_id)
+                # Set type for id/name rows. For source_ref rows the type was set at
+                # creation (early pass); don't overwrite it here, so a user's manual
+                # type correction survives a re-tag (identity is source_ref-stable).
+                if (
+                    eq.equipment_type is not None
+                    and not _eq_sr
+                    and (eq.equipment_id or (eq.equipment_name and effective_eq_site_id))
                 ):
                     updates.append("equipment_type = %s")
                     params.append(eq_type)

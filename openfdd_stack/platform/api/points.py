@@ -13,7 +13,12 @@ from openfdd_stack.platform.api.auth_principal import (
     accessible_site_ids,
     get_current_user,
 )
-from openfdd_stack.platform.api.models import PointCreate, PointRead, PointUpdate
+from openfdd_stack.platform.api.models import (
+    PointCreate,
+    PointRead,
+    PointUnassign,
+    PointUpdate,
+)
 from openfdd_stack.platform.realtime import emit, TOPIC_CRUD_POINT
 
 router = APIRouter(prefix="/points", tags=["points"])
@@ -136,6 +141,43 @@ def create_point(body: PointCreate):
         },
     )
     return PointRead.model_validate(dict(row))
+
+
+@router.post("/unassign")
+def unassign_points(body: PointUnassign, user: AuthUser = Depends(get_current_user)):
+    """Bulk-detach points from their equipment (equipment_id -> NULL) in one statement.
+
+    Pass either equipment_id (unassign every point under it) or an explicit
+    point_ids list. Replaces per-point PATCH loops so dissolving a large initial
+    grouping is a single round-trip and a single transaction.
+    """
+    accessible = accessible_site_ids(user)
+    # Build the row filter (equipment_id or explicit ids) plus an optional site scope.
+    if body.equipment_id is not None:
+        where = "equipment_id = %s"
+        params: list = [str(body.equipment_id)]
+    else:
+        where = "id = ANY(%s::uuid[])"
+        params = [[str(p) for p in body.point_ids]]
+    if accessible is not None:
+        if not accessible:
+            return {"status": "ok", "unassigned": 0}
+        where += " AND site_id::text = ANY(%s)"
+        params.append(accessible)
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"UPDATE points SET equipment_id = NULL WHERE {where} RETURNING id",
+                params,
+            )
+            count = len(cur.fetchall())
+        conn.commit()
+    try:
+        sync_ttl_to_file()
+    except Exception:
+        pass
+    emit(TOPIC_CRUD_POINT + ".updated", {"bulk": True, "count": count})
+    return {"status": "ok", "unassigned": count}
 
 
 @router.get("/{point_id}", response_model=PointRead)

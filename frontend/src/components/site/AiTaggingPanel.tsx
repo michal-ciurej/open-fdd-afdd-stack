@@ -218,7 +218,9 @@ export function AiTaggingPanel({ available }: { available: boolean | undefined }
    *  equipment row (and its type) is created lazily when the type is edited, so
    *  typing a name char-by-char doesn't spawn junk rows. */
   function assignPointEquipment(idx: number, rawName: string) {
-    updatePoint(idx, { equipment_name: rawName.trim() || null });
+    // Manual reassignment overrides the path grouping: clear the path-derived
+    // source_ref so the importer links by the chosen name, not the old device.
+    updatePoint(idx, { equipment_name: rawName.trim() || null, equipment_source_ref: null });
   }
 
   /** Set an equipment's type, upserting a row for a manually-created group. */

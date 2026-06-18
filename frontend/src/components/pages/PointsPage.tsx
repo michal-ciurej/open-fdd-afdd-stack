@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAllPoints, useAllEquipment, usePoints, useEquipment, useSites } from "@/hooks/use-sites";
 import { useTimeseriesLatest } from "@/hooks/use-timeseries-latest";
 import { PointsTree } from "@/components/site/PointsTree";
-import { deletePoint, deleteEquipment, deleteSite, updatePoint } from "@/lib/crud-api";
+import { deletePoint, deleteEquipment, deleteSite, updatePoint, unassignPoints } from "@/lib/crud-api";
 import type { Point } from "@/types/api";
 
 function useTreeMutations(points: Point[]) {
@@ -45,16 +45,15 @@ function useTreeMutations(points: Point[]) {
   // Dissolve = detach every point from the equipment (equipment_id -> null), then
   // delete the now-empty shell. Points and their history are kept; they return to
   // Unassigned so they can be re-tagged. Order matters: unassign before delete so
-  // the equipment delete does not cascade the points away.
+  // the equipment delete does not cascade the points away. The unassign is a single
+  // bulk request (one UPDATE) so this stays fast even for thousands of points.
   const dissolveEquipmentMutation = useMutation<
     { status: string },
     Error,
     { equipmentId: string; pointIds: string[] }
   >({
-    mutationFn: async ({ equipmentId, pointIds }) => {
-      for (const pid of pointIds) {
-        await updatePoint(pid, { equipment_id: null });
-      }
+    mutationFn: async ({ equipmentId }) => {
+      await unassignPoints({ equipment_id: equipmentId });
       await deleteEquipment(equipmentId);
       return { status: "ok" };
     },

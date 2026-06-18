@@ -210,6 +210,8 @@ export interface AiTagRequest {
 
 /** One proposed point: the import row fields plus review-only confidence/rationale. */
 export interface TaggingProposalPoint extends DataModelExportRow {
+  /** Stable link to the equipment (e.g. Niagara device path); import dedups on it. */
+  equipment_source_ref?: string | null;
   /** 0..1 model confidence in this row's tags. Stripped before import. */
   confidence?: number | null;
   /** One-line evidence for the review screen. Stripped before import. */
@@ -221,6 +223,8 @@ export interface TaggingProposalEquipment {
   equipment_name?: string | null;
   equipment_type?: string | null;
   site_id?: string | null;
+  /** Stable source key (Niagara device path) — identity decoupled from the editable name. */
+  source_ref?: string | null;
   feeds?: string[] | null;
   fed_by?: string[] | null;
   confidence?: number | null;

@@ -233,8 +233,76 @@ def test_chunking_groups_by_device_and_merges_equipment(with_key):
     assert len(client.messages.calls) == 3, "9 points / chunk_size 3 -> 3 calls"
     # Equipment returned in all three chunks dedupes to a single row.
     assert len(proposal.equipment) == 1
-    # Point count mismatch (3 returned vs 9 exported) is surfaced as a warning.
-    assert any("point rows" in w for w in proposal.warnings)
+    # Every exported point is preserved (built from originals), not just what the
+    # model echoed back; only point "0" carried a (null) tag, so 9 are untagged.
+    assert len(proposal.points) == 9
+    assert any("untagged" in w for w in proposal.warnings)
+
+
+# --- Niagara path / device-aware grouping (Stage 1) -------------------------
+def test_niagara_device_parsing():
+    p = {
+        "external_id": "local:|station:|slot:/Drivers/NiagaraNetwork/Floor28/"
+        "FS_28_BMS_CP003_2128/points/Comms_Room_Temp/ChwValve"
+    }
+    dpath, dname = t._niagara_device(p)
+    assert dname == "FS_28_BMS_CP003_2128"
+    assert dpath == "Drivers/NiagaraNetwork/Floor28/FS_28_BMS_CP003_2128"
+    # No path -> no grouping.
+    assert t._niagara_device({"external_id": "ZoneTemp"}) == (None, None)
+    assert t._niagara_device({}) == (None, None)
+
+
+def test_path_grouping_is_deterministic_and_overrides_model(with_key):
+    # Two points under one Niagara device, one under another. The model tries to
+    # regroup them under "AHU-1" — the path grouping must win, and equipment must
+    # carry the stable source_ref (full device path), not depend on the name.
+    NIA = "local:|station:|slot:/Drivers/NiagaraNetwork/Floor28/"
+    export = {
+        "equipment": [],
+        "points": [
+            {"point_id": "p1", "site_id": "s", "external_id": f"{NIA}DEV_A/points/grp/PtA1"},
+            {"point_id": "p2", "site_id": "s", "external_id": f"{NIA}DEV_A/points/grp/PtA2"},
+            {"point_id": "p3", "site_id": "s", "external_id": f"{NIA}DEV_B/points/grp/PtB1"},
+        ],
+    }
+    # Model returns tags but mislabels equipment_name as "AHU-1" for everything.
+    payload = {
+        "points": [
+            {"point_id": "p1", "brick_type": "Supply_Air_Temperature_Sensor", "equipment_name": "AHU-1"},
+            {"point_id": "p2", "brick_type": "Return_Air_Temperature_Sensor", "equipment_name": "AHU-1"},
+            {"point_id": "p3", "brick_type": "Zone_Air_Temperature_Sensor", "equipment_name": "AHU-1"},
+        ],
+        "equipment": [{"equipment_name": "DEV_A", "equipment_type": "Fan_Coil_Unit"}],
+    }
+    _patch_client(with_key, [_tool_resp(payload)])
+    proposal = t.run_tagging(export, None)
+
+    # Points grouped by device path, NOT the model's "AHU-1".
+    by_id = {p["point_id"]: p for p in proposal.points}
+    assert by_id["p1"]["equipment_name"] == "DEV_A"
+    assert by_id["p2"]["equipment_name"] == "DEV_A"
+    assert by_id["p3"]["equipment_name"] == "DEV_B"
+    # Tags still grafted from the model, identity (external_id) preserved.
+    assert by_id["p1"]["brick_type"] == "Supply_Air_Temperature_Sensor"
+    assert by_id["p1"]["external_id"].endswith("DEV_A/points/grp/PtA1")
+    # equipment_id omitted so the importer links by the path-derived name.
+    assert "equipment_id" not in by_id["p1"]
+    # Each point carries the stable source_ref link (Step 2: rename-safe identity).
+    assert by_id["p1"]["equipment_source_ref"] == "Drivers/NiagaraNetwork/Floor28/DEV_A"
+    assert by_id["p3"]["equipment_source_ref"] == "Drivers/NiagaraNetwork/Floor28/DEV_B"
+
+    # Two equipment, each with the stable source_ref (full device path) + site, and
+    # the model's equipment_type grafted by name where it matched.
+    eq = {e["equipment_name"]: e for e in proposal.equipment}
+    assert set(eq) == {"DEV_A", "DEV_B"}
+    assert eq["DEV_A"]["source_ref"] == "Drivers/NiagaraNetwork/Floor28/DEV_A"
+    assert eq["DEV_A"]["site_id"] == "s"
+    assert eq["DEV_A"]["equipment_type"] == "Fan_Coil_Unit"
+    # The import body still validates (source_ref is part of the contract now).
+    body = proposal.to_import_body()
+    assert body["points"][0]["equipment_source_ref"].endswith("DEV_A")
+    assert body["equipment"][0]["source_ref"].endswith("DEV_A")
 
 
 def test_chunk_helper_keeps_device_objects_together():

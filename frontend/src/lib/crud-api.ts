@@ -177,6 +177,20 @@ export function updatePoint(pointId: string, body: PointPatchBody): Promise<Poin
   });
 }
 
+/**
+ * Bulk-detach points from their equipment (equipment_id -> NULL) in one request.
+ * Pass either { equipment_id } (unassign all its points) or { point_ids }.
+ */
+export function unassignPoints(
+  body: { equipment_id: string } | { point_ids: string[] },
+): Promise<{ status: string; unassigned: number }> {
+  return apiFetch<{ status: string; unassigned: number }>("/points/unassign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 export function dataModelExport() {
   return apiFetch<DataModelExportRow[]>("/data-model/export");
 }

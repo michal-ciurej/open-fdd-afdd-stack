@@ -97,11 +97,11 @@ POINT RULES (for each row in points)
    Mixed_Air_Temperature_Sensor, Zone_Air_Temperature_Sensor,
    Damper_Position_Command, Supply_Air_Flow_Sensor, Static_Pressure_Sensor,
    Occupancy_Command. No "brick:" prefix. null if genuinely unclear.
-3. equipment_name: assign the point to ONE equipment by NAME (never a UUID),
-   based on BACnet device grouping and consistent object_name / external_id
-   patterns. If you cannot confidently group a point, leave equipment_name null
-   — it stays "Unassigned" for the operator to place during review. Better to
-   leave a point Unassigned than to invent or mis-assign an equipment.
+3. equipment_name: PRE-ASSIGNED from the point's source (Niagara station) path —
+   keep it EXACTLY as given. Do not change, merge, split, or invent
+   equipment_name; the grouping is authoritative and decided before you see the
+   data. If a point has no equipment_name, leave it null (Unassigned) — never
+   guess one.
 4. unit: units are METRIC. Use degC for temperature, percent (or %) for
    percentage, the metric airflow convention, "0/1" for binary, W for power,
    "W/m2" for irradiance. Use null when unknown; do not guess ambiguous
@@ -303,9 +303,61 @@ def _user_message(export_chunk: dict[str, Any], ctx: JobContext | None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# 5a. Niagara path / device-aware grouping (deterministic). The point population
+#     is entirely Niagara station paths, so the controller in the slot path is a
+#     far more reliable equipment boundary than a model name-guess. The full
+#     device path is carried as a stable ``source_ref`` so equipment identity is
+#     decoupled from the (editable) display name — renaming an equipment later
+#     must not orphan its points (see Step 2: importer dedup on source_ref).
+# ---------------------------------------------------------------------------
+def _niagara_device(point: dict[str, Any]) -> tuple[str | None, str | None]:
+    """Parse a Niagara slot path into (device_path, device_name).
+
+    The device is the path component immediately before the ``points`` container:
+    ``…/Floor28/FS_28_BMS_CP003_2128/points/Comms_Room_Temp/ChwValve`` ->
+    (``Drivers/NiagaraNetwork/Floor28/FS_28_BMS_CP003_2128``, ``FS_28_BMS_CP003_2128``).
+    ``device_path`` is the stable identity key; ``device_name`` is the label.
+    Returns (None, None) when there is no parseable path.
+    """
+    raw = str(point.get("external_id") or point.get("niagara_history_path") or "").strip()
+    if not raw:
+        return None, None
+    path = raw.split("slot:", 1)[1] if "slot:" in raw else raw
+    segs = [s for s in path.split("/") if s]
+    if not segs:
+        return None, None
+    lower = [s.lower() for s in segs]
+    if "points" in lower:
+        device_segs = segs[: lower.index("points")]
+    else:
+        device_segs = segs[:-1]  # no 'points' container: drop the leaf point name
+    if not device_segs:
+        return None, None
+    return "/".join(device_segs), device_segs[-1]
+
+
+def _apply_path_grouping(export: dict[str, Any]) -> dict[str, str]:
+    """Group Niagara points into equipment by their station device path.
+
+    Mutates each point's ``equipment_name`` to the device segment (deterministic,
+    overriding any prior value) so chunking and the model see the real grouping
+    and cannot regroup it. Returns ``{device_name: device_path}`` so the caller
+    can attach the stable ``source_ref`` to each equipment. Points with no
+    parseable path are left as-is (they stay Unassigned).
+    """
+    source_ref_by_name: dict[str, str] = {}
+    for p in export.get("points") or []:
+        dpath, dname = _niagara_device(p)
+        if dname:
+            p["equipment_name"] = dname
+            source_ref_by_name.setdefault(dname, dpath or dname)
+    return source_ref_by_name
+
+
+# ---------------------------------------------------------------------------
 # 5. Chunking — keep payloads small enough to tag reliably. Points are grouped
-#    by BACnet device so an equipment's points stay together in one chunk; the
-#    full (small) equipment array rides along with every chunk for context.
+#    by equipment (device) so an equipment's points stay together in one chunk;
+#    the full (small) equipment array rides along with every chunk for context.
 # ---------------------------------------------------------------------------
 def _chunk_points(
     export: dict[str, Any], chunk_size: int
@@ -315,11 +367,15 @@ def _chunk_points(
     if chunk_size <= 0 or len(points) <= chunk_size:
         return [{"equipment": equipment, "points": points}]
 
-    # Group by device so a device's objects are never split across chunks.
+    # Group by equipment (Niagara device, set by _apply_path_grouping) so a
+    # device's points are never split across chunks; fall back to BACnet device.
     by_device: dict[str, list[dict[str, Any]]] = {}
     order: list[str] = []
     for p in points:
-        key = str(p.get("bacnet_device_id") or f"_nodev_{p.get('point_id') or p.get('external_id')}")
+        key = (
+            (p.get("equipment_name") or "").strip()
+            or str(p.get("bacnet_device_id") or f"_nodev_{p.get('point_id') or p.get('external_id')}")
+        )
         if key not in by_device:
             by_device[key] = []
             order.append(key)
@@ -571,6 +627,11 @@ def run_tagging(
     else:
         raise AiTaggingError("structured_export must be a StructuredExport or dict")
 
+    # Deterministic Niagara device grouping: set equipment_name from each point's
+    # station path BEFORE chunking/tagging so the model cannot regroup. Returns
+    # {device_name: source_ref} for rebuilding equipment after merge.
+    source_ref_by_name = _apply_path_grouping(export)
+
     n_points = len(export.get("points") or [])
     if n_points == 0:
         return TaggingProposal(
@@ -627,21 +688,85 @@ def run_tagging(
                 record(i, out, u)
 
     chunk_outputs = [r for r in results if r is not None]
-    points, equipment = _merge_chunks(chunk_outputs)
+    model_points, model_equipment = _merge_chunks(chunk_outputs)
 
-    # Stage 1 is structure-only: enforce the invariant in code, not just the
-    # prompt. Every proposed point is unpolled and carries no rule_input; polling
-    # and rule inputs are decided in a later stage. (On import, an explicit
-    # polling=false also overrides the create-time default of true.)
-    for p in points:
-        p["polling"] = False
-        p.pop("rule_input", None)
+    # Keep the model's per-equipment annotations to graft onto device groups.
+    ai_eq_by_name: dict[str, dict[str, Any]] = {}
+    for e in model_equipment:
+        nm = (e.get("equipment_name") or "").strip()
+        if nm and (nm not in ai_eq_by_name or e.get("equipment_type")):
+            ai_eq_by_name[nm] = e
 
-    # Sanity: the model should return one proposal row per input point.
-    if len(points) != n_points:
+    # Index the model's point tags by point_id.
+    model_tags = {str(mp.get("point_id")): mp for mp in model_points if mp.get("point_id")}
+
+    # Build the proposal from the ORIGINAL export rows so identity (external_id,
+    # site_id, the Niagara path) is always preserved — the model need not echo it
+    # back (and shouldn't, for token reasons). We graft only the tag fields, force
+    # the Stage-1 invariants, set equipment_name from the device path, and OMIT
+    # equipment_id (so the importer links by the path-derived name) and
+    # modbus_config (so a null in the export can't clear an existing binding).
+    points: list[dict[str, Any]] = []
+    device_groups: dict[str, str] = {}  # device_name -> source_ref (first-seen order)
+    device_site: dict[str, Any] = {}  # device_name -> site_id (from its points)
+    for base in export.get("points") or []:
+        tag = model_tags.get(str(base.get("point_id"))) if base.get("point_id") else {}
+        tag = tag or {}
+        eq_name = (base.get("equipment_name") or "").strip() or None
+        eq_source_ref = None
+        _dpath, _dname = _niagara_device(base)
+        if _dname:
+            eq_name = _dname
+            eq_source_ref = _dpath or source_ref_by_name.get(_dname, _dname)
+            device_groups.setdefault(_dname, eq_source_ref)
+            device_site.setdefault(_dname, base.get("site_id"))
+        points.append(
+            {
+                "point_id": base.get("point_id"),
+                "site_id": base.get("site_id"),
+                "site_name": base.get("site_name"),
+                "external_id": base.get("external_id"),
+                "object_name": base.get("object_name"),
+                "bacnet_device_id": base.get("bacnet_device_id"),
+                "object_identifier": base.get("object_identifier"),
+                "equipment_name": eq_name,
+                # Stable link to the equipment, independent of its (editable) name:
+                # the importer dedups equipment on this so re-tags never duplicate.
+                "equipment_source_ref": eq_source_ref,
+                "brick_type": tag.get("brick_type"),
+                "unit": tag.get("unit"),
+                "polling": False,  # Stage 1 is structure-only — every point unpolled
+                "confidence": tag.get("confidence"),
+                "rationale": tag.get("rationale"),
+            }
+        )
+
+    # Rebuild the equipment list from the device groups so identity is path-driven
+    # and every group is present (even ones the model omitted), carrying the model's
+    # type/confidence/rationale, the stable source_ref, and the site. When no
+    # Niagara paths were found (e.g. BACnet-only), keep the model's equipment list.
+    if device_groups:
+        equipment = [
+            {
+                "equipment_name": name,
+                "equipment_type": (ai_eq_by_name.get(name) or {}).get("equipment_type"),
+                "source_ref": src,
+                "site_id": device_site.get(name),
+                "confidence": (ai_eq_by_name.get(name) or {}).get("confidence"),
+                "rationale": (ai_eq_by_name.get(name) or {}).get("rationale"),
+            }
+            for name, src in device_groups.items()
+        ]
+    else:
+        equipment = model_equipment
+
+    # Surface how much the model actually tagged (every export point is preserved,
+    # so a low count means the model left points untagged, not that they dropped).
+    untagged = sum(1 for p in points if not p.get("brick_type"))
+    if untagged:
         warnings.append(
-            f"Proposal has {len(points)} point rows for {n_points} exported points; "
-            "review for dropped or duplicated points before onboarding."
+            f"{untagged} of {n_points} points were left untagged (no brick_type); "
+            "review before onboarding."
         )
 
     proposal = TaggingProposal(
