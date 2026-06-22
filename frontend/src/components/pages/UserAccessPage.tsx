@@ -44,7 +44,7 @@ function SiteAccessManager({ user, sites }: { user: AdminUser; sites: Site[] }) 
     return (
       <div className="flex items-center gap-2 py-1 text-sm text-muted-foreground">
         <ShieldAlert className="h-4 w-4 shrink-0" />
-        Admins are unrestricted — they see every site. Per-site grants don't apply.
+        Full Admin privilege: sees everything.
       </div>
     );
   }

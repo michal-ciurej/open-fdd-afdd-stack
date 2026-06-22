@@ -231,6 +231,26 @@ export function dataModelReset() {
   );
 }
 
+export interface ResetFaultHistoryResponse {
+  status: string;
+  site_id: string;
+  site_name: string;
+  fault_results_deleted: number;
+  fault_events_deleted: number;
+  fault_state_deleted: number;
+}
+
+/**
+ * POST /faults/reset — delete all fault history (results, events, state) for ONE site.
+ * site_id is required; the reset is strictly scoped to that site and never runs globally.
+ */
+export function resetFaultHistory(siteId: string) {
+  return apiFetch<ResetFaultHistoryResponse>(
+    `/faults/reset?site_id=${encodeURIComponent(siteId)}`,
+    { method: "POST" },
+  );
+}
+
 export function dataModelCheck() {
   return apiFetch<DataModelCheckResponse>("/data-model/check");
 }

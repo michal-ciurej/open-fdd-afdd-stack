@@ -19,7 +19,9 @@ import {
   dataModelSerialize,
   dataModelReset,
   dataModelCheck,
+  resetFaultHistory,
   type DataModelCheckResponse,
+  type ResetFaultHistoryResponse,
 } from "@/lib/crud-api";
 import type {
   DataModelExportRow,
@@ -47,6 +49,7 @@ export function DataModelPage() {
   const [checkResult, setCheckResult] = useState<DataModelCheckResponse | null>(null);
   const [resetConfirm, setResetConfirm] = useState("");
   const [deleteAllConfirm, setDeleteAllConfirm] = useState("");
+  const [resetFaultsConfirm, setResetFaultsConfirm] = useState("");
   const [ttlLoading, setTtlLoading] = useState(false);
   const [ttlError, setTtlError] = useState<string | null>(null);
   const importFileInputRef = useRef<HTMLInputElement>(null);
@@ -110,6 +113,14 @@ export function DataModelPage() {
       queryClient.invalidateQueries({ queryKey: ["sites"] });
       queryClient.invalidateQueries({ queryKey: ["equipment"] });
       queryClient.invalidateQueries({ queryKey: ["points"] });
+      queryClient.invalidateQueries({ queryKey: ["faults"] });
+    },
+  });
+
+  const resetFaultsMutation = useMutation<ResetFaultHistoryResponse, Error, string>({
+    mutationFn: (siteId) => resetFaultHistory(siteId),
+    onSuccess: () => {
+      setResetFaultsConfirm("");
       queryClient.invalidateQueries({ queryKey: ["faults"] });
     },
   });
@@ -552,6 +563,68 @@ export function DataModelPage() {
                 <p className="mt-2 text-sm text-muted-foreground">
                   {(resetMutation.data as { message?: string })?.message ?? "Graph reset."}
                 </p>
+              )}
+            </div>
+            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
+              <p className="mb-1 text-sm font-medium text-destructive">
+                High risk — reset fault history for the selected site
+              </p>
+              <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
+                <span className="font-medium text-destructive/90">Danger level: high.</span> Calls{" "}
+                <code className="rounded bg-background/80 px-1">POST /faults/reset</code> for{" "}
+                <strong>only the selected site</strong>. Permanently deletes that site's fault history —{" "}
+                <code className="rounded bg-background/80 px-1">fault_results</code>,{" "}
+                <code className="rounded bg-background/80 px-1">fault_events</code>, and current{" "}
+                <code className="rounded bg-background/80 px-1">fault_state</code>. Sites, equipment, points, and time-series
+                readings are <strong>not</strong> touched. This never runs globally; pick a site in the header to enable it.
+              </p>
+              {!selectedSiteId ? (
+                <p className="text-sm font-medium text-muted-foreground">
+                  Select a site in the header to enable fault-history reset.
+                </p>
+              ) : (
+                <>
+                  <p className="mb-2 text-sm font-medium text-muted-foreground">
+                    Target site: <strong className="text-foreground/90">{siteMap.get(selectedSiteId)?.name ?? selectedSiteId}</strong>
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="text"
+                      value={resetFaultsConfirm}
+                      onChange={(e) => setResetFaultsConfirm(e.target.value)}
+                      placeholder="Type reset to confirm"
+                      className="h-9 w-40 rounded-lg border border-border/60 bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      data-testid="reset-faults-confirm-input"
+                    />
+                    <button
+                      type="button"
+                      data-testid="reset-faults-button"
+                      onClick={() => {
+                        if (resetFaultsConfirm.trim().toLowerCase() !== "reset") {
+                          alert('Type "reset" to confirm.');
+                          return;
+                        }
+                        resetFaultsMutation.mutate(selectedSiteId);
+                      }}
+                      disabled={resetFaultsMutation.isPending || resetFaultsConfirm.trim().toLowerCase() !== "reset"}
+                      className="inline-flex items-center gap-2 rounded-lg border border-destructive/60 bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Reset fault history for this site
+                    </button>
+                  </div>
+                  {resetFaultsMutation.isSuccess && (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Cleared {resetFaultsMutation.data.fault_results_deleted} fault result(s),{" "}
+                      {resetFaultsMutation.data.fault_events_deleted} event(s), and{" "}
+                      {resetFaultsMutation.data.fault_state_deleted} active state row(s) for{" "}
+                      {resetFaultsMutation.data.site_name}.
+                    </p>
+                  )}
+                  {resetFaultsMutation.isError && (
+                    <p className="mt-2 text-sm text-destructive">{resetFaultsMutation.error.message}</p>
+                  )}
+                </>
               )}
             </div>
             {sites.length > 0 && (

@@ -6,9 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from openfdd_stack.platform.database import get_conn
 from openfdd_stack.platform.api.auth_principal import (
     AuthUser,
+    Role,
     accessible_site_ids,
     enforce_site_param,
     get_current_user,
+    require_roles,
 )
 from openfdd_stack.platform.api.schemas import FaultStateItem, FaultDefinitionItem
 
@@ -235,3 +237,64 @@ def list_fault_definitions():
         return out
     except psycopg2.Error:
         return []
+
+
+@router.post("/reset", dependencies=[Depends(require_roles(Role.ADMIN))])
+def reset_fault_history(
+    site_id: str = Query(
+        ...,
+        description="Site UUID or name. REQUIRED — the reset is strictly scoped to this site and never runs globally.",
+    ),
+    user: AuthUser = Depends(get_current_user),
+):
+    """Delete all fault history for ONE site: fault_results, fault_events, and
+    fault_state rows scoped to the given site.
+
+    Strictly site-scoped: site_id is mandatory and resolved against the sites
+    table (404 if unknown), so there is no global/all-sites code path. The
+    fault tables store site_id as TEXT and may hold either the site UUID or the
+    site name, so both forms are matched on delete.
+    """
+    # Resolve to canonical UUID + name so we match either form stored in the
+    # text site_id columns. 404 (not a silent no-op) when the site is unknown.
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id::text AS id, name FROM sites WHERE id::text = %s OR name = %s LIMIT 1",
+                (site_id, site_id),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(404, "Site not found")
+            site_id_str = row["id"]
+            site_name = row["name"] or site_id_str
+            # Non-admins are already blocked by require_roles(ADMIN); enforce_site_param
+            # keeps site-scoped callers honest if the guard is ever relaxed.
+            enforce_site_param(user, site_id_str)
+
+            cur.execute(
+                "DELETE FROM fault_results WHERE site_id IN (%s, %s)",
+                (site_id_str, site_name),
+            )
+            results_deleted = cur.rowcount
+            cur.execute(
+                "DELETE FROM fault_events WHERE site_id IN (%s, %s)",
+                (site_id_str, site_name),
+            )
+            events_deleted = cur.rowcount
+            state_deleted = 0
+            if _fault_state_table_exists(cur):
+                cur.execute(
+                    "DELETE FROM fault_state WHERE site_id IN (%s, %s)",
+                    (site_id_str, site_name),
+                )
+                state_deleted = cur.rowcount
+        conn.commit()
+    return {
+        "status": "reset",
+        "site_id": site_id_str,
+        "site_name": site_name,
+        "fault_results_deleted": results_deleted,
+        "fault_events_deleted": events_deleted,
+        "fault_state_deleted": state_deleted,
+    }
