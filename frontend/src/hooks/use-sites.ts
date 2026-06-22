@@ -46,3 +46,12 @@ export function useAllPoints() {
     queryFn: () => apiFetch<Point[]>("/points"),
   });
 }
+
+export function useEquipmentPoints(equipmentId: string | undefined) {
+  return useQuery<Point[]>({
+    queryKey: ["points", "equipment", equipmentId],
+    queryFn: () =>
+      apiFetch<Point[]>(`/points?equipment_id=${equipmentId}&limit=10000`),
+    enabled: !!equipmentId,
+  });
+}

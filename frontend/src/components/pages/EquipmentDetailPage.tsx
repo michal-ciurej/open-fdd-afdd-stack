@@ -24,7 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useSiteContext } from "@/contexts/site-context";
-import { useAllEquipment, useAllPoints } from "@/hooks/use-sites";
+import { useAllEquipment, useEquipmentPoints } from "@/hooks/use-sites";
 import { useFaultDefinitions, useSiteFaults } from "@/hooks/use-faults";
 import { DataQueryWidget } from "@/components/dashboard/DataQueryWidget";
 import { FaultOverTimeChart } from "@/components/dashboard/FaultOverTimeChart";
@@ -274,7 +274,7 @@ export function EquipmentDetailPage() {
   };
 
   const { data: equipmentList = [], isLoading: equipmentLoading } = useAllEquipment();
-  const { data: allPoints = [] } = useAllPoints();
+  const { data: equipmentPoints = [] } = useEquipmentPoints(equipmentId);
   const { data: definitions = [] } = useFaultDefinitions();
 
   const equipment = useMemo(
@@ -284,11 +284,6 @@ export function EquipmentDetailPage() {
 
   const { data: siteFaults = [], isLoading: faultsLoading } = useSiteFaults(
     equipment?.site_id,
-  );
-
-  const equipmentPoints = useMemo(
-    () => allPoints.filter((p) => p.equipment_id === equipmentId),
-    [allPoints, equipmentId],
   );
 
   const matchingFaults = useMemo(
