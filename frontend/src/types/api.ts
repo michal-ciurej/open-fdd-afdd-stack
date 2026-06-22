@@ -186,6 +186,8 @@ export interface DataModelImportResponse {
   created?: number;
   updated?: number;
   total?: number;
+  /** Equipment rows created/updated via the equipment[] array. */
+  equipment_updated?: number;
   warnings?: string[];
 }
 

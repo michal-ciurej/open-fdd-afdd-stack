@@ -303,20 +303,28 @@ def _user_message(export_chunk: dict[str, Any], ctx: JobContext | None) -> str:
 
 
 # ---------------------------------------------------------------------------
-# 5a. Niagara path / device-aware grouping (deterministic). The point population
-#     is entirely Niagara station paths, so the controller in the slot path is a
-#     far more reliable equipment boundary than a model name-guess. The full
-#     device path is carried as a stable ``source_ref`` so equipment identity is
-#     decoupled from the (editable) display name — renaming an equipment later
-#     must not orphan its points (see Step 2: importer dedup on source_ref).
+# 5a. Niagara path / equipment grouping (deterministic). The point population is
+#     entirely Niagara station paths, so the path structure is a far more reliable
+#     equipment boundary than a model name-guess. The equipment is the point's
+#     PARENT folder (second-to-last segment), because Niagara commonly nests many
+#     equipment under one controller's `points` container; only when the point
+#     sits directly in `points` is the controller itself the equipment. The full
+#     path to that segment is carried as a stable ``source_ref`` so identity is
+#     decoupled from the (editable) name (see Step 2: importer dedup on source_ref).
 # ---------------------------------------------------------------------------
-def _niagara_device(point: dict[str, Any]) -> tuple[str | None, str | None]:
-    """Parse a Niagara slot path into (device_path, device_name).
+def _niagara_equipment(point: dict[str, Any]) -> tuple[str | None, str | None]:
+    """Parse a Niagara slot path into (equipment_path, equipment_name).
 
-    The device is the path component immediately before the ``points`` container:
-    ``…/Floor28/FS_28_BMS_CP003_2128/points/Comms_Room_Temp/ChwValve`` ->
-    (``Drivers/NiagaraNetwork/Floor28/FS_28_BMS_CP003_2128``, ``FS_28_BMS_CP003_2128``).
-    ``device_path`` is the stable identity key; ``device_name`` is the label.
+    Equipment = the SECOND-TO-LAST segment (the point's immediate parent), UNLESS
+    that segment is the ``points`` container, in which case it is one level higher
+    (the controller). The point is the last segment. Examples:
+
+      …/FS_28_BMS_CP003_2128/points/FS_28_ACE_FCU78New/MaintWarning
+        -> (".../FS_28_BMS_CP003_2128/points/FS_28_ACE_FCU78New", "FS_28_ACE_FCU78New")
+      …/FS_28_BMS_CP003_2128/points/MaintWarning      (point directly in points)
+        -> (".../FS_28_BMS_CP003_2128", "FS_28_BMS_CP003_2128")
+
+    ``equipment_path`` is the stable identity key; ``equipment_name`` is the label.
     Returns (None, None) when there is no parseable path.
     """
     raw = str(point.get("external_id") or point.get("niagara_history_path") or "").strip()
@@ -324,33 +332,33 @@ def _niagara_device(point: dict[str, Any]) -> tuple[str | None, str | None]:
         return None, None
     path = raw.split("slot:", 1)[1] if "slot:" in raw else raw
     segs = [s for s in path.split("/") if s]
-    if not segs:
+    if len(segs) < 2:
         return None, None
-    lower = [s.lower() for s in segs]
-    if "points" in lower:
-        device_segs = segs[: lower.index("points")]
-    else:
-        device_segs = segs[:-1]  # no 'points' container: drop the leaf point name
-    if not device_segs:
+    # Equipment is the point's parent; if that's the `points` container, step up to
+    # the controller one level above it.
+    eq_idx = -2
+    if segs[eq_idx].lower() == "points":
+        eq_idx = -3
+    if len(segs) < -eq_idx:  # not enough segments to resolve the equipment
         return None, None
-    return "/".join(device_segs), device_segs[-1]
+    return "/".join(segs[: eq_idx + 1]), segs[eq_idx]
 
 
 def _apply_path_grouping(export: dict[str, Any]) -> dict[str, str]:
-    """Group Niagara points into equipment by their station device path.
+    """Group Niagara points into equipment by their station path.
 
-    Mutates each point's ``equipment_name`` to the device segment (deterministic,
-    overriding any prior value) so chunking and the model see the real grouping
-    and cannot regroup it. Returns ``{device_name: device_path}`` so the caller
-    can attach the stable ``source_ref`` to each equipment. Points with no
-    parseable path are left as-is (they stay Unassigned).
+    Mutates each point's ``equipment_name`` to the parsed equipment segment
+    (deterministic, overriding any prior value) so chunking and the model see the
+    real grouping and cannot regroup it. Returns ``{equipment_name: equipment_path}``
+    so the caller can attach the stable ``source_ref``. Points with no parseable
+    path are left as-is (they stay Unassigned).
     """
     source_ref_by_name: dict[str, str] = {}
     for p in export.get("points") or []:
-        dpath, dname = _niagara_device(p)
-        if dname:
-            p["equipment_name"] = dname
-            source_ref_by_name.setdefault(dname, dpath or dname)
+        eqpath, eqname = _niagara_equipment(p)
+        if eqname:
+            p["equipment_name"] = eqname
+            source_ref_by_name.setdefault(eqname, eqpath or eqname)
     return source_ref_by_name
 
 
@@ -707,19 +715,19 @@ def run_tagging(
     # equipment_id (so the importer links by the path-derived name) and
     # modbus_config (so a null in the export can't clear an existing binding).
     points: list[dict[str, Any]] = []
-    device_groups: dict[str, str] = {}  # device_name -> source_ref (first-seen order)
-    device_site: dict[str, Any] = {}  # device_name -> site_id (from its points)
+    equipment_groups: dict[str, str] = {}  # equipment_name -> source_ref (first-seen)
+    equipment_site: dict[str, Any] = {}  # equipment_name -> site_id (from its points)
     for base in export.get("points") or []:
         tag = model_tags.get(str(base.get("point_id"))) if base.get("point_id") else {}
         tag = tag or {}
         eq_name = (base.get("equipment_name") or "").strip() or None
         eq_source_ref = None
-        _dpath, _dname = _niagara_device(base)
-        if _dname:
-            eq_name = _dname
-            eq_source_ref = _dpath or source_ref_by_name.get(_dname, _dname)
-            device_groups.setdefault(_dname, eq_source_ref)
-            device_site.setdefault(_dname, base.get("site_id"))
+        _eqpath, _eqname = _niagara_equipment(base)
+        if _eqname:
+            eq_name = _eqname
+            eq_source_ref = _eqpath or source_ref_by_name.get(_eqname, _eqname)
+            equipment_groups.setdefault(_eqname, eq_source_ref)
+            equipment_site.setdefault(_eqname, base.get("site_id"))
         points.append(
             {
                 "point_id": base.get("point_id"),
@@ -741,21 +749,21 @@ def run_tagging(
             }
         )
 
-    # Rebuild the equipment list from the device groups so identity is path-driven
+    # Rebuild the equipment list from the path groups so identity is path-driven
     # and every group is present (even ones the model omitted), carrying the model's
     # type/confidence/rationale, the stable source_ref, and the site. When no
     # Niagara paths were found (e.g. BACnet-only), keep the model's equipment list.
-    if device_groups:
+    if equipment_groups:
         equipment = [
             {
                 "equipment_name": name,
                 "equipment_type": (ai_eq_by_name.get(name) or {}).get("equipment_type"),
                 "source_ref": src,
-                "site_id": device_site.get(name),
+                "site_id": equipment_site.get(name),
                 "confidence": (ai_eq_by_name.get(name) or {}).get("confidence"),
                 "rationale": (ai_eq_by_name.get(name) or {}).get("rationale"),
             }
-            for name, src in device_groups.items()
+            for name, src in equipment_groups.items()
         ]
     else:
         equipment = model_equipment

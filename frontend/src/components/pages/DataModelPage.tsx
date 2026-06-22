@@ -125,13 +125,19 @@ export function DataModelPage() {
     try {
       const parsed = JSON.parse(importJson) as DataModelImportBody | DataModelExportRow[];
       const body: DataModelImportBody = Array.isArray(parsed) ? { points: parsed } : parsed;
-      if (!body.points?.length) {
+      // Normalize: points is required by the API but may be empty for an
+      // equipment-only payload (e.g. retyping equipment via equipment[]).
+      const finalBody: DataModelImportBody = {
+        points: body.points ?? [],
+        equipment: body.equipment ?? [],
+      };
+      if (!finalBody.points.length && !finalBody.equipment?.length) {
         setImportError(null);
-        setImportResult({ total: 0, warnings: ["No points in payload"] });
+        setImportResult({ total: 0, warnings: ["No points or equipment in payload"] });
         return;
       }
       setImportError(null);
-      importMutation.mutate(body);
+      importMutation.mutate(finalBody);
     } catch (e) {
       setImportError(e instanceof Error ? e.message : "Invalid JSON");
       setImportResult(null);
@@ -335,7 +341,7 @@ export function DataModelPage() {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Database className="h-5 w-5" />
-              Export (for AI / copy-paste)
+              Export
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -381,7 +387,7 @@ export function DataModelPage() {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Upload className="h-5 w-5" />
-              Import (paste from AI)
+              Import
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -450,6 +456,7 @@ export function DataModelPage() {
                   {importResult.created != null && `Created: ${importResult.created}`}
                   {importResult.updated != null && ` Updated: ${importResult.updated}`}
                   {importResult.total != null && ` Total: ${importResult.total}`}
+                  {importResult.equipment_updated != null && ` Equipment updated: ${importResult.equipment_updated}`}
                   {importResult.warnings?.length ? ` — ${importResult.warnings.join("; ")}` : ""}
                 </span>
               )}

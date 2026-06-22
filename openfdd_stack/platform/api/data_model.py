@@ -1371,6 +1371,7 @@ def import_data_model(body: DataModelImportBody):
     """Update existing points by point_id, or create new points when point_id is omitted and bacnet_device_id, object_identifier, site_id, external_id are provided (e.g. from GET /data-model/export after LLM tagging). If site_id is null and there is exactly one site in the DB, that site is used. Optional equipment[] updates feeds_equipment_id/fed_by_equipment_id. After all DB updates, RDF is rebuilt from DB and serialized to TTL (in-memory graph + file)."""
     created = 0
     updated = 0
+    equipment_updated = 0
     warnings: list[dict] = []
     with get_conn() as conn:
         with conn.cursor() as cur:
@@ -1752,12 +1753,14 @@ def import_data_model(body: DataModelImportBody):
                             400,
                             "site_id required in equipment array when fed_by_equipment_id is an equipment name.",
                         )
+                changed = False
                 if updates:
                     params.append(eq_id)
                     cur.execute(
                         f"""UPDATE equipment SET {", ".join(updates)} WHERE id = %s""",
                         params,
                     )
+                    changed = True
                 _upsert_equipment_metadata(
                     cur,
                     eq_id,
@@ -1766,12 +1769,19 @@ def import_data_model(body: DataModelImportBody):
                         eq.engineering if isinstance(eq.engineering, dict) else None
                     ),
                 )
+                if changed or isinstance(eq.metadata, dict) or isinstance(eq.engineering, dict):
+                    equipment_updated += 1
         conn.commit()
     try:
         sync_ttl_to_file()
     except Exception:
         pass
-    out: dict = {"created": created, "updated": updated, "total": len(body.points)}
+    out: dict = {
+        "created": created,
+        "updated": updated,
+        "total": len(body.points),
+        "equipment_updated": equipment_updated,
+    }
     if warnings:
         out["warnings"] = warnings
     return out
