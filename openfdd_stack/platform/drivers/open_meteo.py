@@ -230,7 +230,7 @@ def store_weather_for_site(
                 cur.execute(
                     """
                     INSERT INTO points (site_id, external_id, equipment_id, unit) VALUES (%s, %s, %s, %s)
-                    ON CONFLICT (site_id, external_id) DO UPDATE SET
+                    ON CONFLICT ON CONSTRAINT points_site_extid_endpoint_uq DO UPDATE SET
                         equipment_id = EXCLUDED.equipment_id,
                         unit = EXCLUDED.unit
                     RETURNING id

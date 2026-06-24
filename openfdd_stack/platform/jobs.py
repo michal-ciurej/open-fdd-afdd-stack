@@ -169,25 +169,27 @@ def run_bacnet_discovery_job(
 
 def run_niagara_sync_job(
     job_id: str,
+    endpoint_id: str,
     site_id: str,
     time_window: str = "lastweek",
 ) -> None:
-    """Run Niagara history sync for one site in a background thread; emit events."""
+    """Run Niagara history sync for one endpoint in a background thread; emit events."""
     from openfdd_stack.platform.drivers.niagara import run_niagara_sync
 
     emit(
         TOPIC_NIAGARA_SYNC + ".started",
-        {"job_id": job_id, "site_id": site_id, "time_window": time_window},
+        {"job_id": job_id, "endpoint_id": endpoint_id, "site_id": site_id, "time_window": time_window},
     )
     set_job_running(job_id)
     try:
-        result = run_niagara_sync(site_id=site_id, time_window=time_window)
+        result = run_niagara_sync(endpoint_id=endpoint_id, time_window=time_window)
         _refresh_ttl_after_data_change("niagara sync")
         set_job_finished(job_id, result)
         emit(
             TOPIC_NIAGARA_SYNC + ".finished",
             {
                 "job_id": job_id,
+                "endpoint_id": endpoint_id,
                 "site_id": site_id,
                 "rows_inserted": result["rows_inserted"],
                 "points_ok": result["points_ok"],
@@ -198,23 +200,23 @@ def run_niagara_sync_job(
         set_job_failed(job_id, str(exc))
         emit(
             TOPIC_NIAGARA_SYNC + ".failed",
-            {"job_id": job_id, "site_id": site_id, "error": str(exc)},
+            {"job_id": job_id, "endpoint_id": endpoint_id, "site_id": site_id, "error": str(exc)},
         )
 
 
-def run_niagara_scan_job(job_id: str, site_id: str) -> None:
+def run_niagara_scan_job(job_id: str, endpoint_id: str, site_id: str) -> None:
     """Scan a Niagara station for control points; emit events."""
     from openfdd_stack.platform.drivers.niagara import scan_niagara_station
 
-    emit(TOPIC_NIAGARA_SCAN + ".started", {"job_id": job_id, "site_id": site_id})
+    emit(TOPIC_NIAGARA_SCAN + ".started", {"job_id": job_id, "endpoint_id": endpoint_id, "site_id": site_id})
     set_job_running(job_id)
     try:
-        result = scan_niagara_station(site_id=site_id)
+        result = scan_niagara_station(endpoint_id=endpoint_id)
         if not result.get("ok"):
             set_job_failed(job_id, result.get("error") or "Scan failed")
             emit(
                 TOPIC_NIAGARA_SCAN + ".failed",
-                {"job_id": job_id, "site_id": site_id, "error": result.get("error")},
+                {"job_id": job_id, "endpoint_id": endpoint_id, "site_id": site_id, "error": result.get("error")},
             )
             return
         _refresh_ttl_after_data_change("niagara scan")
@@ -223,6 +225,7 @@ def run_niagara_scan_job(job_id: str, site_id: str) -> None:
             TOPIC_NIAGARA_SCAN + ".finished",
             {
                 "job_id": job_id,
+                "endpoint_id": endpoint_id,
                 "site_id": site_id,
                 "rows_seen": result["rows_seen"],
                 "points_upserted": result["points_upserted"],
@@ -233,31 +236,33 @@ def run_niagara_scan_job(job_id: str, site_id: str) -> None:
         set_job_failed(job_id, str(exc))
         emit(
             TOPIC_NIAGARA_SCAN + ".failed",
-            {"job_id": job_id, "site_id": site_id, "error": str(exc)},
+            {"job_id": job_id, "endpoint_id": endpoint_id, "site_id": site_id, "error": str(exc)},
         )
 
 
 def run_iqvision_sync_job(
     job_id: str,
+    endpoint_id: str,
     site_id: str,
     time_window: str = "lastweek",
 ) -> None:
-    """Run IQVision history sync for one site in a background thread; emit events."""
+    """Run IQVision history sync for one endpoint in a background thread; emit events."""
     from openfdd_stack.platform.drivers.iqvision import run_iqvision_sync
 
     emit(
         TOPIC_IQVISION_SYNC + ".started",
-        {"job_id": job_id, "site_id": site_id, "time_window": time_window},
+        {"job_id": job_id, "endpoint_id": endpoint_id, "site_id": site_id, "time_window": time_window},
     )
     set_job_running(job_id)
     try:
-        result = run_iqvision_sync(site_id=site_id, time_window=time_window)
+        result = run_iqvision_sync(endpoint_id=endpoint_id, time_window=time_window)
         _refresh_ttl_after_data_change("iqvision sync")
         set_job_finished(job_id, result)
         emit(
             TOPIC_IQVISION_SYNC + ".finished",
             {
                 "job_id": job_id,
+                "endpoint_id": endpoint_id,
                 "site_id": site_id,
                 "rows_inserted": result["rows_inserted"],
                 "points_ok": result["points_ok"],
@@ -268,23 +273,23 @@ def run_iqvision_sync_job(
         set_job_failed(job_id, str(exc))
         emit(
             TOPIC_IQVISION_SYNC + ".failed",
-            {"job_id": job_id, "site_id": site_id, "error": str(exc)},
+            {"job_id": job_id, "endpoint_id": endpoint_id, "site_id": site_id, "error": str(exc)},
         )
 
 
-def run_iqvision_scan_job(job_id: str, site_id: str) -> None:
+def run_iqvision_scan_job(job_id: str, endpoint_id: str, site_id: str) -> None:
     """Scan an IQVision station for control points; emit events."""
     from openfdd_stack.platform.drivers.iqvision import scan_iqvision_station
 
-    emit(TOPIC_IQVISION_SCAN + ".started", {"job_id": job_id, "site_id": site_id})
+    emit(TOPIC_IQVISION_SCAN + ".started", {"job_id": job_id, "endpoint_id": endpoint_id, "site_id": site_id})
     set_job_running(job_id)
     try:
-        result = scan_iqvision_station(site_id=site_id)
+        result = scan_iqvision_station(endpoint_id=endpoint_id)
         if not result.get("ok"):
             set_job_failed(job_id, result.get("error") or "Scan failed")
             emit(
                 TOPIC_IQVISION_SCAN + ".failed",
-                {"job_id": job_id, "site_id": site_id, "error": result.get("error")},
+                {"job_id": job_id, "endpoint_id": endpoint_id, "site_id": site_id, "error": result.get("error")},
             )
             return
         _refresh_ttl_after_data_change("iqvision scan")
@@ -293,6 +298,7 @@ def run_iqvision_scan_job(job_id: str, site_id: str) -> None:
             TOPIC_IQVISION_SCAN + ".finished",
             {
                 "job_id": job_id,
+                "endpoint_id": endpoint_id,
                 "site_id": site_id,
                 "rows_seen": result["rows_seen"],
                 "points_upserted": result["points_upserted"],
@@ -303,7 +309,7 @@ def run_iqvision_scan_job(job_id: str, site_id: str) -> None:
         set_job_failed(job_id, str(exc))
         emit(
             TOPIC_IQVISION_SCAN + ".failed",
-            {"job_id": job_id, "site_id": site_id, "error": str(exc)},
+            {"job_id": job_id, "endpoint_id": endpoint_id, "site_id": site_id, "error": str(exc)},
         )
 
 

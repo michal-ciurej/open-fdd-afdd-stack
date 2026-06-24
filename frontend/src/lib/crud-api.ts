@@ -481,11 +481,14 @@ export function triggerFddRun() {
 }
 
 // ---------------------------------------------------------------------------
-// Niagara per-site endpoints + scan + sync
+// Niagara endpoints + scan + sync. A site may own several endpoints (e.g. one
+// per controller); each is addressed by its own id.
 // ---------------------------------------------------------------------------
 
 export interface NiagaraEndpoint {
+  id: string;
   site_id: string;
+  name: string;
   base_url: string;
   username: string;
   ssl_verify: boolean;
@@ -494,12 +497,24 @@ export interface NiagaraEndpoint {
   last_sync_ts?: string | null;
 }
 
-export interface NiagaraEndpointUpsertBody {
+/** Body for POST (create) — name + password required. */
+export interface NiagaraEndpointCreateBody {
+  name: string;
   base_url: string;
   username: string;
   password: string;
   ssl_verify: boolean;
   enabled: boolean;
+}
+
+/** Body for PUT (update) — omitted fields and a blank password keep the current value. */
+export interface NiagaraEndpointUpdateBody {
+  name?: string;
+  base_url?: string;
+  username?: string;
+  password?: string;
+  ssl_verify?: boolean;
+  enabled?: boolean;
 }
 
 export interface NiagaraScanPoint {
@@ -512,45 +527,58 @@ export interface NiagaraScanPoint {
   niagara_history_path: string | null;
 }
 
-export function listNiagaraEndpoints() {
-  return apiFetch<NiagaraEndpoint[]>("/niagara/endpoints");
+export function listNiagaraEndpoints(siteId: string) {
+  return apiFetch<NiagaraEndpoint[]>(
+    `/niagara/sites/${encodeURIComponent(siteId)}/endpoints`,
+  );
 }
 
-export function getNiagaraEndpoint(siteId: string) {
-  return apiFetch<NiagaraEndpoint>(`/niagara/endpoints/${encodeURIComponent(siteId)}`);
+export function getNiagaraEndpoint(endpointId: string) {
+  return apiFetch<NiagaraEndpoint>(`/niagara/endpoints/${encodeURIComponent(endpointId)}`);
 }
 
-export function putNiagaraEndpoint(siteId: string, body: NiagaraEndpointUpsertBody) {
-  return apiFetch<NiagaraEndpoint>(`/niagara/endpoints/${encodeURIComponent(siteId)}`, {
+export function createNiagaraEndpoint(siteId: string, body: NiagaraEndpointCreateBody) {
+  return apiFetch<NiagaraEndpoint>(
+    `/niagara/sites/${encodeURIComponent(siteId)}/endpoints`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function updateNiagaraEndpoint(endpointId: string, body: NiagaraEndpointUpdateBody) {
+  return apiFetch<NiagaraEndpoint>(`/niagara/endpoints/${encodeURIComponent(endpointId)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
 }
 
-export function deleteNiagaraEndpoint(siteId: string) {
-  return apiFetch<void>(`/niagara/endpoints/${encodeURIComponent(siteId)}`, {
+export function deleteNiagaraEndpoint(endpointId: string) {
+  return apiFetch<void>(`/niagara/endpoints/${encodeURIComponent(endpointId)}`, {
     method: "DELETE",
   });
 }
 
-export function testNiagaraEndpoint(siteId: string) {
+export function testNiagaraEndpoint(endpointId: string) {
   return apiFetch<{ ok: boolean; status_code: number | null; error: string | null }>(
-    `/niagara/endpoints/${encodeURIComponent(siteId)}/test`,
+    `/niagara/endpoints/${encodeURIComponent(endpointId)}/test`,
     { method: "POST" },
   );
 }
 
-export function startNiagaraScan(siteId: string) {
+export function startNiagaraScan(endpointId: string) {
   return apiFetch<{ job_id: string; status: string }>(
-    `/niagara/endpoints/${encodeURIComponent(siteId)}/scan`,
+    `/niagara/endpoints/${encodeURIComponent(endpointId)}/scan`,
     { method: "POST" },
   );
 }
 
-export function startNiagaraSync(siteId: string, timeWindow = "lastweek") {
+export function startNiagaraSync(endpointId: string, timeWindow = "lastweek") {
   return apiFetch<{ job_id: string; status: string }>(
-    `/niagara/endpoints/${encodeURIComponent(siteId)}/sync`,
+    `/niagara/endpoints/${encodeURIComponent(endpointId)}/sync`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -559,62 +587,76 @@ export function startNiagaraSync(siteId: string, timeWindow = "lastweek") {
   );
 }
 
-export function listNiagaraPoints(siteId: string) {
+export function listNiagaraPoints(endpointId: string) {
   return apiFetch<{ count: number; points: NiagaraScanPoint[] }>(
-    `/niagara/endpoints/${encodeURIComponent(siteId)}/points`,
+    `/niagara/endpoints/${encodeURIComponent(endpointId)}/points`,
   );
 }
 
 // ---------------------------------------------------------------------------
-// IQVision per-site endpoints + scan + sync
+// IQVision endpoints + scan + sync
 // Mirrors the Niagara API shape. Points are grouped by the BQL Device column
 // instead of the nav ORD folder twice removed. Point rows share the
 // niagara_* metadata columns on the backend.
 // ---------------------------------------------------------------------------
 
 export type IQVisionEndpoint = NiagaraEndpoint;
-export type IQVisionEndpointUpsertBody = NiagaraEndpointUpsertBody;
+export type IQVisionEndpointCreateBody = NiagaraEndpointCreateBody;
+export type IQVisionEndpointUpdateBody = NiagaraEndpointUpdateBody;
 export type IQVisionScanPoint = NiagaraScanPoint;
 
-export function listIQVisionEndpoints() {
-  return apiFetch<IQVisionEndpoint[]>("/iqvision/endpoints");
+export function listIQVisionEndpoints(siteId: string) {
+  return apiFetch<IQVisionEndpoint[]>(
+    `/iqvision/sites/${encodeURIComponent(siteId)}/endpoints`,
+  );
 }
 
-export function getIQVisionEndpoint(siteId: string) {
-  return apiFetch<IQVisionEndpoint>(`/iqvision/endpoints/${encodeURIComponent(siteId)}`);
+export function getIQVisionEndpoint(endpointId: string) {
+  return apiFetch<IQVisionEndpoint>(`/iqvision/endpoints/${encodeURIComponent(endpointId)}`);
 }
 
-export function putIQVisionEndpoint(siteId: string, body: IQVisionEndpointUpsertBody) {
-  return apiFetch<IQVisionEndpoint>(`/iqvision/endpoints/${encodeURIComponent(siteId)}`, {
+export function createIQVisionEndpoint(siteId: string, body: IQVisionEndpointCreateBody) {
+  return apiFetch<IQVisionEndpoint>(
+    `/iqvision/sites/${encodeURIComponent(siteId)}/endpoints`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function updateIQVisionEndpoint(endpointId: string, body: IQVisionEndpointUpdateBody) {
+  return apiFetch<IQVisionEndpoint>(`/iqvision/endpoints/${encodeURIComponent(endpointId)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
 }
 
-export function deleteIQVisionEndpoint(siteId: string) {
-  return apiFetch<void>(`/iqvision/endpoints/${encodeURIComponent(siteId)}`, {
+export function deleteIQVisionEndpoint(endpointId: string) {
+  return apiFetch<void>(`/iqvision/endpoints/${encodeURIComponent(endpointId)}`, {
     method: "DELETE",
   });
 }
 
-export function testIQVisionEndpoint(siteId: string) {
+export function testIQVisionEndpoint(endpointId: string) {
   return apiFetch<{ ok: boolean; status_code: number | null; error: string | null }>(
-    `/iqvision/endpoints/${encodeURIComponent(siteId)}/test`,
+    `/iqvision/endpoints/${encodeURIComponent(endpointId)}/test`,
     { method: "POST" },
   );
 }
 
-export function startIQVisionScan(siteId: string) {
+export function startIQVisionScan(endpointId: string) {
   return apiFetch<{ job_id: string; status: string }>(
-    `/iqvision/endpoints/${encodeURIComponent(siteId)}/scan`,
+    `/iqvision/endpoints/${encodeURIComponent(endpointId)}/scan`,
     { method: "POST" },
   );
 }
 
-export function startIQVisionSync(siteId: string, timeWindow = "lastweek") {
+export function startIQVisionSync(endpointId: string, timeWindow = "lastweek") {
   return apiFetch<{ job_id: string; status: string }>(
-    `/iqvision/endpoints/${encodeURIComponent(siteId)}/sync`,
+    `/iqvision/endpoints/${encodeURIComponent(endpointId)}/sync`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -623,9 +665,9 @@ export function startIQVisionSync(siteId: string, timeWindow = "lastweek") {
   );
 }
 
-export function listIQVisionPoints(siteId: string) {
+export function listIQVisionPoints(endpointId: string) {
   return apiFetch<{ count: number; points: IQVisionScanPoint[] }>(
-    `/iqvision/endpoints/${encodeURIComponent(siteId)}/points`,
+    `/iqvision/endpoints/${encodeURIComponent(endpointId)}/points`,
   );
 }
 

@@ -606,22 +606,44 @@ def fetch_niagara_history(
 # DB: endpoint lookup + scan ingest + history ingest
 # ---------------------------------------------------------------------------
 
-def _get_endpoint_for_site(site_id: str) -> Optional[dict]:
-    """Load the Niagara endpoint row for a site (UUID or name)."""
+def _get_endpoint(endpoint_id: str) -> Optional[dict]:
+    """Load one Niagara endpoint row by its id."""
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT e.site_id, e.base_url, e.username, e.password,
-                       e.ssl_verify, e.enabled
-                FROM site_niagara_endpoints e
-                JOIN sites s ON s.id = e.site_id
-                WHERE (s.id::text = %s OR s.name = %s)
+                SELECT id, site_id, name, base_url, username, password,
+                       ssl_verify, enabled
+                FROM site_niagara_endpoints
+                WHERE id = %s
                 """,
-                (site_id, site_id),
+                (endpoint_id,),
             )
             row = cur.fetchone()
     return dict(row) if row else None
+
+
+def _list_endpoints_for_site(site_id: str, enabled_only: bool = False) -> list[dict]:
+    """List Niagara endpoints for a site (UUID or name).
+
+    Used by the API and the nightly runner to fan out across every endpoint a
+    site owns. Pass enabled_only=True to skip disabled endpoints.
+    """
+    enabled_clause = "AND e.enabled = true" if enabled_only else ""
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT e.id, e.site_id, e.name, e.base_url, e.username,
+                       e.password, e.ssl_verify, e.enabled
+                FROM site_niagara_endpoints e
+                JOIN sites s ON s.id = e.site_id
+                WHERE (s.id::text = %s OR s.name = %s) {enabled_clause}
+                ORDER BY e.name
+                """,
+                (site_id, site_id),
+            )
+            return [dict(r) for r in cur.fetchall()]
 
 
 def _upsert_equipment(cur, site_id: str, name: str) -> str:
@@ -655,26 +677,37 @@ def _upsert_niagara_point(
     niagara_history_path: Optional[str],
     description: Optional[str],
     object_name: Optional[str],
+    niagara_endpoint_id: Optional[str] = None,
+    iqvision_endpoint_id: Optional[str] = None,
 ) -> str:
-    """Upsert a point by (site_id, external_id); fills the Niagara metadata columns.
+    """Upsert a point by (site_id, external_id, endpoint_key); fills the Niagara
+    metadata columns and records the owning station endpoint.
 
     `object_name` carries the BQL `Point` displayName so the data-model export
     surfaces a human-readable identifier alongside BACnet-discovered points.
+
+    Exactly one of niagara_endpoint_id / iqvision_endpoint_id is set depending
+    on which driver scanned the point. The generated `endpoint_key` column
+    (see migration 033) means two controllers on one site that expose identical
+    nav ORDs no longer collide on (site_id, external_id).
     """
     cur.execute(
         """
         INSERT INTO points (
             site_id, external_id, equipment_id, description, object_name,
-            niagara_nav_ord, niagara_tags, niagara_history_path
+            niagara_nav_ord, niagara_tags, niagara_history_path,
+            niagara_endpoint_id, iqvision_endpoint_id
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (site_id, external_id) DO UPDATE SET
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT ON CONSTRAINT points_site_extid_endpoint_uq DO UPDATE SET
             equipment_id        = EXCLUDED.equipment_id,
             description         = COALESCE(EXCLUDED.description, points.description),
             object_name         = COALESCE(EXCLUDED.object_name, points.object_name),
             niagara_nav_ord     = EXCLUDED.niagara_nav_ord,
             niagara_tags        = EXCLUDED.niagara_tags,
-            niagara_history_path = COALESCE(EXCLUDED.niagara_history_path, points.niagara_history_path)
+            niagara_history_path = COALESCE(EXCLUDED.niagara_history_path, points.niagara_history_path),
+            niagara_endpoint_id  = COALESCE(EXCLUDED.niagara_endpoint_id, points.niagara_endpoint_id),
+            iqvision_endpoint_id = COALESCE(EXCLUDED.iqvision_endpoint_id, points.iqvision_endpoint_id)
         RETURNING id
         """,
         (
@@ -686,6 +719,8 @@ def _upsert_niagara_point(
             niagara_nav_ord,
             Json(niagara_tags) if niagara_tags else None,
             niagara_history_path,
+            niagara_endpoint_id,
+            iqvision_endpoint_id,
         ),
     )
     return str(cur.fetchone()["id"])
@@ -737,36 +772,39 @@ def _store_readings(
     return len(rows)
 
 
-def _get_niagara_points_for_site(cur, site_id: str) -> list[dict]:
-    """Points on this site that have a niagara_history_path set."""
-    # Diagnostic: total points on site vs points with a history path.
-    cur.execute("SELECT count(*) AS n FROM points WHERE site_id = %s", (site_id,))
+def _get_niagara_points_for_endpoint(cur, endpoint_id: str) -> list[dict]:
+    """Points discovered by this Niagara endpoint that carry a history path."""
+    # Diagnostic: total points on the endpoint vs points with a history path.
+    cur.execute(
+        "SELECT count(*) AS n FROM points WHERE niagara_endpoint_id = %s",
+        (endpoint_id,),
+    )
     total = cur.fetchone()["n"]
     cur.execute(
         """
         SELECT count(*) AS n
         FROM points
-        WHERE site_id = %s
+        WHERE niagara_endpoint_id = %s
           AND niagara_history_path IS NOT NULL
           AND niagara_history_path <> ''
         """,
-        (site_id,),
+        (endpoint_id,),
     )
     with_hist = cur.fetchone()["n"]
     logger.info(
-        "[niagara.select] site=%s points_total=%d points_with_history_path=%d",
-        site_id, total, with_hist,
+        "[niagara.select] endpoint=%s points_total=%d points_with_history_path=%d",
+        endpoint_id, total, with_hist,
     )
     cur.execute(
         """
         SELECT id, site_id, external_id, niagara_history_path
         FROM points
-        WHERE site_id = %s
+        WHERE niagara_endpoint_id = %s
           AND niagara_history_path IS NOT NULL
           AND niagara_history_path <> ''
         ORDER BY niagara_history_path
         """,
-        (site_id,),
+        (endpoint_id,),
     )
     return [dict(r) for r in cur.fetchall()]
 
@@ -775,10 +813,10 @@ def _get_niagara_points_for_site(cur, site_id: str) -> list[dict]:
 # Station scan
 # ---------------------------------------------------------------------------
 
-def scan_niagara_station(site_id: str) -> dict:
+def scan_niagara_station(endpoint_id: str) -> dict:
     """
-    Run the ControlPoint BQL query against the site's Niagara station, parse the
-    HTML response, and upsert equipment + points.
+    Run the ControlPoint BQL query against one Niagara endpoint, parse the HTML
+    response, and upsert the equipment + points owned by that endpoint.
 
     Grouping:
       equipment = `nav_ord` folder twice removed (parent of `points` folder),
@@ -787,11 +825,11 @@ def scan_niagara_station(site_id: str) -> dict:
 
     Returns a summary dict for UI / job results.
     """
-    endpoint = _get_endpoint_for_site(site_id)
+    endpoint = _get_endpoint(endpoint_id)
     if not endpoint:
         return {
             "ok": False,
-            "error": f"No Niagara endpoint configured for site {site_id}",
+            "error": f"No Niagara endpoint {endpoint_id}",
             "rows_seen": 0, "points_upserted": 0, "equipment_upserted": 0,
         }
     if not endpoint.get("enabled", True):
@@ -801,6 +839,7 @@ def scan_niagara_station(site_id: str) -> dict:
             "rows_seen": 0, "points_upserted": 0, "equipment_upserted": 0,
         }
 
+    site_id = str(endpoint["site_id"])
     url = _build_scan_url(endpoint["base_url"])
     try:
         resp = _http_get(
@@ -812,7 +851,9 @@ def scan_niagara_station(site_id: str) -> dict:
         )
         resp.raise_for_status()
     except requests.exceptions.RequestException as exc:
-        logger.exception("Niagara scan HTTP error for site %s", site_id)
+        logger.exception(
+            "Niagara scan HTTP error for endpoint %s (site %s)", endpoint_id, site_id
+        )
         return {
             "ok": False,
             "error": f"HTTP error: {exc}",
@@ -820,7 +861,10 @@ def scan_niagara_station(site_id: str) -> dict:
         }
 
     rows = _parse_bql_html_scan(resp.text)
-    logger.info("Niagara scan: site=%s parsed_rows=%d", site_id, len(rows))
+    logger.info(
+        "Niagara scan: endpoint=%s site=%s parsed_rows=%d",
+        endpoint_id, site_id, len(rows),
+    )
 
     equipment_ids: dict[str, str] = {}
     points_upserted = 0
@@ -839,9 +883,11 @@ def scan_niagara_station(site_id: str) -> dict:
                 history_tag = tags.get("n:history")
                 history_path = history_tag if isinstance(history_tag, str) else None
 
-                # A point's external_id needs to be stable and unique per site.
-                # Use the full nav ORD — it is the most specific identifier the
-                # scan gives us and survives renaming of the displayName.
+                # A point's external_id needs to be stable. Use the full nav ORD
+                # — the most specific identifier the scan gives us, which
+                # survives renaming of the displayName. Uniqueness across
+                # controllers on one site is handled by endpoint_key, so the
+                # nav ORD does not need to be globally unique on its own.
                 external_id = nav_ord or f"{equip_name}/{point_name}"
 
                 equip_id = equipment_ids.get(equip_name)
@@ -859,6 +905,7 @@ def scan_niagara_station(site_id: str) -> dict:
                     niagara_history_path=history_path,
                     description=point_name or None,
                     object_name=point_name or None,
+                    niagara_endpoint_id=endpoint["id"],
                 )
                 points_upserted += 1
 
@@ -866,9 +913,9 @@ def scan_niagara_station(site_id: str) -> dict:
                 """
                 UPDATE site_niagara_endpoints
                 SET last_scan_ts = now(), updated_at = now()
-                WHERE site_id = %s
+                WHERE id = %s
                 """,
-                (site_id,),
+                (endpoint_id,),
             )
         conn.commit()
 
@@ -882,25 +929,25 @@ def scan_niagara_station(site_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Per-site history sync
+# Per-endpoint history sync
 # ---------------------------------------------------------------------------
 
 def run_niagara_sync(
-    site_id: str,
+    endpoint_id: str,
     time_window: str = "lastweek",
 ) -> dict:
     """
-    Sync historical data from the site's Niagara station for every point on
-    that site that carries a niagara_history_path.
+    Sync historical data from one Niagara endpoint for every point it
+    discovered that carries a niagara_history_path.
 
     Uses a Niagara bqltime window (default 'lastweek') as the BQL range —
     daily runs over `lastweek` overlap intentionally; inserts are idempotent.
     """
-    endpoint = _get_endpoint_for_site(site_id)
+    endpoint = _get_endpoint(endpoint_id)
     if not endpoint:
         return {
             "points_attempted": 0, "points_ok": 0, "rows_inserted": 0,
-            "errors": [f"No Niagara endpoint configured for site {site_id}"],
+            "errors": [f"No Niagara endpoint {endpoint_id}"],
         }
     if not endpoint.get("enabled", True):
         return {
@@ -928,18 +975,18 @@ def run_niagara_sync(
         conn.commit()
 
         with conn.cursor() as cur:
-            points = _get_niagara_points_for_site(cur, site_uuid)
+            points = _get_niagara_points_for_endpoint(cur, endpoint_id)
 
         if not points:
-            logger.info("No Niagara points registered for site %s", site_uuid)
+            logger.info("No Niagara points registered for endpoint %s", endpoint_id)
             return {
                 "points_attempted": 0, "points_ok": 0, "rows_inserted": 0,
                 "errors": [],
             }
 
         logger.info(
-            "[niagara.sync] start site=%s base_url=%s points=%d window=%s",
-            site_uuid, base_url, len(points), time_window,
+            "[niagara.sync] start endpoint=%s site=%s base_url=%s points=%d window=%s",
+            endpoint_id, site_uuid, base_url, len(points), time_window,
         )
 
         # Commit per-point so a hang on one point never strands the earlier
@@ -974,8 +1021,8 @@ def run_niagara_sync(
                 logger.exception("[niagara.sync] point failed history=%s err=%s", hp, exc)
 
         logger.info(
-            "[niagara.sync] done site=%s attempted=%d ok=%d rows=%d errors=%d",
-            site_uuid, len(points), points_ok, total_rows, len(errors),
+            "[niagara.sync] done endpoint=%s site=%s attempted=%d ok=%d rows=%d errors=%d",
+            endpoint_id, site_uuid, len(points), points_ok, total_rows, len(errors),
         )
 
         with conn.cursor() as cur:
@@ -983,9 +1030,9 @@ def run_niagara_sync(
                 """
                 UPDATE site_niagara_endpoints
                 SET last_sync_ts = now(), updated_at = now()
-                WHERE site_id = %s
+                WHERE id = %s
                 """,
-                (site_uuid,),
+                (endpoint_id,),
             )
         conn.commit()
 

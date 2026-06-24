@@ -40,61 +40,87 @@ logger = logging.getLogger("open_fdd.iqvision")
 # DB: endpoint lookup
 # ---------------------------------------------------------------------------
 
-def _get_endpoint_for_site(site_id: str) -> Optional[dict]:
-    """Load the IQVision endpoint row for a site (UUID or name)."""
+def _get_endpoint(endpoint_id: str) -> Optional[dict]:
+    """Load one IQVision endpoint row by its id."""
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT e.site_id, e.base_url, e.username, e.password,
-                       e.ssl_verify, e.enabled
-                FROM site_iqvision_endpoints e
-                JOIN sites s ON s.id = e.site_id
-                WHERE (s.id::text = %s OR s.name = %s)
+                SELECT id, site_id, name, base_url, username, password,
+                       ssl_verify, enabled
+                FROM site_iqvision_endpoints
+                WHERE id = %s
                 """,
-                (site_id, site_id),
+                (endpoint_id,),
             )
             row = cur.fetchone()
     return dict(row) if row else None
 
 
-def _get_iqvision_points_for_site(cur, site_id: str) -> list[dict]:
+def _list_endpoints_for_site(site_id: str, enabled_only: bool = False) -> list[dict]:
+    """List IQVision endpoints for a site (UUID or name).
+
+    Used by the API and the nightly runner to fan out across every endpoint a
+    site owns. Pass enabled_only=True to skip disabled endpoints.
     """
-    Points on this site that have a niagara_history_path set.
+    enabled_clause = "AND e.enabled = true" if enabled_only else ""
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT e.id, e.site_id, e.name, e.base_url, e.username,
+                       e.password, e.ssl_verify, e.enabled
+                FROM site_iqvision_endpoints e
+                JOIN sites s ON s.id = e.site_id
+                WHERE (s.id::text = %s OR s.name = %s) {enabled_clause}
+                ORDER BY e.name
+                """,
+                (site_id, site_id),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+
+def _get_iqvision_points_for_endpoint(cur, endpoint_id: str) -> list[dict]:
+    """
+    Points discovered by this IQVision endpoint that have a niagara_history_path.
 
     Reuses the `niagara_history_path` column because the BQL history identifier
     is the same across Niagara and IQVision stations. Points scanned by either
-    driver end up in the same column.
+    driver end up in the same column; ownership is distinguished by the
+    iqvision_endpoint_id / niagara_endpoint_id columns.
     """
     # Diagnostic counters so we can tell "no endpoint" from "no points" from
     # "points exist but none scanned a history tag".
-    cur.execute("SELECT count(*) AS n FROM points WHERE site_id = %s", (site_id,))
+    cur.execute(
+        "SELECT count(*) AS n FROM points WHERE iqvision_endpoint_id = %s",
+        (endpoint_id,),
+    )
     total = cur.fetchone()["n"]
     cur.execute(
         """
         SELECT count(*) AS n
         FROM points
-        WHERE site_id = %s
+        WHERE iqvision_endpoint_id = %s
           AND niagara_history_path IS NOT NULL
           AND niagara_history_path <> ''
         """,
-        (site_id,),
+        (endpoint_id,),
     )
     with_hist = cur.fetchone()["n"]
     logger.info(
-        "[iqvision.select] site=%s points_total=%d points_with_history_path=%d",
-        site_id, total, with_hist,
+        "[iqvision.select] endpoint=%s points_total=%d points_with_history_path=%d",
+        endpoint_id, total, with_hist,
     )
     cur.execute(
         """
         SELECT id, site_id, external_id, niagara_history_path
         FROM points
-        WHERE site_id = %s
+        WHERE iqvision_endpoint_id = %s
           AND niagara_history_path IS NOT NULL
           AND niagara_history_path <> ''
         ORDER BY niagara_history_path
         """,
-        (site_id,),
+        (endpoint_id,),
     )
     return [dict(r) for r in cur.fetchall()]
 
@@ -130,10 +156,10 @@ def test_iqvision_connection(
 # Station scan — equipment grouping differs from Niagara
 # ---------------------------------------------------------------------------
 
-def scan_iqvision_station(site_id: str) -> dict:
+def scan_iqvision_station(endpoint_id: str) -> dict:
     """
-    Run the ControlPoint BQL query against the site's IQVision station, parse the
-    HTML response, and upsert equipment + points.
+    Run the ControlPoint BQL query against one IQVision endpoint, parse the HTML
+    response, and upsert the equipment + points owned by that endpoint.
 
     Grouping:
       equipment = the BQL `Device` column (proxyExt.device.displayName) as-is.
@@ -142,11 +168,11 @@ def scan_iqvision_station(site_id: str) -> dict:
 
     Returns a summary dict for UI / job results.
     """
-    endpoint = _get_endpoint_for_site(site_id)
+    endpoint = _get_endpoint(endpoint_id)
     if not endpoint:
         return {
             "ok": False,
-            "error": f"No IQVision endpoint configured for site {site_id}",
+            "error": f"No IQVision endpoint {endpoint_id}",
             "rows_seen": 0, "points_upserted": 0, "equipment_upserted": 0,
         }
     if not endpoint.get("enabled", True):
@@ -156,6 +182,7 @@ def scan_iqvision_station(site_id: str) -> dict:
             "rows_seen": 0, "points_upserted": 0, "equipment_upserted": 0,
         }
 
+    site_id = str(endpoint["site_id"])
     url = _build_scan_url(endpoint["base_url"])
     try:
         resp = _http_get(
@@ -167,7 +194,9 @@ def scan_iqvision_station(site_id: str) -> dict:
         )
         resp.raise_for_status()
     except requests.exceptions.RequestException as exc:
-        logger.exception("IQVision scan HTTP error for site %s", site_id)
+        logger.exception(
+            "IQVision scan HTTP error for endpoint %s (site %s)", endpoint_id, site_id
+        )
         return {
             "ok": False,
             "error": f"HTTP error: {exc}",
@@ -175,7 +204,10 @@ def scan_iqvision_station(site_id: str) -> dict:
         }
 
     rows = _parse_bql_html_scan(resp.text)
-    logger.info("IQVision scan: site=%s parsed_rows=%d", site_id, len(rows))
+    logger.info(
+        "IQVision scan: endpoint=%s site=%s parsed_rows=%d",
+        endpoint_id, site_id, len(rows),
+    )
 
     equipment_ids: dict[str, str] = {}
     points_upserted = 0
@@ -213,6 +245,7 @@ def scan_iqvision_station(site_id: str) -> dict:
                     niagara_history_path=history_path,
                     description=point_name or None,
                     object_name=point_name or None,
+                    iqvision_endpoint_id=endpoint["id"],
                 )
                 points_upserted += 1
 
@@ -220,9 +253,9 @@ def scan_iqvision_station(site_id: str) -> dict:
                 """
                 UPDATE site_iqvision_endpoints
                 SET last_scan_ts = now(), updated_at = now()
-                WHERE site_id = %s
+                WHERE id = %s
                 """,
-                (site_id,),
+                (endpoint_id,),
             )
         conn.commit()
 
@@ -243,37 +276,36 @@ def scan_iqvision_station(site_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Per-site history sync
+# Per-endpoint history sync
 # ---------------------------------------------------------------------------
 
 def run_iqvision_sync(
-    site_id: str,
+    endpoint_id: str,
     time_window: str = "lastweek",
 ) -> dict:
     """
-    Sync historical data from the site's IQVision station for every point on
-    that site that carries a niagara_history_path.
+    Sync historical data from one IQVision endpoint for every point it
+    discovered that carries a niagara_history_path.
 
     Uses a bqltime window (default 'lastweek') — same shape as Niagara.
     """
     logger.info(
-        "[iqvision.sync] invoked site=%s window=%s", site_id, time_window,
+        "[iqvision.sync] invoked endpoint=%s window=%s", endpoint_id, time_window,
     )
-    endpoint = _get_endpoint_for_site(site_id)
+    endpoint = _get_endpoint(endpoint_id)
     if not endpoint:
         logger.warning(
-            "[iqvision.sync] EARLY EXIT: no site_iqvision_endpoints row for site=%s "
-            "(did you configure the IQVision endpoint for this site? "
-            "PUT /iqvision/endpoints/<site_id>)",
-            site_id,
+            "[iqvision.sync] EARLY EXIT: no site_iqvision_endpoints row id=%s "
+            "(was the endpoint deleted?)",
+            endpoint_id,
         )
         return {
             "points_attempted": 0, "points_ok": 0, "rows_inserted": 0,
-            "errors": [f"No IQVision endpoint configured for site {site_id}"],
+            "errors": [f"No IQVision endpoint {endpoint_id}"],
         }
     if not endpoint.get("enabled", True):
         logger.warning(
-            "[iqvision.sync] EARLY EXIT: endpoint disabled site=%s", site_id,
+            "[iqvision.sync] EARLY EXIT: endpoint disabled id=%s", endpoint_id,
         )
         return {
             "points_attempted": 0, "points_ok": 0, "rows_inserted": 0,
@@ -300,14 +332,14 @@ def run_iqvision_sync(
         conn.commit()
 
         with conn.cursor() as cur:
-            points = _get_iqvision_points_for_site(cur, site_uuid)
+            points = _get_iqvision_points_for_endpoint(cur, endpoint_id)
 
         if not points:
             logger.warning(
                 "[iqvision.sync] EARLY EXIT: no points with niagara_history_path "
-                "for site=%s (run the IQVision or Niagara scan first so history "
+                "for endpoint=%s (run the IQVision scan first so history "
                 "tags get populated)",
-                site_uuid,
+                endpoint_id,
             )
             return {
                 "points_attempted": 0, "points_ok": 0, "rows_inserted": 0,
@@ -315,8 +347,8 @@ def run_iqvision_sync(
             }
 
         logger.info(
-            "[iqvision.sync] start site=%s base_url=%s points=%d window=%s",
-            site_uuid, base_url, len(points), time_window,
+            "[iqvision.sync] start endpoint=%s site=%s base_url=%s points=%d window=%s",
+            endpoint_id, site_uuid, base_url, len(points), time_window,
         )
 
         # Commit per-point so a hang on one point never strands the earlier
@@ -357,15 +389,15 @@ def run_iqvision_sync(
                 """
                 UPDATE site_iqvision_endpoints
                 SET last_sync_ts = now(), updated_at = now()
-                WHERE site_id = %s
+                WHERE id = %s
                 """,
-                (site_uuid,),
+                (endpoint_id,),
             )
         conn.commit()
 
     logger.info(
-        "[iqvision.sync] done site=%s attempted=%d ok=%d rows=%d errors=%d",
-        site_uuid, len(points), points_ok, total_rows, len(errors),
+        "[iqvision.sync] done endpoint=%s site=%s attempted=%d ok=%d rows=%d errors=%d",
+        endpoint_id, site_uuid, len(points), points_ok, total_rows, len(errors),
     )
     return {
         "points_attempted": len(points),

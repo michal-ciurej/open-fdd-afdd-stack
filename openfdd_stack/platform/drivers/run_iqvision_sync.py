@@ -2,14 +2,16 @@
 """
 Run IQVision history sync: once or on a fixed interval → TimescaleDB.
 
-Iterates over every site that has an IQVision endpoint configured in
+Iterates over every enabled IQVision endpoint configured in
 `site_iqvision_endpoints` and pulls the configured bqltime window for each
-point on that site with a niagara_history_path (shared column).
+point that endpoint discovered with a niagara_history_path (shared column).
+A site may own several endpoints; each is synced independently.
 
 Usage:
-  python run_iqvision_sync.py                     # one-shot, all sites
-  python run_iqvision_sync.py --site <uuid|name>  # one-shot, one site
-  python run_iqvision_sync.py --loop              # on interval (daily default)
+  python run_iqvision_sync.py                       # one-shot, all endpoints
+  python run_iqvision_sync.py --site <uuid|name>    # one-shot, every endpoint on a site
+  python run_iqvision_sync.py --endpoint <uuid>     # one-shot, one endpoint
+  python run_iqvision_sync.py --loop                # on interval (daily default)
   python run_iqvision_sync.py --window last24hours
 """
 
@@ -20,6 +22,7 @@ import logging
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
@@ -35,24 +38,41 @@ def setup_logging(verbose: bool) -> None:
     )
 
 
-def _list_enabled_sites() -> list[str]:
+def _list_enabled_endpoint_ids(site: Optional[str] = None) -> list[str]:
+    """Enabled IQVision endpoint ids, optionally limited to one site (UUID or name)."""
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT site_id::text AS site_id
-                FROM site_iqvision_endpoints
-                WHERE enabled = true
-                """
-            )
-            return [r["site_id"] for r in cur.fetchall()]
+            if site:
+                cur.execute(
+                    """
+                    SELECT e.id::text AS id
+                    FROM site_iqvision_endpoints e
+                    JOIN sites s ON s.id = e.site_id
+                    WHERE e.enabled = true AND (s.id::text = %s OR s.name = %s)
+                    ORDER BY e.name
+                    """,
+                    (site, site),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT id::text AS id
+                    FROM site_iqvision_endpoints
+                    WHERE enabled = true
+                    ORDER BY site_id, name
+                    """
+                )
+            return [r["id"] for r in cur.fetchall()]
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="IQVision history sync → TimescaleDB")
     parser.add_argument("--loop", action="store_true", help="Run on a fixed interval")
     parser.add_argument(
-        "--site", default=None, help="Limit to one site (UUID or name)"
+        "--site", default=None, help="Limit to every endpoint on one site (UUID or name)"
+    )
+    parser.add_argument(
+        "--endpoint", default=None, help="Limit to one IQVision endpoint (UUID)"
     )
     parser.add_argument(
         "--window",
@@ -72,16 +92,21 @@ def main() -> int:
     log = logging.getLogger("open_fdd.iqvision.runner")
 
     while True:
-        sites = [args.site] if args.site else _list_enabled_sites()
-        if not sites:
+        if args.endpoint:
+            endpoint_ids = [args.endpoint]
+        else:
+            endpoint_ids = _list_enabled_endpoint_ids(args.site)
+        if not endpoint_ids:
             log.info("No IQVision endpoints enabled; nothing to sync.")
         else:
-            for site in sites:
+            for endpoint_id in endpoint_ids:
                 try:
-                    result = run_iqvision_sync(site_id=site, time_window=args.window)
+                    result = run_iqvision_sync(
+                        endpoint_id=endpoint_id, time_window=args.window
+                    )
                     log.info(
-                        "IQVision sync site=%s window=%s: attempted=%d ok=%d rows=%d errors=%d",
-                        site,
+                        "IQVision sync endpoint=%s window=%s: attempted=%d ok=%d rows=%d errors=%d",
+                        endpoint_id,
                         args.window,
                         result["points_attempted"],
                         result["points_ok"],
@@ -91,7 +116,9 @@ def main() -> int:
                     for err in result["errors"]:
                         log.warning("Sync error: %s", err)
                 except Exception as exc:
-                    log.exception("IQVision sync failed for site %s: %s", site, exc)
+                    log.exception(
+                        "IQVision sync failed for endpoint %s: %s", endpoint_id, exc
+                    )
                     if not args.loop:
                         return 1
 

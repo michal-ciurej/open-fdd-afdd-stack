@@ -409,7 +409,7 @@ async def _scrape_via_rpc(
                             """
                             INSERT INTO points (site_id, external_id, bacnet_device_id, object_identifier, object_name)
                             VALUES (%s, %s, %s, %s, %s)
-                            ON CONFLICT (site_id, external_id) DO UPDATE SET
+                            ON CONFLICT ON CONSTRAINT points_site_extid_endpoint_uq DO UPDATE SET
                               bacnet_device_id = EXCLUDED.bacnet_device_id,
                               object_identifier = EXCLUDED.object_identifier,
                               object_name = EXCLUDED.object_name
