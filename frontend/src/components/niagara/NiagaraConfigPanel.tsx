@@ -18,14 +18,16 @@ import { timeAgo } from "@/lib/utils";
 const field =
   "h-9 rounded-lg border border-border/60 bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring";
 
+// Niagara bqltime keywords are lowercase (bqltime.lastweek). The initial
+// timeWindow state below must match one of these values.
 const BQL_WINDOWS = [
   "today",
   "yesterday",
-  "lastWeek",
-  "thisWeek",
+  "lastweek",
+  "thisweek",
   "weektodate",
-  "lastMonth",
-  "thisMonth",
+  "lastmonth",
+  "thismonth",
 ] as const;
 
 export function NiagaraConfigPanel() {

@@ -59,7 +59,8 @@ def main() -> int:
     parser.add_argument(
         "--window",
         default="lastweek",
-        help="Niagara bqltime window (e.g. lastweek, last24hours, today)",
+        help="Niagara bqltime window: today, yesterday, lastweek, thisweek, "
+        "weektodate, lastmonth, thismonth (case-insensitive)",
     )
     parser.add_argument(
         "--interval-min",

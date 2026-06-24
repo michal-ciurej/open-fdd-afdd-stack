@@ -57,7 +57,8 @@ class NiagaraEndpointRead(BaseModel):
 class NiagaraSyncJobBody(BaseModel):
     time_window: str = Field(
         "lastweek",
-        description="Niagara bqltime window (lastweek, last24hours, today, ...)",
+        description="Niagara bqltime window: today, yesterday, lastweek, thisweek, "
+        "weektodate, lastmonth, thismonth (case-insensitive)",
     )
 
 

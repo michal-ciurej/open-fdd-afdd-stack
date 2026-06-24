@@ -78,17 +78,31 @@ _NIAGARA_TS_FORMATS: tuple[str, ...] = (
 # a unit suffix and discarded.
 _NIAGARA_VAL_RE = re.compile(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?")
 
+# Boolean histories (Niagara BooleanPoint) render their value as status text
+# rather than a number — the configured trueText/falseText, e.g. "true"/"false",
+# "On"/"Off", "Active"/"Inactive", "Occupied"/"Unoccupied". The timeseries value
+# column is double precision, so we map these to 1.0/0.0 (mirroring the BACnet
+# driver's _pv_to_float) instead of dropping the row. Matched case-insensitively
+# after stripping; extend these sets to cover other facet texts as needed.
+_NIAGARA_TRUE_TOKENS = frozenset({
+    "true", "active", "on", "closed", "yes", "occupied", "enabled", "running",
+})
+_NIAGARA_FALSE_TOKENS = frozenset({
+    "false", "inactive", "off", "open", "no", "unoccupied", "disabled", "stopped",
+})
+
 # Valid Niagara "bqltime" windows that a caller can pass to run_niagara_sync.
 # The string is substituted directly into the BQL query (e.g. bqltime.lastweek).
+# Niagara's bqltime keywords are lowercase (bqltime.lastweek, bqltime.weektodate);
+# callers are normalised to lower case before lookup so any casing is accepted.
 _VALID_BQL_WINDOWS = {
   "today",
   "yesterday",
-  "lastWeek",
-  "thisWeek",
+  "lastweek",
+  "thisweek",
   "weektodate",
-  "lastMonth",
-  "thisMonth",
-
+  "lastmonth",
+  "thismonth",
 }
 
 
@@ -203,12 +217,15 @@ def _build_history_url(base_url: str, history_path: str, time_window: str) -> st
     a shell page that loads the table via JS, so the HTTP body has no <table>
     for our parser. fullScreen forces the pre-rendered table view.
     """
-    if time_window not in _VALID_BQL_WINDOWS:
+    # Niagara bqltime keywords are lowercase; accept any case from callers
+    # (the config UI historically sent camelCase) and emit the lowercase form.
+    window = (time_window or "").strip().lower()
+    if window not in _VALID_BQL_WINDOWS:
         raise ValueError(
             f"Unsupported bqltime window '{time_window}'. Allowed: {sorted(_VALID_BQL_WINDOWS)}"
         )
     path = history_path if history_path.startswith("/") else f"/{history_path}"
-    bql = f"select timestamp,value from * where timestamp in bqltime.{time_window}"
+    bql = f"select timestamp,value from * where timestamp in bqltime.{window}"
     ord_body = f"history:{path}|bql:{bql}|view:?fullScreen=true"
     return _encode_ord_url(base_url, ord_body)
 
@@ -345,22 +362,34 @@ def _parse_niagara_ts(raw: str) -> Optional[datetime]:
 
 def _parse_niagara_value(raw: str) -> Optional[float]:
     """
-    Parse a numeric Niagara value cell, tolerating trailing units.
+    Parse a Niagara value cell into a float.
 
-    Niagara's BQL table renders values with their display unit appended
-    (e.g. "16.5 °C", "0.0 %", "1.23e-2 kW"). We take the first numeric
-    literal we find and discard the rest. Returns None for empty / non-numeric
-    cells (e.g. "null", "{null}").
+    Handles three shapes the station may emit:
+      1. Numeric with an optional trailing display unit ("16.5 °C", "0.0 %",
+         "1.23e-2 kW") — the first numeric literal is taken, the rest discarded.
+      2. Boolean status text from BooleanPoint histories ("true"/"false",
+         "On"/"Off", "Active"/"Inactive", ...) — mapped to 1.0/0.0 so binary
+         histories land in the numeric value column instead of being dropped.
+      3. Empty / unknown / non-numeric ("null", "{null}", multi-state enums) → None.
     """
     if raw is None:
         return None
     s = raw.strip()
     if not s:
         return None
+    # 1. Plain number fast path.
     try:
         return float(s)
     except ValueError:
         pass
+    # 2. Boolean status text → 1.0 / 0.0. Checked before the numeric-literal
+    #    regex because "true"/"off"/... carry no digit and would otherwise drop.
+    token = s.lower()
+    if token in _NIAGARA_TRUE_TOKENS:
+        return 1.0
+    if token in _NIAGARA_FALSE_TOKENS:
+        return 0.0
+    # 3. Leading numeric literal with a trailing unit ("16.5 °C").
     m = _NIAGARA_VAL_RE.search(s)
     if not m:
         return None
