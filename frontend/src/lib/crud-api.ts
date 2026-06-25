@@ -122,6 +122,21 @@ export function deleteEquipment(equipmentId: string) {
   });
 }
 
+/**
+ * Bulk-delete equipment that have no points. Optionally scoped to one site
+ * (omit to clean every site the caller can access). Equipment that still has
+ * points is left untouched, so no time-series data is ever removed.
+ */
+export function deleteEmptyEquipment(
+  siteId?: string,
+): Promise<{ status: string; deleted: number; names: string[] }> {
+  const q = siteId ? `?site_id=${encodeURIComponent(siteId)}` : "";
+  return apiFetch<{ status: string; deleted: number; names: string[] }>(
+    `/equipment/delete-empty${q}`,
+    { method: "POST" },
+  );
+}
+
 export type EquipmentPatchBody = Partial<{
   name: string;
   description: string | null;

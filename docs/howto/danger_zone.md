@@ -137,6 +137,10 @@ To clear the **data model** (Brick TTL and in-memory graph) but keep the stack a
 
 Use CRUD deletes to remove specific sites, equipment, or points. Data cascades as described above.
 
+### Option 5: Delete empty equipment (bulk, non-cascading)
+
+`POST /equipment/delete-empty` removes equipment rows that have **no points** in one statement — the leftover shells after dissolving or re-tagging. Optionally scope to one site with `?site_id=<uuid>`; otherwise every accessible site is cleaned. Unlike `DELETE /equipment/{id}`, this **never cascades time-series**: equipment that still has points is skipped, so no point or `timeseries_readings` row is touched. `feeds`/`fed_by` references to a deleted shell are set `NULL`. Exposed in the Data model **Danger zone** as **Delete empty equipment** (Low risk); returns `{ deleted, names }`. See [React dashboard — Danger zone](https://bbartling.github.io/open-fdd/frontend#data-model-danger-zone).
+
 ---
 
 ## Unit tests

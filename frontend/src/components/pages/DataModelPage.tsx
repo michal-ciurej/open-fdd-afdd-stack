@@ -16,6 +16,7 @@ import { apiFetch, apiFetchText } from "@/lib/api";
 import { writeTtlToPopup } from "@/lib/ttl-popup";
 import {
   deleteSite,
+  deleteEmptyEquipment,
   dataModelSerialize,
   dataModelReset,
   dataModelCheck,
@@ -66,6 +67,16 @@ export function DataModelPage() {
   const faults = selectedSiteId ? faultsSite : faultsAll;
   const equipmentLoading = selectedSiteId ? equipmentSiteLoading : equipmentAllLoading;
   const siteMap = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites]);
+  // Estimate of equipment with no points, from data already loaded on the page.
+  // The backend re-checks authoritatively on delete, so this is a UI hint only —
+  // in the all-sites view `points` is capped at the API default, so this may
+  // over-count; it never causes a non-empty equipment to be deleted.
+  const emptyEquipment = useMemo(() => {
+    const withPoints = new Set(
+      points.map((p) => p.equipment_id).filter((id): id is string => id != null),
+    );
+    return equipment.filter((e) => !withPoints.has(e.id));
+  }, [equipment, points]);
   const exportQueryKey = ["data-model", "export", selectedSiteId ?? "all"] as const;
   const { data: exportData, isLoading: exportLoading } = useQuery<DataModelExportRow[]>({
     queryKey: exportQueryKey,
@@ -122,6 +133,19 @@ export function DataModelPage() {
     onSuccess: () => {
       setResetFaultsConfirm("");
       queryClient.invalidateQueries({ queryKey: ["faults"] });
+    },
+  });
+
+  const deleteEmptyEquipmentMutation = useMutation<
+    { status: string; deleted: number; names: string[] },
+    Error,
+    string | undefined
+  >({
+    mutationFn: (siteId) => deleteEmptyEquipment(siteId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+      queryClient.invalidateQueries({ queryKey: ["points"] });
+      queryClient.invalidateQueries({ queryKey: ["data-model"] });
     },
   });
 
@@ -562,6 +586,64 @@ export function DataModelPage() {
               {resetMutation.isSuccess && (
                 <p className="mt-2 text-sm text-muted-foreground">
                   {(resetMutation.data as { message?: string })?.message ?? "Graph reset."}
+                </p>
+              )}
+            </div>
+            <div className="rounded-lg border border-border/60 p-4">
+              <p className="mb-1 text-sm font-medium text-amber-800 dark:text-amber-300/90">
+                Low risk — delete empty equipment
+              </p>
+              <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
+                <span className="font-medium text-foreground/80">Danger level: low.</span> Calls{" "}
+                <code className="rounded bg-muted px-1">POST /equipment/delete-empty</code> for{" "}
+                <strong>{selectedSiteId ? siteMap.get(selectedSiteId)?.name ?? "the selected site" : "all sites"}</strong>.
+                Removes equipment shells that have <strong>no points</strong> — left over after dissolving or re-tagging.
+                Equipment that still has points is kept; <strong>points and time-series readings are not touched</strong>.
+                {selectedSiteId
+                  ? " Pick a different site (or clear the selection) to change the scope."
+                  : " Select a site in the header to scope this to one site."}
+              </p>
+              <p className="mb-2 text-sm font-medium text-muted-foreground">
+                {emptyEquipment.length === 0
+                  ? "No empty equipment detected in the loaded data."
+                  : `${emptyEquipment.length} empty equipment detected (estimate).`}
+              </p>
+              <button
+                type="button"
+                data-testid="delete-empty-equipment-button"
+                onClick={() => {
+                  const scope = selectedSiteId
+                    ? siteMap.get(selectedSiteId)?.name ?? "the selected site"
+                    : "all accessible sites";
+                  if (
+                    !window.confirm(
+                      `Delete empty equipment in ${scope}? Equipment shells with no points are removed; ` +
+                        "equipment that still has points is kept. Points and time-series are not affected.",
+                    )
+                  ) {
+                    return;
+                  }
+                  deleteEmptyEquipmentMutation.mutate(selectedSiteId ?? undefined);
+                }}
+                disabled={deleteEmptyEquipmentMutation.isPending || emptyEquipment.length === 0}
+                className="inline-flex items-center gap-2 rounded-lg border border-amber-600/60 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete empty equipment
+              </button>
+              {deleteEmptyEquipmentMutation.isSuccess && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {deleteEmptyEquipmentMutation.data.deleted === 0
+                    ? "No empty equipment to delete."
+                    : `Deleted ${deleteEmptyEquipmentMutation.data.deleted} empty equipment` +
+                      (deleteEmptyEquipmentMutation.data.names.length
+                        ? `: ${deleteEmptyEquipmentMutation.data.names.join(", ")}.`
+                        : ".")}
+                </p>
+              )}
+              {deleteEmptyEquipmentMutation.isError && (
+                <p className="mt-2 text-sm text-destructive">
+                  {deleteEmptyEquipmentMutation.error.message}
                 </p>
               )}
             </div>

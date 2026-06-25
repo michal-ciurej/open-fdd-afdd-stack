@@ -102,6 +102,52 @@ def create_equipment(body: EquipmentCreate):
     return EquipmentRead.model_validate(dict(row))
 
 
+@router.post("/delete-empty")
+def delete_empty_equipment(
+    site_id: UUID | None = None,
+    user: AuthUser = Depends(get_current_user),
+):
+    """Delete equipment that have no points, in one statement. Optionally scoped to a site.
+
+    Safe bulk cleanup for the data-model danger zone: only equipment with zero
+    points are removed, so no time-series data is ever cascaded away. Equipment
+    that still has points is left untouched. feeds/fed_by references to a deleted
+    shell are set NULL by the FK; any energy profile/opportunity rows cascade.
+    """
+    accessible = accessible_site_ids(user)
+    if accessible is not None and site_id is not None and str(site_id) not in accessible:
+        raise HTTPException(403, "No permission for this site")
+    where = ["NOT EXISTS (SELECT 1 FROM points p WHERE p.equipment_id = equipment.id)"]
+    params: list = []
+    if site_id is not None:
+        where.append("equipment.site_id = %s")
+        params.append(str(site_id))
+    elif accessible is not None:
+        if not accessible:
+            return {"status": "ok", "deleted": 0, "names": []}
+        where.append("equipment.site_id::text = ANY(%s)")
+        params.append(accessible)
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"DELETE FROM equipment WHERE {' AND '.join(where)} RETURNING id, name",
+                params,
+            )
+            rows = cur.fetchall()
+        conn.commit()
+    if rows:
+        try:
+            sync_ttl_to_file()
+        except Exception:
+            logger.warning("sync_ttl_to_file failed after delete-empty equipment", exc_info=True)
+        emit(TOPIC_CRUD_EQUIPMENT + ".deleted", {"bulk": True, "count": len(rows)})
+    return {
+        "status": "ok",
+        "deleted": len(rows),
+        "names": [r["name"] for r in rows],
+    }
+
+
 @router.get("/{equipment_id}", response_model=EquipmentRead)
 def get_equipment(equipment_id: UUID):
     """Get equipment by ID."""

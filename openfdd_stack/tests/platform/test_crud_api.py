@@ -325,6 +325,27 @@ def test_equipment_delete():
     assert r.status_code == 200
 
 
+def test_equipment_delete_empty_returns_deleted_names():
+    """POST /equipment/delete-empty removes shells with no points and reports them."""
+    deleted = [{"id": str(uuid4()), "name": "AHU-1"}, {"id": str(uuid4()), "name": "VAV-2"}]
+    conn = _mock_conn(fetchall=deleted)
+    with _patch_db(conn), patch("openfdd_stack.platform.api.equipment.sync_ttl_to_file"):
+        r = client.post("/equipment/delete-empty")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["deleted"] == 2
+    assert body["names"] == ["AHU-1", "VAV-2"]
+
+
+def test_equipment_delete_empty_none_to_delete():
+    """When nothing is empty, delete-empty returns deleted=0 and does not error."""
+    conn = _mock_conn(fetchall=[])
+    with _patch_db(conn):
+        r = client.post(f"/equipment/delete-empty?site_id={uuid4()}")
+    assert r.status_code == 200
+    assert r.json() == {"status": "ok", "deleted": 0, "names": []}
+
+
 # --- equipment_type validation against Brick 1.4 vocabulary ---
 
 

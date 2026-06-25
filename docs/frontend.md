@@ -50,11 +50,13 @@ Select a **site** in the header, then open **Energy Engineering** → **Energy c
 ## Data model Brick: danger zone
 {: #data-model-danger-zone }
 
-The **Data model** page ends with a **Danger zone** card. There are two separate actions (lower risk first in the UI, maximum risk last):
+The **Data model** page ends with a **Danger zone** card. The actions are ordered lower risk first in the UI, maximum risk last:
 
 | Tier | UI label | What it does |
 |------|-----------|----------------|
 | **Lower risk** | Reset graph to DB-only | Calls `POST /data-model/reset` only. Clears the in-memory RDF graph, removes BACnet discovery triples and orphan blank nodes, rebuilds Brick triples from the **current** Postgres state, and rewrites `config/data_model.ttl`. **Does not** delete sites, equipment, or points. Use on a test bench when discovery left stale BACnet RDF but you want to keep DB rows. Use **Check integrity** on the same page if you need orphan warnings (reset does not run that check). |
+| **Low risk** | Delete empty equipment | Calls `POST /equipment/delete-empty` (optionally scoped to the selected site via `?site_id=…`, otherwise every site the caller can access). Deletes equipment rows that have **no points** — the leftover shells after dissolving or re-tagging — in a single statement. Equipment that still has points is left untouched, so **points and time-series readings are never removed**. `feeds`/`fed_by` references to a deleted shell are set `NULL` by the FK. The button is disabled when no empty equipment is detected; the count shown is an estimate (the all-sites view loads points up to the API page limit), but the server re-checks authoritatively, so a non-empty equipment is never deleted. Returns `{ deleted, names }`. |
+| **High risk** | Reset fault history for this site | Calls `POST /faults/reset` for **only the selected site** (no global form). Permanently deletes that site's `fault_results`, `fault_events`, and current `fault_state`. Sites, equipment, points, and time-series readings are **not** touched. Pick a site in the header to enable it. |
 | **Maximum risk** | Remove all sites and reset graph | Deletes **every site** via `DELETE /sites/{id}` (cascade removes equipment, points, and related data), then calls `POST /data-model/reset`. **Irreversible** data loss for that relational model (including time-series tied to those points), not “just” clearing the TTL file. |
 
 **How this fits:** Postgres holds the authoritative sites/equipment/points (including `external_id` for time-series columns). The in-memory graph merges Brick (from DB) with BACnet discovery RDF. The TTL file on disk is a snapshot of that graph; the API also persists periodically and on import/reset.
