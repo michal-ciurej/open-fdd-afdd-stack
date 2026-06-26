@@ -28,6 +28,7 @@ import type {
   DataModelExportRow,
   DataModelImportBody,
   DataModelImportResponse,
+  StructuredDataModelExport,
 } from "@/types/api";
 
 function downloadJson(data: unknown, filename: string) {
@@ -77,14 +78,16 @@ export function DataModelPage() {
     );
     return equipment.filter((e) => !withPoints.has(e.id));
   }, [equipment, points]);
-  const exportQueryKey = ["data-model", "export", selectedSiteId ?? "all"] as const;
-  const { data: exportData, isLoading: exportLoading } = useQuery<DataModelExportRow[]>({
+  const exportQueryKey = ["data-model", "export", "structured", selectedSiteId ?? "all"] as const;
+  const { data: exportData, isLoading: exportLoading } = useQuery<StructuredDataModelExport>({
     queryKey: exportQueryKey,
     queryFn: () => {
-      const q = selectedSiteId
-        ? `?site_id=${encodeURIComponent(selectedSiteId)}`
-        : "";
-      return apiFetch<DataModelExportRow[]>(`/data-model/export${q}`);
+      // shape=structured returns { equipment, points } so a tag pass can set both
+      // equipment_type (per equipment) and brick_type/rule_input (per point), and
+      // the file PUTs straight back into /data-model/import unchanged.
+      const params = new URLSearchParams({ shape: "structured" });
+      if (selectedSiteId) params.set("site_id", selectedSiteId);
+      return apiFetch<StructuredDataModelExport>(`/data-model/export?${params.toString()}`);
     },
     staleTime: 60 * 1000,
   });
@@ -381,7 +384,10 @@ export function DataModelPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              GET /data-model/export — BACnet discovery + DB points. When a site is selected in the top bar, the export adds{" "}
+              GET /data-model/export?shape=structured — returns <code className="rounded bg-muted px-1 text-xs">{"{ equipment, points }"}</code>{" "}
+              (BACnet discovery + DB points, plus the equipment list with <code className="rounded bg-muted px-1 text-xs">equipment_type</code> and{" "}
+              <code className="rounded bg-muted px-1 text-xs">member_brick_types</code>) so a tag pass can set both equipment and point types in
+              one file that PUTs straight back to import. When a site is selected in the top bar, the export adds{" "}
               <code className="rounded bg-muted px-1 text-xs">?site_id=…</code> so unimported discovery rows include{" "}
               <code className="rounded bg-muted px-1 text-xs">site_id</code> / <code className="rounded bg-muted px-1 text-xs">site_name</code>{" "}
               for LLM equipment tagging; with <strong>All sites</strong>, the API still pre-fills those fields if only one site exists.
@@ -404,13 +410,17 @@ export function DataModelPage() {
                   </button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Open-FDD does not run in-browser or in-API tagging. Wire your OpenAI-compatible stack (e.g. external Open-Claw) to the same endpoints; see <span className="font-medium">docs/openclaw_integration.md</span>.
+                  Downloads both the <strong>equipment</strong> and <strong>points</strong> arrays for the selected site (or all
+                  sites) — tag <code className="rounded bg-muted px-1">equipment_type</code> and{" "}
+                  <code className="rounded bg-muted px-1">brick_type</code> / <code className="rounded bg-muted px-1">rule_input</code>,
+                  then re-upload via Import below.
                 </p>
               </div>
             )}
-            {!exportLoading && (!exportData || exportData.length === 0) && (
-              <p className="text-sm text-muted-foreground">No points in the data model yet.</p>
-            )}
+            {!exportLoading &&
+              (!exportData || (exportData.points.length === 0 && exportData.equipment.length === 0)) && (
+                <p className="text-sm text-muted-foreground">No points or equipment in the data model yet.</p>
+              )}
           </CardContent>
         </Card>
 

@@ -175,10 +175,35 @@ export interface DataModelExportRow {
   [key: string]: unknown;
 }
 
+/** One equipment row in the structured data-model export (shape=structured).
+ *  Mirrors the backend EquipmentExportRow; round-trips into DataModelImportBody.equipment. */
+export interface EquipmentExportRow {
+  equipment_id: string;
+  equipment_name: string;
+  /** Brick 1.4 equipment class, long form (e.g. Fan_Coil_Unit). null when untagged. */
+  equipment_type?: string | null;
+  site_id?: string | null;
+  site_name?: string | null;
+  feeds_equipment_id?: string | null;
+  fed_by_equipment_id?: string | null;
+  equipment_metadata?: Record<string, unknown> | null;
+  engineering?: Record<string, unknown> | null;
+  point_count?: number;
+  /** Distinct brick_type values across this equipment's points — pick equipment_type from these. */
+  member_brick_types?: string[];
+  [key: string]: unknown;
+}
+
+/** GET /data-model/export?shape=structured — { equipment, points }, symmetric with the import body. */
+export interface StructuredDataModelExport {
+  equipment: EquipmentExportRow[];
+  points: DataModelExportRow[];
+}
+
 /** PUT /data-model/import body */
 export interface DataModelImportBody {
   points: DataModelExportRow[];
-  equipment?: unknown[];
+  equipment?: EquipmentExportRow[];
 }
 
 /** PUT /data-model/import response */
