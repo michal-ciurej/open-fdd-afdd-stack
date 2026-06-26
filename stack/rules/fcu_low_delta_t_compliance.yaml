@@ -1,6 +1,6 @@
 # Compliance: Fan Coil Unit hydronic ΔT below target during cooling operation.
 # A persistently low (return − supply) water-side ΔT signals overflow / bypass /
-# valve-stuck-open — wastes pump energy and capacity. Flagged under the
+# valve-stuck-open - wastes pump energy and capacity. Flagged under the
 # "compliance" category so it lights up the Compliance dashboard dial.
 name: fcu_low_delta_t_compliance
 description: FCU water-side ΔT below target while unit is in cooling

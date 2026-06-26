@@ -19,8 +19,8 @@ inputs:
     brick: Return_Air_Temperature_Sensor
 
 params:
-  sat_err: 1.0          # °C — SAT must be this far below setpoint to flag
-  heating_mode_margin: 0.0  # °C — heating mode when RAT < SATSP (no additional margin)
+  sat_err: 1.0          # °C - SAT must be this far below setpoint to flag
+  heating_mode_margin: 0.0  # °C - heating mode when RAT < SATSP (no additional margin)
   rolling_window: 12    # 12 samples = 1 h at 5-min data (debounce)
 
 expression: |

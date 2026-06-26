@@ -1,4 +1,4 @@
-# Flatline detection — resolved from Brick TTL (brick_type + rdfs:label)
+# Flatline detection - resolved from Brick TTL (brick_type + rdfs:label)
 name: test_sensor_flatline_1774618711
 description: Fault if sensor value does not change over window (stuck sensor)
 type: flatline

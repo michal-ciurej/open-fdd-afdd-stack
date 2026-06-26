@@ -114,7 +114,7 @@ function SiteSummaryCard() {
       if (Object.keys(sitePatch).length > 0) {
         promises.push(siteMutation.mutateAsync(sitePatch));
       }
-      // Always send a rates PUT — partial payload merges server-side. Skip the
+      // Always send a rates PUT - partial payload merges server-side. Skip the
       // call only when no rate fields are provided.
       const ratesBody: Parameters<typeof updateRates.mutateAsync>[0] = {};
       if (electric !== undefined) ratesBody.electric_rate_per_kwh = electric;
@@ -211,7 +211,7 @@ function SiteSummaryCard() {
           </div>
         </section>
 
-        {/* Core occupancy schedule — replaces the old hrs/year scalar. */}
+        {/* Core occupancy schedule - replaces the old hrs/year scalar. */}
         <SiteScheduleEditor siteId={selectedSiteId} />
 
         {/* Energy rates section */}
@@ -321,7 +321,7 @@ export function MyBuildingPage() {
     <div>
       <h1 className="mb-2 text-2xl font-semibold tracking-tight">Building Setup</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        Editable settings for the selected site — description, floorspace, core occupancy
+        Editable settings for the selected site - description, floorspace, core occupancy
         schedule, and energy rates. These feed the cost calculator and the FDD loop.
       </p>
 

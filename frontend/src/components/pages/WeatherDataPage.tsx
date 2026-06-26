@@ -39,10 +39,10 @@ const WEATHER_EXTERNAL_IDS = new Set([
 
 /** Grafana-style panel groups: same units plotted together. */
 const WEATHER_GROUPS: { title: string; externalIds: string[]; yAxisLabel?: string }[] = [
-  { title: "Weather — Temp / RH / Dewpoint", externalIds: ["temp_f", "dewpoint_f", "rh_pct"], yAxisLabel: "°F / %" },
-  { title: "Weather — Wind (Speed / Gust / Direction)", externalIds: ["wind_mph", "gust_mph", "wind_dir_deg"], yAxisLabel: "mph / °" },
-  { title: "Weather — Solar / Radiation (W/m²)", externalIds: ["shortwave_wm2", "direct_wm2", "diffuse_wm2", "gti_wm2"], yAxisLabel: "W/m²" },
-  { title: "Weather — Cloud Cover (%)", externalIds: ["cloud_pct"], yAxisLabel: "%" },
+  { title: "Weather - Temp / RH / Dewpoint", externalIds: ["temp_f", "dewpoint_f", "rh_pct"], yAxisLabel: "°F / %" },
+  { title: "Weather - Wind (Speed / Gust / Direction)", externalIds: ["wind_mph", "gust_mph", "wind_dir_deg"], yAxisLabel: "mph / °" },
+  { title: "Weather - Solar / Radiation (W/m²)", externalIds: ["shortwave_wm2", "direct_wm2", "diffuse_wm2", "gti_wm2"], yAxisLabel: "W/m²" },
+  { title: "Weather - Cloud Cover (%)", externalIds: ["cloud_pct"], yAxisLabel: "%" },
 ];
 
 const COLORS = [

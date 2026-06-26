@@ -6,7 +6,7 @@ nav_order: 4
 
 # YAML rules → Pandas DataFrames (under the hood)
 
-This note is for engineers who want to see **exactly** how Open-FDD turns **rule YAML on disk** into **pandas operations** on **time-series DataFrames**—and where Brick TTL fits in. It complements [Fault rules overview](overview) and [standalone CSV / pandas](../standalone_csv_pandas).
+This note is for engineers who want to see **exactly** how Open-FDD turns **rule YAML on disk** into **pandas operations** on **time-series DataFrames**-and where Brick TTL fits in. It complements [Fault rules overview](overview) and [standalone CSV / pandas](../standalone_csv_pandas).
 
 ---
 
@@ -40,7 +40,7 @@ Under the hood, pandas is doing **grouped aggregation in the pivot** (duplicate 
 
 `RuleRunner.run` (`open_fdd.engine.runner`):
 
-1. **`result = df.copy()`** — rules never mutate the caller’s frame in place (callers can still hold a reference to the original).
+1. **`result = df.copy()`** - rules never mutate the caller’s frame in place (callers can still hold a reference to the original).
 2. For **each** rule dict:
    - Derives **`flag_name`** from `flag` or `{name}_flag`.
    - Calls **`_evaluate_rule`** → returns a **boolean `Series`** (fault mask) aligned to `result.index`.
@@ -56,8 +56,8 @@ So each rule adds **one column** of flags; the frame grows **width-wise**, not r
 Inside `_evaluate_rule`, Open-FDD branches on `rule["type"]` (e.g. `bounds`, `flatline`, `expression`, …):
 
 - **`column_map` resolution**: For each logical input key, the runner picks a **DataFrame column name**. If the YAML input has a **`brick`** class, the global `column_map` from TTL is consulted first (`brick` → column label), so the **same YAML** can run against different exports as long as TTL maps Brick classes to the right columns.
-- **Bounds / thresholds**: Typical pattern is `(series < low) | (series > high)` using **vectorized** comparisons — these are **numpy ufuncs** under pandas, no Python `for` over rows.
-- **Expressions**: String expressions may be evaluated in a **restricted eval** context (`open_fdd.engine.checks.check_expression`) with named series bound to `result[col]` — still vectorized.
+- **Bounds / thresholds**: Typical pattern is `(series < low) | (series > high)` using **vectorized** comparisons - these are **numpy ufuncs** under pandas, no Python `for` over rows.
+- **Expressions**: String expressions may be evaluated in a **restricted eval** context (`open_fdd.engine.checks.check_expression`) with named series bound to `result[col]` - still vectorized.
 
 If a required column is missing, the runner either **raises** or **skips** the rule (`skip_missing_columns=True`), depending on the call site.
 
@@ -65,7 +65,7 @@ If a required column is missing, the runner either **raises** or **skips** the r
 
 ## 5. Hot reload: YAML vs DataFrame lifetime
 
-`run_fdd_loop` calls **`load_rules_from_dir(rules_path)` every run**, then filters by equipment types from TTL, then **`RuleRunner(rules=rules)`**. There is **no** long-lived compiled rule object on disk—editing YAML affects the **next** scheduled run (or the next manual `POST /run-fdd`). The **DataFrame** exists only for the duration of that run’s Python call stack (load → run → persist results).
+`run_fdd_loop` calls **`load_rules_from_dir(rules_path)` every run**, then filters by equipment types from TTL, then **`RuleRunner(rules=rules)`**. There is **no** long-lived compiled rule object on disk-editing YAML affects the **next** scheduled run (or the next manual `POST /run-fdd`). The **DataFrame** exists only for the duration of that run’s Python call stack (load → run → persist results).
 
 ---
 

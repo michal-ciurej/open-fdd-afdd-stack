@@ -21,8 +21,8 @@ inputs:
     brick: Outside_Air_Damper_Command
 
 params:
-  oat_rat_delta: 0.0      # °C — fault when OAT exceeds RAT (any positive delta)
-  damper_open_min: 0.15   # fraction — damper above 15% treated as economy active
+  oat_rat_delta: 0.0      # °C - fault when OAT exceeds RAT (any positive delta)
+  damper_open_min: 0.15   # fraction - damper above 15% treated as economy active
   rolling_window: 12      # ~1 h at 5-min sampling (debounce, matches 1-h trigger period)
 
 expression: |

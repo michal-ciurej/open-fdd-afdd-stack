@@ -234,7 +234,7 @@ export function BuildingQueriesCard() {
                     <TableRow key={i}>
                       {sparqlColumns.map((key) => (
                         <TableCell key={key} className="font-mono text-xs">
-                          {row[key] ?? "—"}
+                          {row[key] ?? "-"}
                         </TableCell>
                       ))}
                     </TableRow>

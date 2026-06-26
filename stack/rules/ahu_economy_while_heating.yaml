@@ -3,7 +3,7 @@
 # CO2 condition from legacy rule is optional; core fault is economy+heating overlap.
 # Trigger period 30 min → rolling_window: 6 at 5-min sampling.
 name: ahu_economy_while_heating
-description: Economy damper open while heating valve is active — simultaneous heating and cooling
+description: Economy damper open while heating valve is active - simultaneous heating and cooling
 type: expression
 flag: ahu_economy_while_heating_flag
 category: general
@@ -20,8 +20,8 @@ inputs:
     brick: Supply_Air_Temperature_Sensor
 
 params:
-  econ_damper_open_threshold: 0.5   # fraction — damper above 50% indicates economy cycle active
-  heat_valve_open_threshold: 0.1    # fraction — heating valve above 10% indicates heating active
+  econ_damper_open_threshold: 0.5   # fraction - damper above 50% indicates economy cycle active
+  heat_valve_open_threshold: 0.1    # fraction - heating valve above 10% indicates heating active
   rolling_window: 6                 # ~30 min at 5-min sampling (matches legacy trigger period)
 
 expression: |

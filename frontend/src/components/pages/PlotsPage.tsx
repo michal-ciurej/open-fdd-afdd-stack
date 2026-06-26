@@ -327,7 +327,7 @@ export function PlotsPage() {
     return m;
   }, [points]);
 
-  /** Equipment with at least one point attached — nothing to plot otherwise. */
+  /** Equipment with at least one point attached - nothing to plot otherwise. */
   const equipmentOptions = useMemo(() => {
     return equipment
       .filter((eq) => (pointsByEquipmentId.get(eq.id)?.length ?? 0) > 0)

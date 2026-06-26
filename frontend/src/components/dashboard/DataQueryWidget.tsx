@@ -343,7 +343,7 @@ export function DataQueryWidget({ siteId, equipmentId }: DataQueryWidgetProps) {
           <div>
             <h2 className="text-sm font-semibold tracking-tight">Data Query</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Pick equipment, points, and a window — then load.
+              Pick equipment, points, and a window - then load.
             </p>
           </div>
 

@@ -18,7 +18,7 @@ inputs:
     brick: Boiler_Status
 
 params:
-  entering_hwt_max: 53.0   # °C — above this, condensing boilers cannot condense flue gases
+  entering_hwt_max: 53.0   # °C - above this, condensing boilers cannot condense flue gases
   rolling_window: 24        # 24 consecutive 5-min samples = 2 h (matches trigger period)
 
 expression: |

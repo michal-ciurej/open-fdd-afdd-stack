@@ -1,12 +1,12 @@
-"""Bulk download API — timeseries and faults.
+"""Bulk download API - timeseries and faults.
 
 Defaults are tuned for Excel/Sheets users (e.g. mechanical engineers): timestamp
 column on the left, one column per point in wide format, UTF-8 BOM and ISO
-timestamps so files open cleanly—like a BAS trend export, not a raw DB dump.
+timestamps so files open cleanly-like a BAS trend export, not a raw DB dump.
 
 Use cases:
 1. Excel/Sheets: GET /download/csv (wide default), GET /download/faults (format=csv).
-2. MSI/Cx: REST export — poll /download/faults or /download/csv (JSON for faults).
+2. MSI/Cx: REST export - poll /download/faults or /download/csv (JSON for faults).
 """
 
 from datetime import date

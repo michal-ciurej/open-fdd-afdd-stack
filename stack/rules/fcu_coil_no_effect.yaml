@@ -20,7 +20,7 @@ inputs:
     brick: Supply_Fan_Command
 
 params:
-  min_delta_t: 1.5          # °F — minimum air-side lift expected when valve is open
+  min_delta_t: 1.5          # °F - minimum air-side lift expected when valve is open
   vlv_open: 0.25
   rolling_window: 6
 

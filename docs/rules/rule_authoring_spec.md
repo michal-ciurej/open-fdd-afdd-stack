@@ -11,7 +11,7 @@ stack. It is written so that an external author (contractor or LLM) who has neve
 the codebase can produce a rule YAML that loads, runs, and is accepted without rework.
 
 A submission is **accepted** when it satisfies every item in the
-[Acceptance checklist](#13-acceptance-checklist). Read the whole document first — the
+[Acceptance checklist](#13-acceptance-checklist). Read the whole document first - the
 [worked example](#11-worked-example-annotated) shows every requirement in one file.
 
 - [1. What a rule is](#1-what-a-rule-is)
@@ -48,11 +48,11 @@ executable part is a constrained pandas/NumPy **expression string** (§7).
 
 ## 2. How a rule runs (mental model)
 
-Understand this before writing — it explains why several requirements exist.
+Understand this before writing - it explains why several requirements exist.
 
 1. The FDD loop runs on a schedule. For each piece of **equipment**, it builds a pandas
    **DataFrame**: one row per timestamp, one column per mapped point. Sampling is
-   normally **15-minute** intervals (assume this when sizing windows — see §8).
+   normally **15-minute** intervals (assume this when sizing windows - see §8).
 2. Rules whose `equipment_type` does **not** match the equipment are skipped (§6.2).
 3. For a matching rule, each declared input (a Brick class) is resolved to a DataFrame
    column via the **Brick TTL** (§6.3). Inputs become named variables in the expression.
@@ -61,13 +61,13 @@ Understand this before writing — it explains why several requirements exist.
 5. If `params.rolling_window > 1`, the mask is gated: the flag is `1` only after **N
    consecutive** True samples (debounce). Otherwise any True sample flags.
 6. The result is written as the flag column named by `flag`. The flag is also the
-   **`fault_id`** — the stable key in the `fault_definitions` and `fault_results` tables
+   **`fault_id`** - the stable key in the `fault_definitions` and `fault_results` tables
    that drives the UI, Grafana, and the Compliance page.
 7. `name`, `description`, `severity`, `category`, and `equipment_type` are synced into
    `fault_definitions` and are what operators read in the product.
 
 **Graceful degradation:** in production (`skip_missing_columns=True`) a rule whose inputs
-are not present on a given equipment is **silently skipped** with a log warning — it does
+are not present on a given equipment is **silently skipped** with a log warning - it does
 not error, but it also does not fire. Do not assume a rule ran just because it loaded.
 When `OFDD_FDD_STRICT_RULES=true`, missing/non-numeric inputs **raise** instead (use this
 in test). Design rules so that absent optional context never produces false faults.
@@ -100,7 +100,7 @@ Top-level keys. Order them as listed below for consistency with existing rules.
 |-----|----------|------|---------|
 | `name` | **Yes** | string | Rule id; matches file stem. |
 | `description` | **Yes** | string | One-line operator-facing summary. See §9. |
-| `type` | **Yes** | enum | One of `expression`, `bounds`, `flatline`, `hunting`, `oa_fraction`, `erv_efficiency`. Defaults to `expression` if omitted — **set it explicitly**. |
+| `type` | **Yes** | enum | One of `expression`, `bounds`, `flatline`, `hunting`, `oa_fraction`, `erv_efficiency`. Defaults to `expression` if omitted - **set it explicitly**. |
 | `flag` | **Yes** | string | Flag/`fault_id` column name. Ends `_flag`. |
 | `equipment_type` | **Yes** | list[string] | Brick equipment classes the rule applies to. See §6.2. |
 | `category` | No | string | `general` (default), `compliance`, or `smoke_test`. `compliance` routes the fault to the Compliance dashboard. |
@@ -179,7 +179,7 @@ equipment to its time-series column at runtime. This keeps rules portable across
 > not, the rule is skipped for that equipment (§2). When in doubt about whether a Brick
 > class exists for the data, **ask** rather than invent one.
 
-### 6.2 `equipment_type` — the equipment vocabulary
+### 6.2 `equipment_type` - the equipment vocabulary
 
 `equipment_type` is a list. A rule runs on an equipment only when the equipment's Brick
 class matches one of the listed classes (after alias normalization). Use the **canonical
@@ -194,7 +194,7 @@ Brick 1.4 long-form** class names:
 
 **Electrical:** `Building_Electrical_Meter`, `Electrical_Energy_Usage_Sensor`
 
-**Fallback:** `Equipment` (untyped — avoid in new rules)
+**Fallback:** `Equipment` (untyped - avoid in new rules)
 
 Accepted **aliases** (case-insensitive; resolved automatically, but prefer the canonical
 form): `FCU` → `Fan_Coil_Unit`, `AHU` → `Air_Handling_Unit`,
@@ -205,7 +205,7 @@ space/dash variants (`"Cooling Tower"`, `brick:Cooling-Tower`).
 > some older cookbook examples but are **not** in this vocabulary; a rule scoped to them
 > only fires if a site literally tagged equipment with that exact string. New rules must
 > use a class from the list above. If you need a class that isn't listed, flag it in
-> handoff — it is a data-model change, not a rule change.
+> handoff - it is a data-model change, not a rule change.
 
 ### 6.3 Declaring inputs
 
@@ -224,11 +224,11 @@ Input spec keys:
 |-----|------|---------|
 | `brick` | **Always** | Brick 1.4 class to resolve. The stack resolves **only** the `brick` field. |
 | `bounds` | `bounds` type only | `[low, high]` or `{imperial: [...], metric: [...]}`. |
-| `column` | Never (stack) | Direct column override. Forbidden in stack rules — breaks portability. |
+| `column` | Never (stack) | Direct column override. Forbidden in stack rules - breaks portability. |
 
 **Disambiguation:** if an equipment has two points of the same Brick class (e.g. two
 `Valve_Command`), the data model distinguishes them with `ofdd:mapsToRuleInput`. To target
-a specific one, set the logical name to that rule-input token. This is rare — most rules
+a specific one, set the logical name to that rule-input token. This is rare - most rules
 have one point per class. Prefer distinct Brick classes (`Heating_Valve_Command` vs
 `Cooling_Valve_Command`) over disambiguation where the ontology allows it.
 
@@ -239,7 +239,7 @@ have one point per class. Prefer distinct Brick classes (`Heating_Valve_Command`
 
 - Sensors end in `_Sensor` (`Supply_Air_Temperature_Sensor`).
 - Setpoints end in `_Setpoint` (`Hot_Water_Supply_Temperature_Setpoint`).
-- Commands end in `_Command` (BMS output, often 0–100 or 0–1 — see §7.3).
+- Commands end in `_Command` (BMS output, often 0–100 or 0–1 - see §7.3).
 - Status/feedback ends in `_Status` (proven on/off).
 - Match the existing rules' vocabulary. If two rules read the same physical signal, they
   must use the **same** Brick class. Inconsistent class names fragment the column map.
@@ -254,12 +254,12 @@ Series** where **`True` means fault**.
 ### 7.1 Available names (the whole namespace)
 The expression is evaluated in a **locked-down** namespace. Only these exist:
 
-- **Your inputs** — each logical input name is a `pandas.Series` aligned to the DataFrame.
-- **Your params** — each scalar in `params` is available by name (e.g. `hws_err`).
-- **`np`** — NumPy, for vectorized math: `np.abs`, `np.maximum`, `np.minimum`,
+- **Your inputs** - each logical input name is a `pandas.Series` aligned to the DataFrame.
+- **Your params** - each scalar in `params` is available by name (e.g. `hws_err`).
+- **`np`** - NumPy, for vectorized math: `np.abs`, `np.maximum`, `np.minimum`,
   `np.where`, `np.sqrt`, `np.clip`.
-- **`normalize_cmd(series)`** — percent→fraction helper (§7.3).
-- **`schedule_occupied`** / **`weather_allows_fdd`** — boolean Series gates, all-`True`
+- **`normalize_cmd(series)`** - percent→fraction helper (§7.3).
+- **`schedule_occupied`** / **`weather_allows_fdd`** - boolean Series gates, all-`True`
   unless enabled via `params` (§7.4).
 
 There are **no Python builtins** (`abs`, `len`, `min`, `max`, `sum`, `print`, imports,
@@ -273,7 +273,7 @@ comprehensions all fail). Use `np.*` and pandas Series methods instead.
   `.diff()`, `.abs()`, `.notna()`, `.fillna(...)`.
 - Window sizes inside `.rolling(...)` are in **samples** (see §8).
 
-### 7.3 Signal scaling — read this (most common bug)
+### 7.3 Signal scaling - read this (most common bug)
 `_Command` / `_Speed_Command` signals may arrive as **0–1** (fraction) or **0–100**
 (percent) depending on the site. A threshold like `> 0.05` silently never (or always)
 fires on the wrong scale.
@@ -286,7 +286,7 @@ threshold as a **fraction (0–1)**:
 ```
 `normalize_cmd` divides by 100 if any finite sample exceeds 1, else leaves it as-is, and
 coerces non-numeric values to NaN. Temperatures, pressures, flows, and setpoints are
-physical units — do **not** normalize those.
+physical units - do **not** normalize those.
 
 ### 7.4 Schedule & weather gating (optional, recommended for energy rules)
 To suppress faults outside occupancy or outside a sensible weather band, enable gates in
@@ -317,14 +317,14 @@ errors. When the gate params are absent, both Series are all-`True` (no gating).
 - Guard divisions: when computing a ratio (e.g. OA fraction), ensure the denominator can't
   be ~0, or use `np.where(denom != 0, num/denom, 0)`.
 - Use rolling aggregates (or `params.rolling_window`, §8) to avoid flagging on a single
-  transient sample — equipment has thermal and control lag.
+  transient sample - equipment has thermal and control lag.
 
 ---
 
 ## 8. `params` conventions
 
 `params` holds every tunable number. Hard-coded magic numbers in the expression are an
-auto-reject (§10) — name them in `params`.
+auto-reject (§10) - name them in `params`.
 
 | Param | Meaning |
 |-------|---------|
@@ -336,7 +336,7 @@ auto-reject (§10) — name them in `params`.
 **Sampling assumption:** size all sample counts for **5-minute data** (12 samples/hour;
 288/day). State the conversion in a comment: `rolling_window: 18  # ~1.5 h at 5-min`.
 
-**Units:** thresholds are **imperial** by default — temperatures in **°F**, pressure in
+**Units:** thresholds are **imperial** by default - temperatures in **°F**, pressure in
 **inH₂O**, flow in **cfm**. State the unit in a comment on every physical threshold.
 
 **`rolling_window` double-use caveat:** the same `params.rolling_window` value is (a) the
@@ -349,9 +349,9 @@ separate, clearly named param for an in-expression window if the two purposes di
 ## 9. Description & comment style guide (tone)
 
 The voice is **terse, mechanical, operator-facing**. State what is observed and what it
-implies — no marketing, no hedging, no first person. Match the existing rules exactly.
+implies - no marketing, no hedging, no first person. Match the existing rules exactly.
 
-### 9.1 Header comment block (above `name:`) — required
+### 9.1 Header comment block (above `name:`) - required
 1–3 short lines, in this order:
 1. **Mechanism + symptom** in one plain sentence: what the equipment is doing and what's
    wrong with it.
@@ -363,7 +363,7 @@ implies — no marketing, no hedging, no first person. Match the existing rules 
 # Catches failed starters, local/remote switch in wrong position, broken DO or DI, comms issue.
 ```
 
-### 9.2 `description:` one-liner — required
+### 9.2 `description:` one-liner - required
 Operator-facing summary stored in the product. Present tense, **no trailing period**,
 symptom-first, with the gating condition after `while`/`vs`:
 
@@ -374,18 +374,18 @@ symptom-first, with the gating condition after `while`/`vs`:
 Pattern: **`<observable symptom> while <gating condition>`** or
 **`<state A> vs <state B> disagree`**. Keep under ~80 characters.
 
-### 9.3 Inline `params` comments — required on physical thresholds
+### 9.3 Inline `params` comments - required on physical thresholds
 Every threshold carries a `#` comment with **units** and a **one-clause rationale**:
 
 ```yaml
 params:
-  hws_err: 5.0          # °F tolerance — boilers respond slowly
+  hws_err: 5.0          # °F tolerance - boilers respond slowly
   rolling_window: 18    # ~1.5 h at 5-min sampling
   vlv_open: 0.05        # treat anything above 5% as "open"
 ```
 
 ### 9.4 `severity` / `category` guidance
-- `severity`: `info` (diagnostic/no action), `warning` (default — investigate),
+- `severity`: `info` (diagnostic/no action), `warning` (default - investigate),
   `critical` (immediate risk to comfort/equipment).
 - `category`: `general` (default); `compliance` if the fault is a contractual/standards
   KPI surfaced on the Compliance page; `smoke_test` for pipeline-verification rules only.
@@ -405,7 +405,7 @@ A submission is rejected if it does any of these:
 - Has physical-threshold params with no unit comment.
 - Uses Python builtins (`abs`, `min`, `max`, `len`, `and`, `or`, list comprehensions) in
   the expression.
-- Produces a non-boolean expression, or one whose `True` means "healthy" (invert it —
+- Produces a non-boolean expression, or one whose `True` means "healthy" (invert it -
   `True` must mean **fault**).
 - Reuses an existing `flag`, or packs multiple fault concepts into one file.
 - Flags on a single transient sample where lag clearly warrants a rolling window.
@@ -437,7 +437,7 @@ inputs:
     brick: Boiler_Status
 
 params:
-  hws_err: 5.0          # °F tolerance — boilers respond slowly
+  hws_err: 5.0          # °F tolerance - boilers respond slowly
   rolling_window: 18    # ~1.5 h at 5-min sampling (debounce)
 
 expression: |
@@ -456,7 +456,7 @@ threshold named with a unit comment; rolling-window debounce; boolean expression
 - Provide, per rule: the YAML, a one-paragraph **rationale** (what data proves the fault),
   and the **physical signals** assumed (with Brick classes and expected units/scale).
 - If a needed Brick class or equipment type is **not** in this spec, do **not** invent it
-  — list it as an open question in the handoff. It may require a data-model change.
+  - list it as an open question in the handoff. It may require a data-model change.
 - Validate before submitting (see checklist). The reviewer will load the rule with
   `OFDD_FDD_STRICT_RULES=true` against sample data; rules that error or never resolve are
   returned.

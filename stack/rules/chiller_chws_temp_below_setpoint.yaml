@@ -19,7 +19,7 @@ inputs:
     brick: Chiller_Status
 
 params:
-  chws_below_delta: 0.5   # °C — flag when leaving CHW temp is more than this below setpoint
+  chws_below_delta: 0.5   # °C - flag when leaving CHW temp is more than this below setpoint
   rolling_window: 6       # 30 min at 5-min sampling (debounce)
 
 expression: |

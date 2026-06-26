@@ -1,4 +1,4 @@
-"""Timeseries API — latest value per point for dashboards (HA, Grafana-style)."""
+"""Timeseries API - latest value per point for dashboards (HA, Grafana-style)."""
 
 from datetime import timezone
 from typing import Optional

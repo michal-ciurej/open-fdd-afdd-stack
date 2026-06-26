@@ -51,7 +51,7 @@ function GatewaySelect({
           <option key={g.id} value={g.id} title={g.url}>
             {g.id === "default"
               ? "Default"
-              : `${g.id} — ${g.description ?? g.url}`}
+              : `${g.id} - ${g.description ?? g.url}`}
           </option>
         ))}
       </select>
@@ -93,7 +93,7 @@ export function BacnetToolsPage() {
   const [paObj, setPaObj] = useState("analog-output,1");
   const [paRes, setPaRes] = useState<BacnetProxyResult | null>(null);
 
-  /** Gateway id that produced each result — hide stale panes when the select changes (no setState-in-effect). */
+  /** Gateway id that produced each result - hide stale panes when the select changes (no setState-in-effect). */
   const [readResGateway, setReadResGateway] = useState<string | null>(null);
   const [rmResGateway, setRmResGateway] = useState<string | null>(null);
   const [wResGateway, setWResGateway] = useState<string | null>(null);
@@ -399,7 +399,7 @@ export function BacnetToolsPage() {
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">Read multiple (RPM)</CardTitle>
           <p className="text-sm font-normal text-muted-foreground">
-            One device, many reads — same pattern as discovery above. Results appear below after <strong>Run</strong>.
+            One device, many reads - same pattern as discovery above. Results appear below after <strong>Run</strong>.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -576,7 +576,7 @@ export function BacnetToolsPage() {
               className="mt-0.5 h-4 w-4 rounded border-border"
             />
             <label htmlFor="bacnet-write-release-null" className="cursor-pointer leading-snug">
-              Release (null) at this priority — relinquishes the override at the slot above
+              Release (null) at this priority - relinquishes the override at the slot above
             </label>
           </div>
           <div>
@@ -589,7 +589,7 @@ export function BacnetToolsPage() {
               value={wVal}
               onChange={(e) => setWVal(e.target.value)}
               disabled={wReleaseNull}
-              placeholder={wReleaseNull ? "— (release)" : "e.g. 72.5"}
+              placeholder={wReleaseNull ? "- (release)" : "e.g. 72.5"}
             />
           </div>
           <button

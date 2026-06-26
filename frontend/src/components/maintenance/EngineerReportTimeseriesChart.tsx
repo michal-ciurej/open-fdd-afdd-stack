@@ -71,7 +71,7 @@ async function fetchPointSeries(
       end_date: endDate.slice(0, 10),
       format: "long",
     });
-    // Single point per request, so every row belongs to this point — read the
+    // Single point per request, so every row belongs to this point - read the
     // value column directly and ignore the (UUID-keyed) point_key column.
     const samples = parseLongCsv(csv)
       .map((r) => ({ timestamp: r.timestamp, value: r.value }))
@@ -93,7 +93,7 @@ async function fetchPointSeries(
 }
 
 interface EngineerReportTimeseriesChartProps {
-  /** Site the equipment belongs to — scopes points & history queries. */
+  /** Site the equipment belongs to - scopes points & history queries. */
   siteId: string;
   equipmentId: string;
   /** Look-back window in days (matches the report time toggle). */
@@ -144,7 +144,7 @@ export function EngineerReportTimeseriesChart({
     return { start: s.toISOString(), end: e.toISOString() };
   }, [windowDays]);
 
-  // One query per point — failures are isolated to that series.
+  // One query per point - failures are isolated to that series.
   const results = useQueries({
     queries: equipmentPoints.map((p) => ({
       queryKey: [

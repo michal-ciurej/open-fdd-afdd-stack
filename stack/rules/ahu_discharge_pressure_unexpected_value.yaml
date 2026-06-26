@@ -18,9 +18,9 @@ inputs:
     brick: Supply_Air_Static_Pressure_Setpoint
 
 params:
-  abs_low:  -25.0       # Pa — absolute lower bound; readings below this are always invalid
-  abs_high: 700.0       # Pa — absolute upper bound; readings above this are always invalid
-  sp_dev_frac: 0.25     # fraction — flag when sensor deviates >25% from setpoint
+  abs_low:  -25.0       # Pa - absolute lower bound; readings below this are always invalid
+  abs_high: 700.0       # Pa - absolute upper bound; readings above this are always invalid
+  sp_dev_frac: 0.25     # fraction - flag when sensor deviates >25% from setpoint
   rolling_window: 24    # 24 consecutive samples = ~2 h at 5-min data (matches trigger period)
 
 expression: |

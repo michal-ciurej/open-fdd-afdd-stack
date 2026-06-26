@@ -41,9 +41,9 @@ Binding diy-bacnet HTTP to **127.0.0.1 only** on the host is awkward with Docker
 
 All BACnet configuration for the **default stack** is done via the **data model** and the **React frontend** (or the API). The bundled scraper does not use a BACnet CSV file.
 
-1. **Run Who-Is and point discovery** — Use the React frontend (Config or Data model → BACnet panel) or the API. From the BACnet panel you can run **Test connection**, **Who-Is range**, and **Point discovery** (these proxy to diy-bacnet-server). diy-bacnet-server must be running (e.g. `./scripts/bootstrap.sh` starts it).
-2. **Graph and data model** — Use **POST /bacnet/point_discovery_to_graph** (device instance) to put BACnet devices and points into the **in-memory** BACnet graph. Whether the **file** `config/data_model.ttl` updates immediately depends on the **write_file** flag on that request; Brick **`ref:`** external references are still rebuilt from **Postgres** on full serialize. After discovery, ensure points exist in the DB (CRUD or import) and run a serialize path if you need `ref:` on disk right away—see [External representations → When ref triples appear in the TTL](../modeling/external_representations#when-ref-appears-in-the-ttl). Create points in the DB via the frontend or CRUD (set `bacnet_device_id`, `object_identifier`, `object_name`), or use **GET /data-model/export** → LLM/human tagging → **PUT /data-model/import**.
-3. **Run the scraper** — The BACnet scraper loads points that have `bacnet_device_id` and `object_identifier` from the database and polls only those via diy-bacnet-server.
+1. **Run Who-Is and point discovery** - Use the React frontend (Config or Data model → BACnet panel) or the API. From the BACnet panel you can run **Test connection**, **Who-Is range**, and **Point discovery** (these proxy to diy-bacnet-server). diy-bacnet-server must be running (e.g. `./scripts/bootstrap.sh` starts it).
+2. **Graph and data model** - Use **POST /bacnet/point_discovery_to_graph** (device instance) to put BACnet devices and points into the **in-memory** BACnet graph. Whether the **file** `config/data_model.ttl` updates immediately depends on the **write_file** flag on that request; Brick **`ref:`** external references are still rebuilt from **Postgres** on full serialize. After discovery, ensure points exist in the DB (CRUD or import) and run a serialize path if you need `ref:` on disk right away-see [External representations → When ref triples appear in the TTL](../modeling/external_representations#when-ref-appears-in-the-ttl). Create points in the DB via the frontend or CRUD (set `bacnet_device_id`, `object_identifier`, `object_name`), or use **GET /data-model/export** → LLM/human tagging → **PUT /data-model/import**.
+3. **Run the scraper** - The BACnet scraper loads points that have `bacnet_device_id` and `object_identifier` from the database and polls only those via diy-bacnet-server.
 
 See [Points](../modeling/points#bacnet-addressing) for the BACnet fields and [Appendix: API Reference](../appendix/api_reference) for endpoints. **Port:** Only one process can use port 47808 (BACnet/IP). For API/UI discovery, diy-bacnet-server is already running.
 
@@ -59,6 +59,6 @@ The BACnet scraper loads points from the DB where `bacnet_device_id` and `object
 
 Scraper config comes from **environment** and, when the API uses Bearer auth, from **GET /config** (the React Config page controls the interval).
 
-- **`OFDD_BACNET_SERVER_URL`** — diy-bacnet-server base URL (e.g. http://localhost:8080). Required for RPC.
-- **Scrape interval** — When **`OFDD_API_KEY`** is set (e.g. in `stack/.env`), the scraper calls GET /config and uses **`bacnet_scrape_interval_min`** from the data model (Config page). Otherwise it uses **`OFDD_BACNET_SCRAPE_INTERVAL_MIN`** env (default: 5). See [Configuration → Services that read config from the API](../configuration#services-that-read-config-from-the-api-bacnet-scraper).
-- **`OFDD_DB_*`** — TimescaleDB connection
+- **`OFDD_BACNET_SERVER_URL`** - diy-bacnet-server base URL (e.g. http://localhost:8080). Required for RPC.
+- **Scrape interval** - When **`OFDD_API_KEY`** is set (e.g. in `stack/.env`), the scraper calls GET /config and uses **`bacnet_scrape_interval_min`** from the data model (Config page). Otherwise it uses **`OFDD_BACNET_SCRAPE_INTERVAL_MIN`** env (default: 5). See [Configuration → Services that read config from the API](../configuration#services-that-read-config-from-the-api-bacnet-scraper).
+- **`OFDD_DB_*`** - TimescaleDB connection

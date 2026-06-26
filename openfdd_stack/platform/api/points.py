@@ -1,4 +1,4 @@
-"""Points CRUD API — data model for timeseries references."""
+"""Points CRUD API - data model for timeseries references."""
 
 from uuid import UUID
 

@@ -7,7 +7,7 @@ nav_order: 14
 
 First off, thanks for taking the time to contribute!
 
-Open-FDD is in **Alpha**. The most valuable contributions right now are **bug reports** and **FDD rules**—especially from mechanical engineers and building professionals who can add and refine fault-detection rules using the [Expression Rule Cookbook](expression_rule_cookbook). All types of contributions are encouraged.
+Open-FDD is in **Alpha**. The most valuable contributions right now are **bug reports** and **FDD rules**-especially from mechanical engineers and building professionals who can add and refine fault-detection rules using the [Expression Rule Cookbook](expression_rule_cookbook). All types of contributions are encouraged.
 
 **Phase focus:** Alpha emphasizes platform stability, driver implementation beyond BACnet, and API changes for specific integration needs. Beta (planned) will focus more on Brick data modeling (e.g. ASHRAE 223P), mechanical engineering and consulting input into the expression rule cookbook, and better default Grafana dashboards for HVAC analytics. See the [Table of Contents](#table-of-contents) for different ways to help and how this project handles them. Please read the relevant section before contributing; it helps maintainers and keeps things smooth for everyone.
 
@@ -82,7 +82,7 @@ When contributing, you agree that you have authored 100% of the content, have th
 ### How to submit a good bug report
 
 - **Security issues:** Do **not** report security vulnerabilities in public issues. Email the repository owner or open a private security advisory on GitHub.
-- Open a new [issue](https://github.com/bbartling/open-fdd/issues/new). Don't assume it's a bug yet—avoid using the word "bug" in the title until it's confirmed.
+- Open a new [issue](https://github.com/bbartling/open-fdd/issues/new). Don't assume it's a bug yet-avoid using the word "bug" in the title until it's confirmed.
 - Describe **expected behavior** vs **actual behavior**.
 - Provide **reproduction steps** so someone else can recreate the issue. Isolate the problem when possible (e.g. minimal rule YAML, minimal config).
 - Paste the information you collected above.
@@ -116,8 +116,8 @@ Enhancements are tracked as [GitHub issues](https://github.com/bbartling/open-fd
 
 **We especially welcome contributions from mechanical engineers and building professionals** who can add or improve FDD rules.
 
-- **Where rules live:** [Fault rules overview](rules/overview) — put project rules in **`stack/rules/`** (YAML). The FDD loop reloads them every run; no restart needed.
-- **How to write rules:** [Expression Rule Cookbook](expression_rule_cookbook) — expression-type rules use YAML with BRICK-style inputs, params, and pandas/NumPy expressions. The cookbook includes AHU-style rules (e.g. GL36-inspired) and patterns you can adapt.
+- **Where rules live:** [Fault rules overview](rules/overview) - put project rules in **`stack/rules/`** (YAML). The FDD loop reloads them every run; no restart needed.
+- **How to write rules:** [Expression Rule Cookbook](expression_rule_cookbook) - expression-type rules use YAML with BRICK-style inputs, params, and pandas/NumPy expressions. The cookbook includes AHU-style rules (e.g. GL36-inspired) and patterns you can adapt.
 - **What to contribute:**
   - **New rule YAMLs** for common faults (AHU, VAV, plant, sensors) that others can reuse.
   - **Improvements to existing cookbook rules** (thresholds, logic, descriptions).
@@ -156,7 +156,7 @@ Open a PR with your changes; for large edits, an issue first can help align with
 ```bash
 BASE=https://bbartling.github.io/open-fdd
 curl -sS -o /dev/null -w "%{http_code}" "$BASE/modeling/llm_workflow"    # expect 200
-curl -sS -o /dev/null -w "%{http_code}" "$BASE/modeling/llm_workflow/"   # often 404 — avoid trailing slash in external links
+curl -sS -o /dev/null -w "%{http_code}" "$BASE/modeling/llm_workflow/"   # often 404 - avoid trailing slash in external links
 curl -sS -o /dev/null -w "%{http_code}" "https://github.com/bbartling/open-fdd/blob/master/pdf/open-fdd-docs.pdf"  # expect 302 or 200
 ```
 
@@ -188,7 +188,7 @@ Create the branch **before** committing so that after the PR is merged, `git pul
 
 3. **Open a PR manually on GitHub** from `feature/short-name` into `main` (or `master`). Create the PR in the GitHub UI; we do not use a CLI for this step.
 
-4. **After the PR is merged** — fetch prune, switch to default branch, and pull to sync:
+4. **After the PR is merged** - fetch prune, switch to default branch, and pull to sync:
    ```bash
    git fetch --prune
    git checkout main
@@ -213,4 +213,4 @@ If you're interested in ongoing maintenance or a larger role, say so in an issue
 
 ## Attribution
 
-This contributing guide was inspired by the [contributing.md](https://contributing.md/) project. You don't need to pay to create or use a CONTRIBUTING file—it's just a markdown file in your repo that helps contributors and maintainers.
+This contributing guide was inspired by the [contributing.md](https://contributing.md/) project. You don't need to pay to create or use a CONTRIBUTING file-it's just a markdown file in your repo that helps contributors and maintainers.

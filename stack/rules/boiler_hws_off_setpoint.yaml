@@ -14,7 +14,7 @@ inputs:
     brick: Boiler_Status
 
 params:
-  hws_err: 5.0              # °F tolerance — boilers respond slowly
+  hws_err: 5.0              # °F tolerance - boilers respond slowly
   rolling_window: 18        # ~1.5 h at 5-min sampling
 
 expression: |

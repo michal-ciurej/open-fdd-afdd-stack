@@ -323,7 +323,7 @@ def seed_default_penalty_catalog(
     Insert 18 disabled EnergyCalculation rows (``penalty_default_01`` … ``penalty_default_18``)
     with default parameters and engineering narratives. Enable and bind points in the UI or via import.
 
-    Open-Meteo and utility £/kWh / $/therm remain on platform / site config — single source for weather and rates.
+    Open-Meteo and utility £/kWh / $/therm remain on platform / site config - single source for weather and rates.
     """
     rows = catalog_rows_for_seed()
     now = datetime.now(timezone.utc)

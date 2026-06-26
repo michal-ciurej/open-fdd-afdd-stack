@@ -1,4 +1,4 @@
-"""AI-assisted Brick tagging — the whole flow lives in one module, so these
+"""AI-assisted Brick tagging - the whole flow lives in one module, so these
 tests pin its behavior without touching Anthropic, the network, the database,
 or auth. A fake Messages client stands in for the SDK.
 
@@ -174,7 +174,7 @@ def test_usage_accumulates_across_attempts(with_key):
 
 
 def test_truncated_output_fails_fast_with_actionable_message(with_key):
-    # stop_reason=max_tokens means the tool call was cut off — fail immediately
+    # stop_reason=max_tokens means the tool call was cut off - fail immediately
     # with guidance, do NOT burn retries or report a misleading "missing points".
     truncated = _Resp(
         [_Blk(type="tool_use", name=t.TAGGING_TOOL["name"], id="tu", input={})],
@@ -258,7 +258,7 @@ def test_niagara_equipment_parsing():
 def test_path_grouping_is_deterministic_and_overrides_model(with_key):
     # Two FCUs nested under ONE controller's `points` container, plus a point that
     # sits directly in `points`. Equipment is the parent folder (FCU), not the
-    # controller — except the bare point, whose equipment IS the controller. The
+    # controller - except the bare point, whose equipment IS the controller. The
     # model tries to regroup everything under "AHU-1"; path grouping must win.
     CTRL = "local:|station:|slot:/Drivers/NiagaraNetwork/Floor28/FS_28_BMS_CP003_2128/points/"
     export = {
@@ -370,7 +370,7 @@ def test_system_prompt_and_tool_are_stable_contract():
     for k in ("confidence", "rationale"):
         assert k in t._POINT_PROPERTIES and k in t._EQUIPMENT_PROPERTIES
     # Stage 1 is structure-only: the model is never asked for polling, rule_input,
-    # or feeds/fed_by — keeping those out of the schema is the contract.
+    # or feeds/fed_by - keeping those out of the schema is the contract.
     assert "polling" not in t._POINT_PROPERTIES
     assert "rule_input" not in t._POINT_PROPERTIES
     assert "feeds" not in t._EQUIPMENT_PROPERTIES

@@ -79,7 +79,7 @@ _NIAGARA_TS_FORMATS: tuple[str, ...] = (
 _NIAGARA_VAL_RE = re.compile(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?")
 
 # Boolean histories (Niagara BooleanPoint) render their value as status text
-# rather than a number — the configured trueText/falseText, e.g. "true"/"false",
+# rather than a number - the configured trueText/falseText, e.g. "true"/"false",
 # "On"/"Off", "Active"/"Inactive", "Occupied"/"Unoccupied". The timeseries value
 # column is double precision, so we map these to 1.0/0.0 (mirroring the BACnet
 # driver's _pv_to_float) instead of dropping the row. Matched case-insensitively
@@ -366,9 +366,9 @@ def _parse_niagara_value(raw: str) -> Optional[float]:
 
     Handles three shapes the station may emit:
       1. Numeric with an optional trailing display unit ("16.5 °C", "0.0 %",
-         "1.23e-2 kW") — the first numeric literal is taken, the rest discarded.
+         "1.23e-2 kW") - the first numeric literal is taken, the rest discarded.
       2. Boolean status text from BooleanPoint histories ("true"/"false",
-         "On"/"Off", "Active"/"Inactive", ...) — mapped to 1.0/0.0 so binary
+         "On"/"Off", "Active"/"Inactive", ...) - mapped to 1.0/0.0 so binary
          histories land in the numeric value column instead of being dropped.
       3. Empty / unknown / non-numeric ("null", "{null}", multi-state enums) → None.
     """
@@ -652,7 +652,7 @@ def _upsert_equipment(cur, site_id: str, name: str) -> str:
     New rows get ``equipment_type='Equipment'`` (Brick 1.4 generic) instead of
     NULL. This keeps the TTL writer's ``a brick:{etype}`` valid out of the box,
     and lets the AI-assisted tagging workflow refine the class later. We do
-    NOT overwrite an existing equipment_type — operators (or the LLM) may have
+    NOT overwrite an existing equipment_type - operators (or the LLM) may have
     already classified the row, and station scans should be idempotent.
     """
     cur.execute(
@@ -884,7 +884,7 @@ def scan_niagara_station(endpoint_id: str) -> dict:
                 history_path = history_tag if isinstance(history_tag, str) else None
 
                 # A point's external_id needs to be stable. Use the full nav ORD
-                # — the most specific identifier the scan gives us, which
+                # - the most specific identifier the scan gives us, which
                 # survives renaming of the displayName. Uniqueness across
                 # controllers on one site is handled by endpoint_key, so the
                 # nav ORD does not need to be globally unique on its own.
@@ -940,7 +940,7 @@ def run_niagara_sync(
     Sync historical data from one Niagara endpoint for every point it
     discovered that carries a niagara_history_path.
 
-    Uses a Niagara bqltime window (default 'lastweek') as the BQL range —
+    Uses a Niagara bqltime window (default 'lastweek') as the BQL range -
     daily runs over `lastweek` overlap intentionally; inserts are idempotent.
     """
     endpoint = _get_endpoint(endpoint_id)

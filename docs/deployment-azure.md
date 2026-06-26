@@ -1,4 +1,4 @@
-# Azure deployment — predmain (open-fdd) on ACA + SWA + Postgres Flex Server
+# Azure deployment - predmain (open-fdd) on ACA + SWA + Postgres Flex Server
 
 This document covers the deployment that took the open-fdd stack from a local
 docker-compose to Azure. It is intended for the operator who already has shell
@@ -36,7 +36,7 @@ db-subnet 10.0.3.16/28 (delegated to Microsoft.DBforPostgreSQL)
         FQDN: predmain-postgres.postgres.database.azure.com
         private IP: 10.0.3.20
         database: threefdd
-        TimescaleDB Apache edition only (no retention policies — see memory)
+        TimescaleDB Apache edition only (no retention policies - see memory)
 
 appsubnet 10.0.3.0/29
    └─ ioProxyHandler VM (10.0.3.4)
@@ -65,35 +65,35 @@ Azure Files (stpredmain27016 / predmain-config)
 | ACA job | `predmain-nightly-sync` | Schedule trigger, cron `0 3 * * *` UTC. **Shares the `predmain-fdd-loop` image**; command override runs `openfdd_stack.platform.drivers.run_nightly_sync`. Orchestrator for nightly maintenance (currently: Niagara + IQVision history sync, "yesterday" window). |
 | Storage account | `stpredmain27016` | Standard_LRS. File share `predmain-config` (5 GiB) mounted into API and Job at `/app/config` |
 | Log Analytics workspace | `law-predmain` | Wires ACA env logs |
-| Key Vault | `kv-predmain-27016` | RBAC-enabled. Currently underused — see "RBAC limits" section. |
+| Key Vault | `kv-predmain-27016` | RBAC-enabled. Currently underused - see "RBAC limits" section. |
 | Managed identity | `mi-predmain` | Provisioned but **not** in use yet (subscription RBAC blocks role assignments). ACA app uses ACR admin auth + inline secrets. |
 | Static Web App | `predmain-frontend` | Standard SKU, West Europe. Hostname `brave-sand-044267903.7.azurestaticapps.net`. Linked backend → `predmain-api`. |
 | ACR | `3mseContainers` (`3msecontainers.azurecr.io`) | Pre-existing. Admin user enabled (temporary, until MI/RBAC is resolved). |
 | ZT router VM | `ioProxyHandler` (10.0.3.4) | Maintenance entrypoint **and** ZeroTier router from ACA to on-prem. ZeroTier client running. |
-| Entra App Registration | client ID `5a7462d1-4816-4ba1-abda-7e917941b13b` | Tenant `fce6e120-a4ac-468f-bce8-0a9efa296639` (Entra **External ID** tenant `3mseio`, *not* a workforce tenant — B2B guest invitations don't work; users must be created in the customer pool). App Roles defined: `admin`, `engineer`, `user` (lowercase values). Linked to user flow `predmain-signin`. |
+| Entra App Registration | client ID `5a7462d1-4816-4ba1-abda-7e917941b13b` | Tenant `fce6e120-a4ac-468f-bce8-0a9efa296639` (Entra **External ID** tenant `3mseio`, *not* a workforce tenant - B2B guest invitations don't work; users must be created in the customer pool). App Roles defined: `admin`, `engineer`, `user` (lowercase values). Linked to user flow `predmain-signin`. |
 
 ## 3. First-time setup (high-level pointers)
 
 This was done once and is captured in commit history. If recreating from scratch:
 
-1. **Provider registrations** — `Microsoft.DBforPostgreSQL`, `Microsoft.App`, `Microsoft.KeyVault` (subscription Owner needed)
-2. **Network** — extend VNet with the new prefixes; create `db-subnet` and `aca-subnet` with delegations
-3. **DB** — create Flex Server with `--vnet`/`--subnet` and the auto-created private DNS zone; enable `timescaledb` extension; restart; apply [stack/sql/](../stack/sql/) migrations from ioProxyHandler over the VNet path; create the `openfdd_app` role
-4. **Storage** — Storage Account → file share `predmain-config`; upload seed `data_model.ttl`
-5. **ACA env** — workload-profiles env in aca-subnet, link LAW, register the file share
-6. **ACR images** — build `predmain-api` and `predmain-fdd-loop` images (see push plan below for the command)
-7. **ACA app + job** — create both with the image, inline secrets (DSN, API key, BACnet API key), ACR admin auth, file-share mount
-8. **Entra External ID** — in the External ID tenant: create user flow `predmain-signin` (Sign-up and sign-in, Email+password IdP, MFA via email OTP); link app registration `5a7462d1-…` to the flow via *User flows → predmain-signin → Applications*; verify app reg manifest has `accessTokenAcceptedVersion: 2`
-9. **SWA** — create Standard SWA, configure Entra OIDC via app settings (`AAD_CLIENT_ID`, `AAD_CLIENT_SECRET`), link the ACA app as backend; build SPA bundle with `AAD_TENANT_ID` injected and deploy
-10. **ZeroTier** — enable Azure NIC IP forwarding on ioProxyHandler; set Linux IP forwarding + iptables FORWARD rules; in ZT Central, add managed routes both directions; add UDR on aca-subnet for the ZT CIDR
+1. **Provider registrations** - `Microsoft.DBforPostgreSQL`, `Microsoft.App`, `Microsoft.KeyVault` (subscription Owner needed)
+2. **Network** - extend VNet with the new prefixes; create `db-subnet` and `aca-subnet` with delegations
+3. **DB** - create Flex Server with `--vnet`/`--subnet` and the auto-created private DNS zone; enable `timescaledb` extension; restart; apply [stack/sql/](../stack/sql/) migrations from ioProxyHandler over the VNet path; create the `openfdd_app` role
+4. **Storage** - Storage Account → file share `predmain-config`; upload seed `data_model.ttl`
+5. **ACA env** - workload-profiles env in aca-subnet, link LAW, register the file share
+6. **ACR images** - build `predmain-api` and `predmain-fdd-loop` images (see push plan below for the command)
+7. **ACA app + job** - create both with the image, inline secrets (DSN, API key, BACnet API key), ACR admin auth, file-share mount
+8. **Entra External ID** - in the External ID tenant: create user flow `predmain-signin` (Sign-up and sign-in, Email+password IdP, MFA via email OTP); link app registration `5a7462d1-…` to the flow via *User flows → predmain-signin → Applications*; verify app reg manifest has `accessTokenAcceptedVersion: 2`
+9. **SWA** - create Standard SWA, configure Entra OIDC via app settings (`AAD_CLIENT_ID`, `AAD_CLIENT_SECRET`), link the ACA app as backend; build SPA bundle with `AAD_TENANT_ID` injected and deploy
+10. **ZeroTier** - enable Azure NIC IP forwarding on ioProxyHandler; set Linux IP forwarding + iptables FORWARD rules; in ZT Central, add managed routes both directions; add UDR on aca-subnet for the ZT CIDR
 
-## 4. Push plan — shipping changes to each component
+## 4. Push plan - shipping changes to each component
 
 > All commands assume `az login` on the Pay-As-You-Go subscription and a
 > PowerShell 7+ session on Windows. Set `$env:PYTHONIOENCODING = 'utf-8'`
 > once per session before running `az acr build` to avoid the Windows
 > `colorama` UnicodeError on streamed build logs. Commands run on
-> ioProxyHandler (section 4.4) are bash, since that's an Ubuntu VM —
+> ioProxyHandler (section 4.4) are bash, since that's an Ubuntu VM -
 > the rest run locally in PowerShell.
 
 ### 4.1 API (`predmain-api` container app)
@@ -128,7 +128,7 @@ az containerapp update -g Live_Services -n predmain-api --revision-suffix "secre
 
 The two scheduled jobs share one image built from `stack/Dockerfile.fdd_loop`.
 Each job overrides the container command to invoke a different orchestrator,
-but the image SHA must be bumped on both at the same time — otherwise the
+but the image SHA must be bumped on both at the same time - otherwise the
 job left behind drifts to old code.
 
 ```powershell
@@ -151,21 +151,21 @@ az containerapp job execution list -g Live_Services --name predmain-nightly-sync
 ```
 
 Job execution status `Succeeded` confirms one-shot completion. Failed
-executions retain logs via Log Analytics — query
+executions retain logs via Log Analytics - query
 `ContainerAppConsoleLogs_CL | where ContainerGroupName_s startswith 'predmain-fdd-loop'`
 (or `'predmain-nightly-sync'`).
 
 #### 4.2a `predmain-fdd-loop`
 
 - **Schedule:** `0 */3 * * *` UTC (every 3 hours).
-- **Command override:** `python -u -m openfdd_stack.platform.drivers.run_rule_loop` (one-shot mode — `--loop` is *not* passed in ACA).
+- **Command override:** `python -u -m openfdd_stack.platform.drivers.run_rule_loop` (one-shot mode - `--loop` is *not* passed in ACA).
 - **Purpose:** Open-Meteo fetch (when enabled) + FDD rule loop + energy opportunity recomputation. Reads YAML rules from the baked-in `stack/rules` dir and the graph from the mounted `data_model.ttl`.
 
 #### 4.2b `predmain-nightly-sync`
 
 - **Schedule:** `0 3 * * *` UTC (daily at 03:00).
 - **Command override:** `python -u -m openfdd_stack.platform.drivers.run_nightly_sync`.
-- **Purpose:** Nightly maintenance orchestrator. Currently runs history sync — iterates `site_niagara_endpoints` and `site_iqvision_endpoints` (enabled rows) and calls each driver's `run_*_sync(site_id, time_window="yesterday")`. Inserts are idempotent on `(point_id, ts)`, so a missed night is self-heals when the window is widened. Add further nightly steps as additional calls inside `run_nightly_sync.main()`.
+- **Purpose:** Nightly maintenance orchestrator. Currently runs history sync - iterates `site_niagara_endpoints` and `site_iqvision_endpoints` (enabled rows) and calls each driver's `run_*_sync(site_id, time_window="yesterday")`. Inserts are idempotent on `(point_id, ts)`, so a missed night is self-heals when the window is widened. Add further nightly steps as additional calls inside `run_nightly_sync.main()`.
 - **Recreate from scratch:** the job was created via YAML (see `az containerapp job create --yaml`). Mirrors `predmain-fdd-loop` for image, secrets (`db-dsn`, `registry-password`), ACR auth, env vars, and the `openfdd-config` file-share mount at `/app/config`. Only the trigger cron and the `args` differ.
 
 ### 4.3 Frontend (`predmain-frontend` SWA)
@@ -186,11 +186,11 @@ The `@azure/...@latest` package spec is quoted because PowerShell parses a
 leading `@` as the splat operator otherwise.
 
 After deploy, **hard-refresh the browser** (Ctrl+Shift+R) or test in incognito
-— SWA serves the JS bundle with cache headers, browsers reuse the old bundle
+- SWA serves the JS bundle with cache headers, browsers reuse the old bundle
 otherwise.
 
 If you only changed `staticwebapp.config.json` (routes, auth, etc.) you still
-have to run the full build:swa sequence — Vite copies `public/` files into
+have to run the full build:swa sequence - Vite copies `public/` files into
 `dist/`, and the inject-aad-tenant script needs to run on the substituted
 copy.
 
@@ -201,7 +201,7 @@ Migrations are SQL files in [stack/sql/](../stack/sql/), numbered 001 through 02
 clear network path to the private endpoint):
 
 ```powershell
-# On laptop (PowerShell) — scp the new migration up. Windows 10+ ships OpenSSH.
+# On laptop (PowerShell) - scp the new migration up. Windows 10+ ships OpenSSH.
 scp stack/sql/024_*.sql N4EM_USER@<ioproxy-host>:~/sherlock/sql/
 ```
 
@@ -249,7 +249,7 @@ re-invokes `rolesSource` and gets the new token claims.
 ### 4.6 Networking (UDRs, NSGs, peerings)
 
 VNet/subnet/NSG changes via `az network ...` commands. Be careful with VNet
-address-prefix updates — `az network vnet update --address-prefixes` is a
+address-prefix updates - `az network vnet update --address-prefixes` is a
 PUT that replaces the array; always list ALL existing prefixes plus the new
 one or existing subnets get orphaned.
 
@@ -276,7 +276,7 @@ Then add the matching managed route in ZT Central
 - **Hard refresh after frontend deploys.** SWA serves the JS bundle with cache headers; old bundles persist in browser cache.
 - **Incognito after Entra changes.** Tokens are minted at sign-in; existing sessions hold stale claims for up to 1h.
 - **Single-revision mode is the default.** New `az containerapp update --revision-suffix X` deactivates the old revision automatically. Keep the previous SHA tag in ACR as a quick rollback option.
-- **Image tags should be git SHAs.** `:latest` is fine as a convenience tag but never deploy that into ACA — Azure can't tell when `:latest` moved, so rollbacks are ambiguous.
+- **Image tags should be git SHAs.** `:latest` is fine as a convenience tag but never deploy that into ACA - Azure can't tell when `:latest` moved, so rollbacks are ambiguous.
 - **Log queries.** Console/system logs are best read via `az containerapp logs show` (real-time tail) or via Log Analytics KQL when historical:
   ```kql
   ContainerAppConsoleLogs_CL
@@ -285,7 +285,7 @@ Then add the matching managed route in ZT Central
   | order by TimeGenerated desc
   ```
 - **The maintenance entrypoint is `ioProxyHandler`** (10.0.3.4). It's already on ZeroTier; use it as your laptop's path into the VNet for psql / SSH / diagnostics.
-- **Memory file references:** project-specific gotchas accumulated during deployment are captured in this Claude project's memory directory — see `feedback_build_substitution.md`, `project_maintenance_entrypoint.md`, `project_timescaledb_apache_only.md`, `project_swa_preserves_api_prefix.md`, `project_swa_wsfed_claim_mapping.md`. These are reminders for the operator AI; the operational implications are folded into this document.
+- **Memory file references:** project-specific gotchas accumulated during deployment are captured in this Claude project's memory directory - see `feedback_build_substitution.md`, `project_maintenance_entrypoint.md`, `project_timescaledb_apache_only.md`, `project_swa_preserves_api_prefix.md`, `project_swa_wsfed_claim_mapping.md`. These are reminders for the operator AI; the operational implications are folded into this document.
 
 ## 7. Quick-reference: which command for which change?
 

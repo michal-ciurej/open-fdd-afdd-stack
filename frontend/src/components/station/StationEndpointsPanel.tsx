@@ -122,7 +122,7 @@ export function StationEndpointsPanel({
             {driverLabel} endpoints
             {selectedSite && (
               <span className="ml-2 text-sm font-normal text-muted-foreground">
-                — {selectedSite.name}
+                - {selectedSite.name}
               </span>
             )}
           </CardTitle>
@@ -542,7 +542,7 @@ function StationEndpointCard({
                         {rows.map((p) => (
                           <tr key={p.id} className="border-t border-border/40">
                             <td className="px-2 py-1 font-mono">{p.external_id}</td>
-                            <td className="px-2 py-1 font-mono">{p.niagara_history_path ?? "—"}</td>
+                            <td className="px-2 py-1 font-mono">{p.niagara_history_path ?? "-"}</td>
                             <td className="px-2 py-1 font-mono text-muted-foreground">
                               {p.niagara_tags
                                 ? Object.entries(p.niagara_tags)

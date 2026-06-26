@@ -33,12 +33,12 @@ const QUALITY_VARIANT: Record<DataQuality, "success" | "secondary" | "outline"> 
 };
 
 function fmtCurrency(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "-";
   return `£${Math.round(value).toLocaleString()}`;
 }
 
 function fmtYears(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "-";
   if (value === 0) return "0 yr";
   if (value < 0.1) return "< 0.1 yr";
   return `${value.toFixed(1)} yr`;
@@ -101,7 +101,7 @@ export function EquipmentEnergyTab({
           <p className="text-sm font-normal text-muted-foreground">
             Sums all enabled opportunities for{" "}
             <span className="font-medium">{equipmentName}</span>. Site utility rates feed
-            the dollar columns —{" "}
+            the dollar columns -{" "}
             <Link
               to="/site-configuration#site-energy-rates"
               className="text-primary underline-offset-2 hover:underline"
@@ -148,7 +148,7 @@ export function EquipmentEnergyTab({
             <CardTitle className="text-base">Opportunities</CardTitle>
             <p className="text-sm font-normal text-muted-foreground">
               Click a row to edit. Savings, payback, and data quality come from the
-              cached compute — updates immediately on save.
+              cached compute - updates immediately on save.
             </p>
           </div>
           <button
@@ -226,7 +226,7 @@ export function EquipmentEnergyTab({
                           {o.result.data_quality}
                         </Badge>
                       ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
+                        <span className="text-xs text-muted-foreground">-</span>
                       )}
                     </TableCell>
                   </TableRow>

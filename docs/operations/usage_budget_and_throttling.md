@@ -30,7 +30,7 @@ When usage pressure is high, the system should degrade gracefully:
 
 ## Practical throttle ladder
 
-### Level 0 — Normal
+### Level 0 - Normal
 
 Use the full intended workflow:
 
@@ -40,7 +40,7 @@ Use the full intended workflow:
 - browser parity when it adds real value
 - docs/PDF rebuilds on meaningful changes
 
-### Level 1 — Moderate conservation
+### Level 1 - Moderate conservation
 
 Use when model budget is healthy but burn rate is rising.
 
@@ -52,7 +52,7 @@ Actions:
 - prefer one focused rerun over repeated full-suite reruns
 - avoid unnecessary weather fetches when test-bench mode is already obvious
 
-### Level 2 — High conservation
+### Level 2 - High conservation
 
 Use when account/session budget is tight or approaching a hard cap.
 
@@ -65,7 +65,7 @@ Actions:
 - do not rerun full daytime smoke or overnight review repeatedly for the same known failure mode
 - write the failure classification once, then work the fix
 
-### Level 3 — Survival mode
+### Level 3 - Survival mode
 
 Use when usage is critically constrained or a weekly cap is effectively exhausted.
 

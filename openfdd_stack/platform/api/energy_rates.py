@@ -1,4 +1,4 @@
-"""Site energy rates API — electric, gas, demand-charge per site.
+"""Site energy rates API - electric, gas, demand-charge per site.
 
 One row per site (PK = site_id) seeded by migration 024. GET upserts a default
 row if none exists so the endpoint never 404s; PUT is a partial upsert that
@@ -10,7 +10,7 @@ when computing opportunity costs.
 
 Default currency is GBP (this is a UK deployment); the column accepts any
 3-letter code so multi-currency portfolios are not blocked, but cost values
-are passed through the calc library as raw numbers — the operator is
+are passed through the calc library as raw numbers - the operator is
 responsible for entering rates in the same currency they want results in.
 """
 
@@ -106,7 +106,7 @@ def put_site_energy_rates(
         with conn.cursor() as cur:
             _ensure_site_exists(cur, site_id)
             if not updates:
-                # No fields to change — return current state (creating default row if needed).
+                # No fields to change - return current state (creating default row if needed).
                 cur.execute(
                     f"SELECT {_COLS} FROM site_energy_rates WHERE site_id = %s",
                     (str(site_id),),

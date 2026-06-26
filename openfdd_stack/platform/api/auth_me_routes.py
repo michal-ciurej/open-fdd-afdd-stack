@@ -25,7 +25,7 @@ from openfdd_stack.platform.api.auth_principal import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# Whitelist — anything Entra returns outside this set is dropped.
+# Whitelist - anything Entra returns outside this set is dropped.
 _KNOWN_ROLES = {r.value for r in Role}
 
 # SWA flattens Entra's v2.0 `roles` claim into the legacy WS-Fed URL form

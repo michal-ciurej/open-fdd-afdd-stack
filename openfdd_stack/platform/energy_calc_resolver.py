@@ -1,5 +1,5 @@
 """
-Energy opportunity input resolver — turns the new normalized model (opportunity
+Energy opportunity input resolver - turns the new normalized model (opportunity
 deltas + equipment profile + site rates + observed evidence) into the flat
 params dict that energy_calc_library.preview_energy_calc expects.
 
@@ -133,13 +133,13 @@ def resolve_calc_inputs(
             quality[key] = "partial"
             continue
 
-        # 5. Spec default — only if the field actually declares one.
+        # 5. Spec default - only if the field actually declares one.
         if field.get("default") is not None:
             params[key] = field["default"]
             quality[key] = "assumed"
             continue
 
-        # 6. No value — leave out of params; preview_energy_calc will list it.
+        # 6. No value - leave out of params; preview_energy_calc will list it.
 
     return params, quality
 
@@ -168,7 +168,7 @@ def _simple_payback_years(
 def _npv_5yr(
     capex_usd: float, annual_savings_usd: Optional[float]
 ) -> Optional[float]:
-    """Naive 5-year NPV at 0% discount — projected savings minus capex.
+    """Naive 5-year NPV at 0% discount - projected savings minus capex.
     Phase 2 keeps the formula trivial; refine when a discount rate is configured.
     """
     if annual_savings_usd is None:

@@ -4,7 +4,7 @@
 -- IMPORTANT: add_retention_policy() is a TimescaleDB Community (TSL) feature and is
 -- NOT available on Azure Database for PostgreSQL Flexible Server (which ships only
 -- Apache-licensed Timescale). On Apache deployments this migration is a no-op and
--- retention must be implemented externally — either via pg_cron + drop_chunks, or
+-- retention must be implemented externally - either via pg_cron + drop_chunks, or
 -- via a job in the fdd-loop ACA container.
 --
 -- Each policy call is wrapped in its own DO block so a license failure on one table

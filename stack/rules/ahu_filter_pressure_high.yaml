@@ -1,6 +1,6 @@
 # AHU filter alarm active or filter differential pressure exceeds setpoint for a sustained period.
 # Catches clogged/dirty filters, failed filter alarm sensor, incorrect pressure setpoint.
-# Two independent trigger windows: 24 h for alarm, 4 h for pressure sensor — both at 5-min sampling.
+# Two independent trigger windows: 24 h for alarm, 4 h for pressure sensor - both at 5-min sampling.
 name: ahu_filter_pressure_high
 description: Filter alarm active or filter DP above setpoint while AHU is running
 type: expression
@@ -19,8 +19,8 @@ inputs:
     brick: Filter_Differential_Pressure_Setpoint
 
 params:
-  alarm_window: 288       # samples — 24 h at 5-min sampling; alarm must persist this long
-  pressure_window: 48     # samples — 4 h at 5-min sampling; DP above SP must persist this long
+  alarm_window: 288       # samples - 24 h at 5-min sampling; alarm must persist this long
+  pressure_window: 48     # samples - 4 h at 5-min sampling; DP above SP must persist this long
   rolling_window: 1       # debounce handled inside expression via rolling sums; no extra gate needed
 
 expression: |

@@ -37,7 +37,7 @@ Or: `docker compose -f stack/docker-compose.yml up -d` from repo root. Reboot: c
 | **Open-Meteo driver** (new weather points: solar, cloud, wind_dir) | Rebuild weather-scraper: `docker compose build weather-scraper && docker compose up -d weather-scraper` |
 | **API code** (download, data-model, main, config UI at /app/) | `./scripts/bootstrap.sh --build api` or `docker compose build api && docker compose up -d api` |
 | **BACnet from config UI** | API container must reach diy-bacnet-server: `OFDD_BACNET_SERVER_URL` is set in docker-compose to `http://host.docker.internal:8080` (bacnet-server on host). Restart API after changing. |
-| **All containers** (full rebuild and restart) | `./scripts/bootstrap.sh --build-all` — no DB wait or migrations; exits after `docker compose build && docker compose up -d`. |
+| **All containers** (full rebuild and restart) | `./scripts/bootstrap.sh --build-all` - no DB wait or migrations; exits after `docker compose build && docker compose up -d`. |
 | **FDD loop, BACnet scraper code** | `docker compose build bacnet-scraper fdd-loop` (or `--build`); fdd-loop also mounts `open_fdd` from host, so host code changes apply on restart. |
 | **Config UI scrape interval ignored by BACnet scraper** | When the API has Bearer auth (`OFDD_API_KEY`), the scraper must have the same key to call GET /config. Ensure `OFDD_API_KEY` is in `stack/.env` and passed to the bacnet-scraper service in docker-compose; then `./scripts/bootstrap.sh --build bacnet-scraper` so the scraper restarts with the key. See [Configuration → Services that read config from the API](../configuration#services-that-read-config-from-the-api-bacnet-scraper). |
 | **Grafana datasource missing or wrong** | `./scripts/bootstrap.sh --reset-grafana` |
@@ -74,9 +74,9 @@ So: no trigger file → runs on the configured interval with configured lookback
 
 ### Verified: hot reload and config parity
 
-- **Frontend (Config):** OpenFDD Config shows **Rule interval (hours)**, **Lookback (days)**, and **Rules dir** (e.g. `stack/rules`). These come from the knowledge graph (GET `/config`); edits are saved via PUT `/config`. **`rules_dir` is still required** — it is the path where rule YAML files are stored; both the FDD loop and the rules API use it.
+- **Frontend (Config):** OpenFDD Config shows **Rule interval (hours)**, **Lookback (days)**, and **Rules dir** (e.g. `stack/rules`). These come from the knowledge graph (GET `/config`); edits are saved via PUT `/config`. **`rules_dir` is still required** - it is the path where rule YAML files are stored; both the FDD loop and the rules API use it.
 - **Frontend (Faults):** The “FDD rule files (YAML)” section lists files in that rules dir (GET `/rules`). You can **upload** (paste YAML or choose file), **download**, and **delete** rule files, and click **Sync definitions** to update the fault_definitions table without waiting for the next FDD run. Fault definitions in the table come from the DB (synced from the YAML in `rules_dir` when rules run or when you sync). Timestamped **`test_*`** rule files with a long numeric suffix (e.g. `test_sensor_bounds_1774812747.yaml`) come from the **`4_hot_reload_test.py`** bench, not from bootstrap; the UI groups them as bench/E2E copies so you can delete them if they were left behind.
-- **FDD loop (stack):** Each run (every `rule_interval_hours`) loads rules from `rules_dir` via `load_rules_from_dir(rules_path)` — no cache. So whether you edit files on disk or upload via the frontend, the next run uses the latest YAML. The loop uses `lookback_days` to pull that many days from the DB. In Docker the stack mounts `../stack/rules` at `/app/stack/rules` and sets `OFDD_RULES_DIR: "stack/rules"`.
+- **FDD loop (stack):** Each run (every `rule_interval_hours`) loads rules from `rules_dir` via `load_rules_from_dir(rules_path)` - no cache. So whether you edit files on disk or upload via the frontend, the next run uses the latest YAML. The loop uses `lookback_days` to pull that many days from the DB. In Docker the stack mounts `../stack/rules` at `/app/stack/rules` and sets `OFDD_RULES_DIR: "stack/rules"`.
 
 **Tests:** `open_fdd/tests/platform/test_config.py` and `open_fdd/tests/platform/test_fdd_config_hot_reload.py` assert that GET /config exposes `rules_dir`, `rule_interval_hours`, `lookback_days`; that the FDD loop loads rules from the configured dir on every run (no cache); and that the rules API and the loop resolve the same path for a relative `rules_dir`. Run: `pytest open_fdd/tests/platform/test_config.py open_fdd/tests/platform/test_fdd_config_hot_reload.py -v`.
 
@@ -93,7 +93,7 @@ python tools/trigger_fdd_run.py
 
 **From Swagger:** `POST /run-fdd` (API touches the same file in its config volume.)
 
-**Watch it happen:** `docker logs -f openfdd_fdd_loop` — within ~60 s you should see “Trigger file detected → running now, timer reset” and then “FDD run OK: …”.
+**Watch it happen:** `docker logs -f openfdd_fdd_loop` - within ~60 s you should see “Trigger file detected → running now, timer reset” and then “FDD run OK: …”.
 
 ### Option B: One-shot run (no loop, no trigger file)
 
@@ -117,9 +117,9 @@ docker compose exec fdd-loop python -m openfdd_stack.platform.drivers.run_rule_l
 
 ## Throttling and rate limiting
 
-1. **No API rate limiting by default** — The API does not throttle incoming requests. Clients can call as often as they like unless you add rate limiting elsewhere.
-2. **OT/building network is paced** — Outbound traffic to the building is throttled by configuration: BACnet scraper polls on an interval (e.g. every 5 minutes), the FDD loop runs on a schedule (e.g. every 3 hours), and the weather scraper runs on an interval (e.g. daily). We do not continuously hammer the BACnet or OT network; you can tune these intervals in platform config.
-3. **Adding incoming rate limiting** — To limit how often external clients can call the API (e.g. for a busy integration or to protect the OT network), add rate limiting at the reverse proxy (e.g. Caddy with a rate-limit module) or with middleware. See [Security — Throttling and rate limiting](../security#throttling-and-rate-limiting).
+1. **No API rate limiting by default** - The API does not throttle incoming requests. Clients can call as often as they like unless you add rate limiting elsewhere.
+2. **OT/building network is paced** - Outbound traffic to the building is throttled by configuration: BACnet scraper polls on an interval (e.g. every 5 minutes), the FDD loop runs on a schedule (e.g. every 3 hours), and the weather scraper runs on an interval (e.g. daily). We do not continuously hammer the BACnet or OT network; you can tune these intervals in platform config.
+3. **Adding incoming rate limiting** - To limit how often external clients can call the API (e.g. for a busy integration or to protect the OT network), add rate limiting at the reverse proxy (e.g. Caddy with a rate-limit module) or with middleware. See [Security - Throttling and rate limiting](../security#throttling-and-rate-limiting).
 
 ---
 

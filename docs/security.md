@@ -4,7 +4,7 @@ This document describes how to protect Open-FDD endpoints with **Caddy** (revers
 
 ## Reverse proxy: current file vs future hardening
 
-- **Canonical config in the repo:** [`stack/caddy/Caddyfile`](../stack/caddy/Caddyfile) — checked-in Caddy config for a **single HTTP entry point** on port **80**: `handle /api*` (with `uri strip_prefix /api`), `/auth*`, `/ws*`, and `/ai*` are proxied to the API; `handle /*` serves the React frontend. This matches the frontend’s default **`VITE_API_BASE=/api`** in Docker Compose: browser calls go to same-origin paths under `/api`, `/auth`, and `/ws`.
+- **Canonical config in the repo:** [`stack/caddy/Caddyfile`](../stack/caddy/Caddyfile) - checked-in Caddy config for a **single HTTP entry point** on port **80**: `handle /api*` (with `uri strip_prefix /api`), `/auth*`, `/ws*`, and `/ai*` are proxied to the API; `handle /*` serves the React frontend. This matches the frontend’s default **`VITE_API_BASE=/api`** in Docker Compose: browser calls go to same-origin paths under `/api`, `/auth`, and `/ws`.
 - **Status:** Use **`http://localhost`** (or `http://<lan-host>`) as the main URL when Caddy is up; use **http://localhost:8000** (API) and **http://localhost:5173** (frontend direct) when debugging without the proxy.
 - **Future hardening:** Optional Caddy **basic auth**, **TLS**, rate limiting, and stricter perimeter defaults are documented below as **targets**; they are not all enabled in the committed file.
 
@@ -15,8 +15,8 @@ This document describes how to protect Open-FDD endpoints with **Caddy** (revers
 ## Architecture: frontend, API, and Caddy
 
 - **React frontend** runs in its own container (production build on **5173**; Caddy’s **`/*`** routes there). **App login:** users sign in at **`/login`**; the API returns a short-lived **JWT access token** (browser **sessionStorage**) and an **HttpOnly** refresh cookie (`/auth/*`). REST uses **`Authorization: Bearer <access_token>`**; the WebSocket uses **`/ws/events?token=<access_token>`** (or the API-key token path in [Frontend and API authentication](#frontend-and-api-authentication)).
-- **API** (FastAPI) requires auth when **`OFDD_API_KEY`** and/or **app-user** config is set (`OFDD_APP_USER`, `OFDD_APP_USER_HASH`, **`OFDD_JWT_SECRET`** — all three together). Valid credentials are **`Bearer`** matching **`OFDD_API_KEY`** or a valid **access JWT**. Exempt paths include `/`, `/health`, `/docs`, `/redoc`, `/openapi.json`, `/app` (and `/app/*`), and **`/auth/*`**. Partial app-user configuration is rejected explicitly: **`/auth/login`** and related routes return **503** (`AUTH_CONFIG_ERROR` / `AUTH_NOT_CONFIGURED`), while the global API middleware returns **500** with `AUTH_CONFIG_ERROR` for other protected paths—never a silent fallback.
-- **Machine clients** (scrapers, curl, **Open Claw** on a Windows bench) should rely on **`OFDD_API_KEY`** and **`Authorization: Bearer`**, not the browser cookie flow — see [Open‑Claw integration](openclaw_integration#1e-openclaw-on-a-different-machine-than-open-fdd-split-setup).
+- **API** (FastAPI) requires auth when **`OFDD_API_KEY`** and/or **app-user** config is set (`OFDD_APP_USER`, `OFDD_APP_USER_HASH`, **`OFDD_JWT_SECRET`** - all three together). Valid credentials are **`Bearer`** matching **`OFDD_API_KEY`** or a valid **access JWT**. Exempt paths include `/`, `/health`, `/docs`, `/redoc`, `/openapi.json`, `/app` (and `/app/*`), and **`/auth/*`**. Partial app-user configuration is rejected explicitly: **`/auth/login`** and related routes return **503** (`AUTH_CONFIG_ERROR` / `AUTH_NOT_CONFIGURED`), while the global API middleware returns **500** with `AUTH_CONFIG_ERROR` for other protected paths-never a silent fallback.
+- **Machine clients** (scrapers, curl, **Open Claw** on a Windows bench) should rely on **`OFDD_API_KEY`** and **`Authorization: Bearer`**, not the browser cookie flow - see [Open‑Claw integration](openclaw_integration#1e-openclaw-on-a-different-machine-than-open-fdd-split-setup).
 - **Caddy** can be extended with **basic auth** + **`X-Caddy-Auth`** / **`OFDD_CADDY_INTERNAL_SECRET`** (optional); see [Caddyfile for protecting the entire API](#caddyfile-for-protecting-the-entire-api). **Best practice:** keep the frontend in its own container; use a reverse proxy as the operator entry point.
 
 ---
@@ -29,7 +29,7 @@ This document describes how to protect Open-FDD endpoints with **Caddy** (revers
 | **Dashboard login** | Human operators via browser | `POST /auth/login` → access JWT in session + HttpOnly refresh cookie; `apiFetch` attaches `Bearer` access token; WebSocket uses access token in query string. |
 | **`OFDD_API_KEY`** | Scrapers, scripts, agents, LAN test bench | `Authorization: Bearer <OFDD_API_KEY>` on REST; WebSocket may use `?token=<key>` when no JWT is in use. |
 
-Configure dashboard login with **`./scripts/bootstrap.sh --user NAME`** and a **secret password source** (`--password-file`, `--password-stdin`, **`OFDD_APP_PASSWORD`**, or interactive prompt — see `bootstrap.sh --help`). **`--no-auth`** removes **`OFDD_API_KEY`** and app-user keys from `stack/.env` as applicable.
+Configure dashboard login with **`./scripts/bootstrap.sh --user NAME`** and a **secret password source** (`--password-file`, `--password-stdin`, **`OFDD_APP_PASSWORD`**, or interactive prompt - see `bootstrap.sh --help`). **`--no-auth`** removes **`OFDD_API_KEY`** and app-user keys from `stack/.env` as applicable.
 
 **Bootstrap guardrail:** Starting the **full** stack or **`--mode model`** fails fast if **`OFDD_APP_USER`**, **`OFDD_APP_USER_HASH`**, and **`OFDD_JWT_SECRET`** are not all present in `stack/.env` (unless you pass **`--allow-no-ui-auth`** or **`--no-auth`**). **`--mode collector`** and **`--mode engine`** are exempt.
 
@@ -62,11 +62,11 @@ Related tracking: **[Stack security hardening](https://github.com/bbartling/open
 
 | Area | Repo default / guidance |
 |------|-------------------------|
-| **Postgres publish** | `docker-compose.yml` binds the DB port to **`127.0.0.1:5432`** only — tools on the **host** can use `psql` locally; **remote machines cannot** reach the DB via that mapping. For stricter production, **remove** the `ports:` block under `db` so only containers on the compose network can connect (admin via `docker exec` or a throwaway `psql` container). |
+| **Postgres publish** | `docker-compose.yml` binds the DB port to **`127.0.0.1:5432`** only - tools on the **host** can use `psql` locally; **remote machines cannot** reach the DB via that mapping. For stricter production, **remove** the `ports:` block under `db` so only containers on the compose network can connect (admin via `docker exec` or a throwaway `psql` container). |
 | **API / frontend host bind** | Compose uses **`OFDD_API_HOST_BIND`** and **`OFDD_FRONTEND_HOST_BIND`** (default **`127.0.0.1`**) for published ports **8000** and **5173**. **`./scripts/bootstrap.sh --bacnet-address …`** without **`--caddy-self-signed`** sets both to **`0.0.0.0`** for a standard **HTTP lab** (LAN access to `/docs` and the React app). **`--caddy-self-signed`** forces **loopback** so the LAN should use **Caddy HTTPS**, not raw **:8000** / **:5173**. |
 | **Edge TLS** | The committed Caddyfile serves **HTTP on :80** with security headers. For **HTTPS**, use a public DNS name and either Caddy automatic TLS or mounted certs; start with [`stack/caddy/Caddyfile.https.example`](../stack/caddy/Caddyfile.https.example) and set **`OFDD_TRUST_FORWARDED_PROTO=true`** on the API. **Do not** send `Strict-Transport-Security` on plain HTTP; the example adds HSTS only on the HTTPS site block. |
-| **Caddy headers** | The bundled **`stack/caddy/Caddyfile`** sets `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy`. Optional: **CSP**, **rate limiting**, Caddy **basic auth** as a second layer — see [Caddyfile for protecting the entire API](#caddyfile-for-protecting-the-entire-api). |
-| **Secrets** | **`stack/.env`** is **gitignored** (and listed in `.gitignore`). Bootstrap creates or updates it; store **Argon2 hash**, **JWT secret**, and optional **`OFDD_API_KEY`** (machine-only — not for the browser UI) there. Never commit secrets. For Caddy **`X-Caddy-Auth`** flows, set **`OFDD_CADDY_INTERNAL_SECRET`** in `.env` (compose default is dev-only). Optional Grafana: **`GF_SECURITY_ADMIN_USER`** / **`GF_SECURITY_ADMIN_PASSWORD`** in `.env` instead of compose defaults. |
+| **Caddy headers** | The bundled **`stack/caddy/Caddyfile`** sets `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy`. Optional: **CSP**, **rate limiting**, Caddy **basic auth** as a second layer - see [Caddyfile for protecting the entire API](#caddyfile-for-protecting-the-entire-api). |
+| **Secrets** | **`stack/.env`** is **gitignored** (and listed in `.gitignore`). Bootstrap creates or updates it; store **Argon2 hash**, **JWT secret**, and optional **`OFDD_API_KEY`** (machine-only - not for the browser UI) there. Never commit secrets. For Caddy **`X-Caddy-Auth`** flows, set **`OFDD_CADDY_INTERNAL_SECRET`** in `.env` (compose default is dev-only). Optional Grafana: **`GF_SECURITY_ADMIN_USER`** / **`GF_SECURITY_ADMIN_PASSWORD`** in `.env` instead of compose defaults. |
 
 **WebSocket:** Same auth model as HTTP (access JWT or API key); no DB access from browser WebSocket code.
 
@@ -84,7 +84,7 @@ Related tracking: **[Stack security hardening](https://github.com/bbartling/open
    - **URL:** `http://localhost` (port **80**)
    - **`/api*`** → API (prefix stripped), **`/auth*`** → API, **`/ws*`** → API, **`/ai*`** → API, **`/*`** → frontend (static build). From another machine on the LAN, use **`http://<server-ip>/`** the same way.
 
-3. **Hardened entry point (future / manual):** To put the **entire** UI and API behind one login and optional TLS, follow [Caddyfile for protecting the entire API](#caddyfile-for-protecting-the-entire-api) below and test thoroughly. Example credentials like `openfdd` / `xyz` apply only after you add **basic_auth** to your Caddyfile—not in the default committed file.
+3. **Hardened entry point (future / manual):** To put the **entire** UI and API behind one login and optional TLS, follow [Caddyfile for protecting the entire API](#caddyfile-for-protecting-the-entire-api) below and test thoroughly. Example credentials like `openfdd` / `xyz` apply only after you add **basic_auth** to your Caddyfile-not in the default committed file.
 
 4. **Without Caddy:** You can still use the services directly (no auth if `OFDD_API_KEY` is unset):
    - Frontend: http://localhost:5173  
@@ -98,7 +98,7 @@ Related tracking: **[Stack security hardening](https://github.com/bbartling/open
 
 ## Caddyfile for protecting the entire API
 
-The **committed** [`stack/caddy/Caddyfile`](../stack/caddy/Caddyfile) is intentionally **small** (see [Reverse proxy: current file vs future hardening](#reverse-proxy-current-file-vs-future-hardening)). The block below is an **example / target** for a **future hardened** setup: one entry point, optional **basic auth**, and most API routes (plus WebSocket) proxied with **`X-Caddy-Auth`**. It is **not** drop-in verified for every workflow yet—validate in your environment before relying on it for production. Use the same **secret** in `header_up X-Caddy-Auth` and in the API container env **`OFDD_CADDY_INTERNAL_SECRET`** so the API trusts requests that passed Caddy’s basic auth.
+The **committed** [`stack/caddy/Caddyfile`](../stack/caddy/Caddyfile) is intentionally **small** (see [Reverse proxy: current file vs future hardening](#reverse-proxy-current-file-vs-future-hardening)). The block below is an **example / target** for a **future hardened** setup: one entry point, optional **basic auth**, and most API routes (plus WebSocket) proxied with **`X-Caddy-Auth`**. It is **not** drop-in verified for every workflow yet-validate in your environment before relying on it for production. Use the same **secret** in `header_up X-Caddy-Auth` and in the API container env **`OFDD_CADDY_INTERNAL_SECRET`** so the API trusts requests that passed Caddy’s basic auth.
 
 ```caddyfile
 # Listen on port 80 (or use :8088 and map 8088:8088 in docker-compose).
@@ -198,7 +198,7 @@ Then restart Caddy and recreate the API so it has `OFDD_CADDY_INTERNAL_SECRET` s
 
 The **default committed** `stack/caddy/Caddyfile` does **not** include **basic auth** today. The following applies **after** you add a `basic_auth` block (e.g. using the [example Caddyfile](#caddyfile-for-protecting-the-entire-api) above):
 
-- Use a **bcrypt hash** for each password (e.g. default example password **`xyz`** only if you paste the matching hash from docs/examples—do not use defaults in production).
+- Use a **bcrypt hash** for each password (e.g. default example password **`xyz`** only if you paste the matching hash from docs/examples-do not use defaults in production).
 - **Change the password** (required before production):
   1. Generate a new hash:
      ```bash
@@ -269,7 +269,7 @@ So outbound load on the OT network is predictable and tunable. **Define only the
 
 ### 3. Inbound: rate limiting at the reverse proxy (e.g. Caddy)
 
-If you need to **throttle incoming traffic** to the API—for example to protect the API and OT network from aggressive polling, misconfigured integrators, or abuse—enforce rate limiting at the reverse proxy or with middleware. Open-FDD does not implement this itself; use Caddy (with a rate-limit module), nginx, or application middleware.
+If you need to **throttle incoming traffic** to the API-for example to protect the API and OT network from aggressive polling, misconfigured integrators, or abuse-enforce rate limiting at the reverse proxy or with middleware. Open-FDD does not implement this itself; use Caddy (with a rate-limit module), nginx, or application middleware.
 
 **Using Caddy for rate limiting**
 

@@ -66,7 +66,7 @@ export function useWebSocket() {
       }
       if (msg.topic.startsWith("energy.recompute")) {
         // FDD-loop end-of-tick or cascade from rate/profile change refreshed
-        // cached opportunity results — drop both the per-equipment and
+        // cached opportunity results - drop both the per-equipment and
         // site-level query caches so the next view re-fetches.
         queryClient.invalidateQueries({ queryKey: ["energy-opportunities"] });
       }

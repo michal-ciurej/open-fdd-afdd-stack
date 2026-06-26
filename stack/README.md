@@ -1,4 +1,4 @@
-# Stack — build, compose, restart
+# Stack - build, compose, restart
 
 This directory contains the `docker-compose.yml`, Dockerfiles, SQL init scripts, Caddy config, Grafana provisioning, and rule YAML for the full Open-FDD platform. Run every command below from the `stack/` directory unless noted.
 
@@ -6,7 +6,7 @@ This directory contains the `docker-compose.yml`, Dockerfiles, SQL init scripts,
 
 | Service | Container | Image / Build | Role | Profile |
 |---|---|---|---|---|
-| `db` | `openfdd_timescale` | `timescale/timescaledb:latest-pg16` | TimescaleDB — canonical store for points, readings, faults, metadata. Initialised from `sql/*.sql` on first boot. | core |
+| `db` | `openfdd_timescale` | `timescale/timescaledb:latest-pg16` | TimescaleDB - canonical store for points, readings, faults, metadata. Initialised from `sql/*.sql` on first boot. | core |
 | `api` | `openfdd_api` | `Dockerfile.api` | FastAPI CRUD + realtime WebSocket. Binds `127.0.0.1:8000` by default (`OFDD_API_HOST_BIND`). | core |
 | `frontend` | `openfdd_frontend` | `node:22-alpine` | Vite build + `vite preview` on `:5173`. Rebuilds on every start (bind-mounted `../frontend`). | core |
 | `bacnet-server` | `openfdd_bacnet_server` | `../../diy-bacnet-server/Dockerfile` | BACnet/IP gateway, JSON-RPC on `:8080` (`network_mode: host`). | core |
@@ -25,8 +25,8 @@ Profiles are opt-in: pass `--profile grafana --profile mcp-rag --profile mqtt` t
 
 1. Docker + Docker Compose v2.
 2. `diy-bacnet-server` checked out as a sibling of `open-fdd-afdd-stack/` (compose builds from `../../diy-bacnet-server`). Omit `bacnet-server` + `bacnet-scraper` if you don't need local BACnet.
-3. [stack/.env](.env) — created by `scripts/bootstrap.sh` or hand-written. Relevant vars: `OFDD_API_KEY`, `OFDD_APP_USER`, `OFDD_APP_USER_HASH`, `OFDD_JWT_SECRET`, `OFDD_BACNET_SERVER_API_KEY`, `VITE_API_BASE`, `OFDD_API_HOST_BIND`, `OFDD_FRONTEND_HOST_BIND`, retention / log knobs.
-4. [frontend/.env](../frontend/.env) — required if you build the frontend on the host (e.g. for CI or local debugging). For the lab stack set `VITE_API_BASE=http://localhost:8000`. Behind Caddy use `/api`. Vite **bakes this into the bundle at build time** — a missing value produces a frontend that silently falls back to relative URLs and cannot reach the API.
+3. [stack/.env](.env) - created by `scripts/bootstrap.sh` or hand-written. Relevant vars: `OFDD_API_KEY`, `OFDD_APP_USER`, `OFDD_APP_USER_HASH`, `OFDD_JWT_SECRET`, `OFDD_BACNET_SERVER_API_KEY`, `VITE_API_BASE`, `OFDD_API_HOST_BIND`, `OFDD_FRONTEND_HOST_BIND`, retention / log knobs.
+4. [frontend/.env](../frontend/.env) - required if you build the frontend on the host (e.g. for CI or local debugging). For the lab stack set `VITE_API_BASE=http://localhost:8000`. Behind Caddy use `/api`. Vite **bakes this into the bundle at build time** - a missing value produces a frontend that silently falls back to relative URLs and cannot reach the API.
 
 ## First-time setup
 
@@ -37,7 +37,7 @@ docker compose build            # build every core image
 docker compose up -d            # start core services; DB init scripts run on first boot
 ```
 
-`sql/*.sql` files in [sql/](sql/) are executed by the TimescaleDB entrypoint **only on first boot** when the `openfdd_db` volume is empty. Schema changes to an existing volume must be applied manually — see *Applying SQL migrations* below.
+`sql/*.sql` files in [sql/](sql/) are executed by the TimescaleDB entrypoint **only on first boot** when the `openfdd_db` volume is empty. Schema changes to an existing volume must be applied manually - see *Applying SQL migrations* below.
 
 ## Build
 
@@ -54,7 +54,7 @@ docker compose build api
 docker compose build bacnet-scraper fdd-loop host-stats weather-scraper mcp-rag
 ```
 
-The `frontend` service uses the stock `node:22-alpine` image and rebuilds the Vite bundle on every container start (the entrypoint runs `npm ci` if `node_modules` is empty, then `npm run build`, then `vite preview`). No `docker compose build` step is needed for frontend changes — a `docker compose restart frontend` (or `up -d frontend`) is enough.
+The `frontend` service uses the stock `node:22-alpine` image and rebuilds the Vite bundle on every container start (the entrypoint runs `npm ci` if `node_modules` is empty, then `npm run build`, then `vite preview`). No `docker compose build` step is needed for frontend changes - a `docker compose restart frontend` (or `up -d frontend`) is enough.
 
 ### Building the frontend on the host (optional)
 
@@ -67,7 +67,7 @@ VITE_API_BASE=http://localhost:8000 npm run build
 npm run preview -- --host 0.0.0.0 --port 5173
 ```
 
-The `frontend/.env` file pins `VITE_API_BASE` so subsequent host builds don't break. `vite preview` **does not honour** the `proxy:` field in `vite.config.ts` — only `vite dev` does.
+The `frontend/.env` file pins `VITE_API_BASE` so subsequent host builds don't break. `vite preview` **does not honour** the `proxy:` field in `vite.config.ts` - only `vite dev` does.
 
 ## Compose / start
 
@@ -111,7 +111,7 @@ docker compose down
 docker compose up -d
 ```
 
-`down -v` would delete the `openfdd_db`, `grafana_data`, and `frontend_node_modules` volumes — **do not run it** unless you intend to wipe the database.
+`down -v` would delete the `openfdd_db`, `grafana_data`, and `frontend_node_modules` volumes - **do not run it** unless you intend to wipe the database.
 
 ## Applying SQL migrations
 
@@ -146,13 +146,13 @@ Backend code change → rebuild API image → recreate:
 docker compose up -d --build api
 ```
 
-Rule YAML edit (`stack/rules/*.yaml`): picked up on the next `fdd-loop` tick — no restart needed. Force an immediate run by touching `config/.run_fdd_now`.
+Rule YAML edit (`stack/rules/*.yaml`): picked up on the next `fdd-loop` tick - no restart needed. Force an immediate run by touching `config/.run_fdd_now`.
 
 Frontend code change: `docker compose restart frontend` (the entrypoint rebuilds).
 
 Adding a new Python dependency: edit `pyproject.toml`, rebuild every image that bundles the package (`api`, `fdd-loop`, `bacnet-scraper`, `weather-scraper`, `host-stats`, `mcp-rag`).
 
-New SQL migration: add file to `sql/`, apply via `psql` on the running stack (see above), and commit — it'll run automatically on a fresh volume.
+New SQL migration: add file to `sql/`, apply via `psql` on the running stack (see above), and commit - it'll run automatically on a fresh volume.
 
 ## Logs & retention
 

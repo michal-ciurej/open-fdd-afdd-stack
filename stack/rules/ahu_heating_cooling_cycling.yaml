@@ -18,7 +18,7 @@ inputs:
     brick: Cooling_Valve_Command
 
 params:
-  vlv_open: 0.05          # fraction — treat anything above 5% as "active"
+  vlv_open: 0.05          # fraction - treat anything above 5% as "active"
   transition_count_max: 3 # number of mode transitions in window before flagging
   rolling_window: 9       # 45 min at 5-min sampling (debounce window)
 

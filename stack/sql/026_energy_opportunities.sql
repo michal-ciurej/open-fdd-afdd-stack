@@ -4,7 +4,7 @@
 -- opportunity (current value vs design, override hours, etc.) live here.
 --
 -- Differences from energy_calculations:
---   * equipment_id is NOT NULL — every opportunity belongs to one piece of equipment
+--   * equipment_id is NOT NULL - every opportunity belongs to one piece of equipment
 --   * fdd_rule_id references fault_definitions(fault_id) so an opportunity can be
 --     auto-seeded when an FDD rule fires (phase 3)
 --   * measure_family is a typed enum-via-CHECK that drives the UI dialog filter

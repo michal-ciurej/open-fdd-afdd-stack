@@ -166,7 +166,7 @@ class EquipmentExportRow(BaseModel):
     """One equipment row in the structured data-model export.
 
     Carries enough context for an LLM (or operator) to assign ``equipment_type``
-    in one pass without re-scanning the points array — ``member_brick_types``
+    in one pass without re-scanning the points array - ``member_brick_types``
     summarizes the bricks present on this equipment's points. Mirrors the
     fields that ``EquipmentImportRow`` accepts on import so the JSON
     round-trips through the LLM tagging workflow.
@@ -199,7 +199,7 @@ class EquipmentExportRow(BaseModel):
         None,
         description=(
             "Brick 1.4 equipment class, long form (e.g. ``Fan_Coil_Unit``, ``Chiller``). "
-            "null when untagged. Tag value MUST come from the Brick 1.4 allowlist — see "
+            "null when untagged. Tag value MUST come from the Brick 1.4 allowlist - see "
             "GET /data-model/vocabulary or BRICK_14_EQUIPMENT_CLASSES in brick_vocabulary.py. "
             "Aliases like ``FCU`` / ``VAV`` / ``brick:Cooling-Tower`` are normalized on import."
         ),
@@ -221,7 +221,7 @@ class EquipmentExportRow(BaseModel):
         description=(
             "Distinct ``brick_type`` values across this equipment's points (sorted, "
             "may be empty when no points are tagged yet). Use this to choose "
-            "``equipment_type`` without re-scanning the points array — e.g. an "
+            "``equipment_type`` without re-scanning the points array - e.g. an "
             "equipment carrying ``Heating_Valve_Command`` + ``Cooling_Valve_Command`` + "
             "``Fan_Enable_Command`` is unambiguously a ``Fan_Coil_Unit``."
         ),
@@ -229,7 +229,7 @@ class EquipmentExportRow(BaseModel):
 
 
 class StructuredExport(BaseModel):
-    """Structured data-model export: ``{equipment, points}`` — symmetric with the
+    """Structured data-model export: ``{equipment, points}`` - symmetric with the
     body accepted by ``PUT /data-model/import`` so the JSON can round-trip through
     an LLM tagging step. Use ``GET /data-model/export?shape=structured`` to fetch.
     """
@@ -569,7 +569,7 @@ def _build_equipment_export(site_id: str | None = None) -> list[EquipmentExportR
     summary="Export data model as JSON (BACnet + DB points for LLM tagging)",
     response_description=(
         "Default ``shape=flat``: list of point/discovery rows (back-compat). "
-        "``shape=structured``: ``{equipment: [...], points: [...]}`` — same equipment carries "
+        "``shape=structured``: ``{equipment: [...], points: [...]}`` - same equipment carries "
         "``equipment_type`` (Brick 1.4 long-form) and ``member_brick_types`` so the LLM can tag "
         "equipment in one pass. Round-trips through PUT /data-model/import."
     ),
@@ -588,7 +588,7 @@ def export_points(
         description=(
             "``flat`` (default, back-compat): list[UnifiedExportRow]. "
             "``structured``: {equipment: list[EquipmentExportRow], points: list[UnifiedExportRow]} "
-            "— use this for the AI-assisted tagging workflow so the LLM can fill ``equipment_type`` "
+            "- use this for the AI-assisted tagging workflow so the LLM can fill ``equipment_type`` "
             "(Brick 1.4 long-form) per equipment instead of inferring it from points."
         ),
     ),
@@ -596,7 +596,7 @@ def export_points(
     """Single export route: BACnet discovery + CRUD points. Use for LLM Brick tagging (docs/modeling/ai_assisted_tagging); then PUT /data-model/import.
 
     ``shape=flat`` keeps the original list-of-points response. ``shape=structured`` returns
-    ``{equipment, points}`` mirroring the import body shape — pass it through an LLM that fills
+    ``{equipment, points}`` mirroring the import body shape - pass it through an LLM that fills
     in ``equipment_type`` on each equipment row (using GET /data-model/vocabulary as the
     allowlist) and ``brick_type`` / ``rule_input`` on each point row, then PUT it back.
     """
@@ -676,7 +676,7 @@ class AiTagRequest(BaseModel):
 def ai_tag(body: AiTagRequest):
     """Build the structured export for ``site_id`` and start a background tagging
     run. Returns a run id immediately; the proposal is fetched via the runs
-    endpoint once status is 'done'. Does not write to the database — onboarding
+    endpoint once status is 'done'. Does not write to the database - onboarding
     is the operator approving the (edited) proposal via PUT /data-model/import."""
     from openfdd_stack.platform.ai.tagging import (
         AiTaggingError,
@@ -707,13 +707,13 @@ def ai_tag(body: AiTagRequest):
     response_description=(
         "Run state: {status: running|done|error, progress, proposal?, error?}. "
         "When status='done', proposal is {points, equipment, warnings, usage} with "
-        "per-row confidence/rationale — strip those and PUT to /data-model/import."
+        "per-row confidence/rationale - strip those and PUT to /data-model/import."
     ),
 )
 def ai_tag_run(run_id: str):
     """Return the current state of a background tagging run started by POST
-    /data-model/ai-tag. 404 if unknown (expired, or — if the API ever runs more
-    than one replica — the poll hit a different process than the one that started
+    /data-model/ai-tag. 404 if unknown (expired, or - if the API ever runs more
+    than one replica - the poll hit a different process than the one that started
     the run)."""
     from openfdd_stack.platform.ai.tagging import get_run
 
@@ -850,7 +850,7 @@ class EquipmentImportRow(BaseModel):
         description=(
             "Stable equipment identity key (e.g. the Niagara device path), stored as "
             "metadata.source_ref. When set, the row reconciles to the equipment with "
-            "the matching source_ref (independent of name) — created if missing — so "
+            "the matching source_ref (independent of name) - created if missing - so "
             "re-tagging after a rename updates the same equipment instead of duplicating."
         ),
     )
@@ -1041,7 +1041,7 @@ def _ensure_equipment_by_source_ref(
     """Find equipment by (site_id, metadata.source_ref) or create it; return its id.
 
     ``source_ref`` is the stable identity (e.g. a Niagara device path), decoupled
-    from the user-editable ``name`` — so re-tagging after a rename reconciles to
+    from the user-editable ``name`` - so re-tagging after a rename reconciles to
     the SAME equipment instead of creating a duplicate. On a source_ref match the
     name/type are left untouched (user edits win). Falls back to name-based when
     source_ref is empty. Same conn/cur => same transaction."""
@@ -1096,7 +1096,7 @@ def _ensure_equipment_by_source_ref(
                     )
                 return str(ex["id"])
             continue  # name taken by a different device -> try next candidate
-    # Pathological collision count — fall back to plain name-based create.
+    # Pathological collision count - fall back to plain name-based create.
     return _ensure_equipment(cur, site_id, base_name, et)
 
 
@@ -1230,7 +1230,7 @@ def _create_or_upsert_without_point_id(
         "from GET /sites or use GET /data-model/export?site_id=YourSite to pre-fill",
     )
     # source_ref-first (stable identity), then name (find-or-create), then a
-    # supplied equipment_id only if it exists — never write a dangling FK.
+    # supplied equipment_id only if it exists - never write a dangling FK.
     _eq_sr_c = (getattr(point_row, "equipment_source_ref", None) or "").strip()
     _eq_name_c = (point_row.equipment_name or "").strip()
     if _eq_sr_c:
@@ -1404,7 +1404,7 @@ def import_data_model(body: DataModelImportBody):
                 raise HTTPException(
                     400,
                     f"Missing site(s): {', '.join(unique_missing)}. "
-                    "The tagged JSON references site IDs that are not in your database — the LLM may have invented them. "
+                    "The tagged JSON references site IDs that are not in your database - the LLM may have invented them. "
                     "Add the site in Step 2 (Sites) and try again, or use « Tag selected site only » and re-tag so the export (and the AI) use your real site ID.",
                 )
             # If payload mixes explicit site_id rows with many null site_id rows, infer one payload
@@ -1465,10 +1465,10 @@ def import_data_model(body: DataModelImportBody):
                             )
                         )
                     # Equipment resolution precedence:
-                    #  1) equipment_source_ref — stable identity (metadata.source_ref);
+                    #  1) equipment_source_ref - stable identity (metadata.source_ref);
                     #     rename-safe, the preferred path for tagged Niagara points.
-                    #  2) equipment_name — find-or-create by name.
-                    #  3) equipment_id — only if it actually exists (a stale/fabricated
+                    #  2) equipment_name - find-or-create by name.
+                    #  3) equipment_id - only if it actually exists (a stale/fabricated
                     #     id would otherwise write a dangling FK and 500 the UPDATE).
                     _eq_sr = (getattr(row, "equipment_source_ref", None) or "").strip()
                     _eq_name = (row.equipment_name or "").strip()
@@ -1917,7 +1917,7 @@ def data_model_check():
     response_description="Status; graph is Brick-only after reset, file rewritten.",
 )
 def data_model_reset():
-    """Clear the in-memory graph and repopulate from DB only (Brick). Removes all BACnet triples and orphaned blank nodes, then writes config/data_model.ttl. Brick triples come from the database—so if the DB still has sites/equipment/points, the TTL will still contain them. To get an empty data model: delete all sites via CRUD (DELETE /sites/{id} for each; cascade removes equipment and points), then POST /data-model/reset."""
+    """Clear the in-memory graph and repopulate from DB only (Brick). Removes all BACnet triples and orphaned blank nodes, then writes config/data_model.ttl. Brick triples come from the database-so if the DB still has sites/equipment/points, the TTL will still contain them. To get an empty data model: delete all sites via CRUD (DELETE /sites/{id} for each; cascade removes equipment and points), then POST /data-model/reset."""
     reset_graph_to_db_only()
     ok, err = write_ttl_to_file()
     status = get_serialization_status()

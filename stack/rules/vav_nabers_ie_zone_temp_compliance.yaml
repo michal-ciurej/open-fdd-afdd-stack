@@ -17,8 +17,8 @@ inputs:
     brick: Zone_Air_Temperature_Sensor
 
 params:
-  temp_low: 21.0        # °C — NABERS IE lower comfort limit
-  temp_high: 24.9       # °C — NABERS IE upper comfort limit
+  temp_low: 21.0        # °C - NABERS IE lower comfort limit
+  temp_high: 24.9       # °C - NABERS IE upper comfort limit
   rolling_window: 24    # 24 consecutive 5-min samples = 2 hours continuous (NABERS IE trigger period)
   schedule:
     enabled: true

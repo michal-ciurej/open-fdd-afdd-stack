@@ -1,4 +1,4 @@
-"""Brick 1.4 vocabulary helpers — normalization, validation, coercion.
+"""Brick 1.4 vocabulary helpers - normalization, validation, coercion.
 
 Covers the single source of truth used by API write paths, the TTL writer,
 and the rules selector. If these helpers drift, equipment_type values stop
@@ -106,7 +106,7 @@ def test_is_valid_equipment_type_false_for_alias_until_normalized():
 
 
 def test_is_valid_equipment_type_accepts_none():
-    """None is the 'no change' sentinel for PATCH semantics — must round-trip."""
+    """None is the 'no change' sentinel for PATCH semantics - must round-trip."""
     assert is_valid_equipment_type(None) is True
 
 
@@ -155,7 +155,7 @@ def test_coerce_to_brick_class_custom_fallback():
 
 
 def test_aliases_all_resolve_to_canonical_classes():
-    """Every alias target must itself be a canonical class — guards against typos."""
+    """Every alias target must itself be a canonical class - guards against typos."""
     for alias, target in BRICK_14_ALIASES.items():
         assert target in BRICK_14_EQUIPMENT_CLASSES, (
             f"alias {alias!r} points at {target!r} which is not in the equipment allowlist"

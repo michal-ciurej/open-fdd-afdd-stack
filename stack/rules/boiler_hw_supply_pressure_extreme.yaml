@@ -2,7 +2,7 @@
 # Catches system leaks, failed or waterlogged expansion tank, PRV failure, or faulty sensor.
 # Tuning: 60-minute trigger period → rolling_window of 12 samples at 5-min data.
 name: boiler_hw_supply_pressure_extreme
-description: HW supply pressure outside normal band — possible leak or expansion tank failure
+description: HW supply pressure outside normal band - possible leak or expansion tank failure
 type: bounds
 flag: boiler_hw_supply_pressure_extreme_flag
 category: general
@@ -14,8 +14,8 @@ inputs:
   Hot_Water_Supply_Pressure_Sensor:
     brick: Hot_Water_Supply_Pressure_Sensor
     bounds:
-      metric: [100, 700]   # kPa — below 100 kPa suggests leak/loss; above 700 kPa suggests overpressure
+      metric: [100, 700]   # kPa - below 100 kPa suggests leak/loss; above 700 kPa suggests overpressure
 
 params:
   units: metric             # selects metric bounds list; data is in kPa
-  rolling_window: 12        # 60 min at 5-min sampling — debounce transient pressure spikes
+  rolling_window: 12        # 60 min at 5-min sampling - debounce transient pressure spikes

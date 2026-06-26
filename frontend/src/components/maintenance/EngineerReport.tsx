@@ -5,7 +5,7 @@ import { useFaultCountsByEquipment } from "@/hooks/use-faults";
 import { cn } from "@/lib/utils";
 import { EngineerReportTimeseriesChart } from "./EngineerReportTimeseriesChart";
 
-/** Minimal shape the report needs per equipment — satisfied by maintenance
+/** Minimal shape the report needs per equipment - satisfied by maintenance
  *  rows, equipment lists, etc. so the report can be reused in several places. */
 export interface EngineerReportEquipmentItem {
   equipment_id: string;

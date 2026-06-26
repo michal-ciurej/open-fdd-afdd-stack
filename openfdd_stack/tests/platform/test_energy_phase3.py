@@ -1,5 +1,5 @@
 """Tests for phase 3 wiring: observed-channel helpers, recompute module,
-auto-seed hook. All DB calls mocked — these are unit tests, not integration."""
+auto-seed hook. All DB calls mocked - these are unit tests, not integration."""
 
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -291,7 +291,7 @@ def test_auto_seed_skips_when_opportunity_already_exists():
 
 
 def test_auto_seed_skips_site_level_fallback_rows():
-    # equipment_id="MainCampus" is not a UUID — would be a site-name fallback
+    # equipment_id="MainCampus" is not a UUID - would be a site-name fallback
     # from the FDD loop; auto-seed is equipment-scoped only.
     results = [_result("MainCampus", "chiller_no_load_flag")]
     # No DB calls expected because the input filter rejects this row.

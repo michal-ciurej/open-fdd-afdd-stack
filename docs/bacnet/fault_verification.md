@@ -35,7 +35,7 @@ The target verification chain is:
    - use the SPARQL assets in [`openclaw/bench/sparql/README.md`](https://github.com/bbartling/open-fdd-afdd-stack/tree/main/openclaw/bench/sparql/README.md)
 
 4. **Open-FDD rules context is understood**
-   - identify the relevant YAML rule(s) under **`stack/`** (mounted into containers as the live rules directory—not duplicated under `openclaw/`)
+   - identify the relevant YAML rule(s) under **`stack/`** (mounted into containers as the live rules directory-not duplicated under `openclaw/`)
    - note the rule inputs and rolling-window assumptions
    - make sure the point/equipment mapping actually supports the rule logic
 
@@ -46,7 +46,7 @@ The target verification chain is:
      - `/faults/active`
      - frontend fault views when useful
 
-6. **Result is classified clearly** — PASS, FAIL, or INCONCLUSIVE
+6. **Result is classified clearly** - PASS, FAIL, or INCONCLUSIVE
 
 ## Overnight expectation
 

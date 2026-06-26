@@ -1,7 +1,7 @@
 /**
  * Post-build substitution: writes the Entra tenant GUID into the deployed
  * staticwebapp.config.json. Source file keeps the AAD_TENANT_ID placeholder
- * (present twice in the issuer URL — once as ciamlogin subdomain, once as
+ * (present twice in the issuer URL - once as ciamlogin subdomain, once as
  * path segment) so the repo stays tenant-agnostic.
  *
  * Required env: AAD_TENANT_ID (GUID).
@@ -32,7 +32,7 @@ if (!existsSync(TARGET)) {
 
 let body = readFileSync(TARGET, "utf8");
 if (!body.includes(PLACEHOLDER)) {
-  fail(`${TARGET} does not contain the '${PLACEHOLDER}' placeholder — was the source already substituted, or did the build copy a different file?`);
+  fail(`${TARGET} does not contain the '${PLACEHOLDER}' placeholder - was the source already substituted, or did the build copy a different file?`);
 }
 body = body.split(PLACEHOLDER).join(tenantId);
 

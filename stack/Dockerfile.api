@@ -1,4 +1,4 @@
-# Open-FDD CRUD API — sites, points, equipment (AFDD stack; engine from PyPI open-fdd)
+# Open-FDD CRUD API - sites, points, equipment (AFDD stack; engine from PyPI open-fdd)
 # BASE_IMAGE is overridable so cloud builds can pull the base from ACR instead of
 # Docker Hub (which rate-limits anonymous pulls on ACR build agents). Local builds
 # use the Docker Hub default; ACR builds pass

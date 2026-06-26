@@ -6,7 +6,7 @@ nav_order: 5
 
 # SPARQL cookbook
 
-Open-FDD keeps one **knowledge graph** (Brick + BACnet + platform config) in `config/data_model.ttl`. All queries in this cookbook run **via the REST API only** — use **POST /data-model/sparql** with a JSON body `{"query": "..."}`. Do not query the TTL file directly; the API is the single entry point so the same flow works for UIs, scripts, and tests.
+Open-FDD keeps one **knowledge graph** (Brick + BACnet + platform config) in `config/data_model.ttl`. All queries in this cookbook run **via the REST API only** - use **POST /data-model/sparql** with a JSON body `{"query": "..."}`. Do not query the TTL file directly; the API is the single entry point so the same flow works for UIs, scripts, and tests.
 
 ---
 
@@ -245,7 +245,7 @@ Returns one row per polling point that has a matching BACnet object: `device_ins
 
 **Why "No bindings (empty result)"?** The query above joins **Brick** points to **BACnet** objects. If your graph has no BACnet triples (no discovery has been run, or you only have Brick from a TTL file), there are no `bacnet:Device`, `bacnet:contains`, or `bacnet:object-name` triples, so the join returns nothing. Use the query below when you only have Brick data.
 
-**Polling points with a Brick type (no BACnet)** — use this when the graph has no BACnet data; it returns points that have `ofdd:polling true` and a Brick class (e.g. `Return_Air_Temperature_Sensor`):
+**Polling points with a Brick type (no BACnet)** - use this when the graph has no BACnet data; it returns points that have `ofdd:polling true` and a Brick class (e.g. `Return_Air_Temperature_Sensor`):
 
 ```sparql
 PREFIX brick: <https://brickschema.org/schema/Brick#>
@@ -264,11 +264,11 @@ WHERE {
 ORDER BY ?point_label
 ```
 
-**Data Model Protocols: Equipment table vs "View full data model (TTL)"** — The **Equipment** table on **Data Model Protocols** comes from the **database** (REST API: sites, equipment, points). **Data Model Testing** (SPARQL) and **"View full data model (TTL)"** on Protocols use the **in-memory graph**, which is synced from the DB (Brick) plus BACnet discovery. If you see a full TTL with equipment but "No equipment configured" in the table, the DB may be empty or out of sync: the graph can be loaded from `config/data_model.ttl` on startup, but the UI list is always from the API/DB. Use the site selector in the top bar ("All sites" vs a specific site); ensure sites and equipment exist in the DB (e.g. create via the UI or import).
+**Data Model Protocols: Equipment table vs "View full data model (TTL)"** - The **Equipment** table on **Data Model Protocols** comes from the **database** (REST API: sites, equipment, points). **Data Model Testing** (SPARQL) and **"View full data model (TTL)"** on Protocols use the **in-memory graph**, which is synced from the DB (Brick) plus BACnet discovery. If you see a full TTL with equipment but "No equipment configured" in the table, the DB may be empty or out of sync: the graph can be loaded from `config/data_model.ttl` on startup, but the UI list is always from the API/DB. Use the site selector in the top bar ("All sites" vs a specific site); ensure sites and equipment exist in the DB (e.g. create via the UI or import).
 
 ---
 
-## Recipe 5: FDD — points and rule mapping
+## Recipe 5: FDD - points and rule mapping
 
 FDD rules resolve Brick classes to DataFrame columns via the TTL. These queries help you validate that points have the right Brick types and rule inputs for your rules (e.g. [sensor_bounds](../rules/overview) or [expression rules](../expression_rule_cookbook)).
 
@@ -310,7 +310,7 @@ Use this to ensure every Brick class your rules reference (e.g. `Supply_Air_Temp
 
 ---
 
-## Recipe 6: FDD — time-series references for rules
+## Recipe 6: FDD - time-series references for rules
 
 Rules in `stack/rules/` (e.g. `sensor_bounds.yaml`, expression rules) declare **inputs** by Brick class only. The runner uses the Brick TTL (this graph) to resolve:
 
@@ -364,7 +364,7 @@ These queries mirror the logic in `scripts/automated_testing/sparql/` (e.g. 05_b
 
 ## Recipe 7: Integrity and completeness
 
-**Graph check** — Use **GET /data-model/check** for triple counts, sites count, BACnet device count, and orphan warnings. For custom checks, use SPARQL:
+**Graph check** - Use **GET /data-model/check** for triple counts, sites count, BACnet device count, and orphan warnings. For custom checks, use SPARQL:
 
 **Count triples:**
 

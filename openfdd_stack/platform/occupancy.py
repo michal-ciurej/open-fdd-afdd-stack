@@ -4,11 +4,11 @@ The per-site weekly operating schedule lives in ``site_schedules`` (7 rows max,
 keyed by ISO day-of-week 0=Mon..6=Sun, with tz-aware local start/end windows).
 This module turns those rows into things the analytics layer needs:
 
-  * :func:`occupied_mask` — a boolean ``pandas.Series`` aligned to a timeseries
+  * :func:`occupied_mask` - a boolean ``pandas.Series`` aligned to a timeseries
     DataFrame's timestamp index, ``True`` where the sample falls inside core
     hours. This is what lets a DataFrame decide "in-hours vs out-of-hours" for
     fault finding and energy profiling.
-  * :func:`occupied_hours_per_year` — the annualised core-hours scalar derived
+  * :func:`occupied_hours_per_year` - the annualised core-hours scalar derived
     from the weekly windows, so the energy calc resolver can keep consuming a
     single ``occupied_hours_per_year`` number while the source of truth becomes
     the schedule.
@@ -50,7 +50,7 @@ def occupied_mask(
     ``schedule_rows`` are ``site_schedules`` rows: each a mapping with ``dow``
     (0=Mon..6=Sun), ``start_local``/``end_local`` (``datetime.time``), ``tz``.
 
-    With no schedule rows, every sample is considered in-core-hours — matching
+    With no schedule rows, every sample is considered in-core-hours - matching
     the compliance default ("treat all hours as in-hours until configured") so
     derived metrics stay meaningful rather than collapsing to zero.
     """
@@ -64,7 +64,7 @@ def occupied_mask(
     idx_utc = idx.tz_localize("UTC") if idx.tz is None else idx.tz_convert("UTC")
 
     result = np.zeros(len(idx), dtype=bool)
-    # Cache the local (dow, seconds-of-day) projection per tz — most sites use a
+    # Cache the local (dow, seconds-of-day) projection per tz - most sites use a
     # single tz across all 7 rows, so this converts once.
     local_cache: dict[str, tuple[np.ndarray, np.ndarray]] = {}
 

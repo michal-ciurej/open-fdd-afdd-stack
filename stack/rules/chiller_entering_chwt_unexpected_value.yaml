@@ -17,8 +17,8 @@ inputs:
     brick: Chiller_Run_Status
 
 params:
-  chwt_high: 22.0       # °C — upper plausible bound for entering CHWT during active cooling
-  chwt_low: 6.5         # °C — lower plausible bound for entering CHWT during active cooling
+  chwt_high: 22.0       # °C - upper plausible bound for entering CHWT during active cooling
+  chwt_low: 6.5         # °C - lower plausible bound for entering CHWT during active cooling
   rolling_window: 12    # 12 consecutive 5-min samples = 1 h (matches 1-hour trigger period)
 
 expression: |

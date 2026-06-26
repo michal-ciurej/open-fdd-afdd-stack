@@ -2,7 +2,7 @@
 # Catches stuck relay, control loop instability, faulty enable command, or undersized equipment.
 # Tuning: 60-min trigger period at 5-min sampling = 12 samples; threshold of 8 state changes per window.
 name: ahu_raf_short_cycling
-description: Return air fan short cycling — excessive state changes within 60 min
+description: Return air fan short cycling - excessive state changes within 60 min
 type: expression
 flag: ahu_raf_short_cycling_flag
 category: general
@@ -17,7 +17,7 @@ inputs:
     brick: Return_Fan_Command
 
 params:
-  state_change_threshold: 8   # count — max allowable state changes per rolling window before fault
+  state_change_threshold: 8   # count - max allowable state changes per rolling window before fault
   rolling_window: 12          # 60 min at 5-min sampling (12 samples)
 
 expression: |

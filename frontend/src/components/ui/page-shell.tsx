@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 interface PageShellProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** Public asset path (served from frontend/public) — e.g. "/data/images/overview.jpg".
+  /** Public asset path (served from frontend/public) - e.g. "/data/images/overview.jpg".
    *  When omitted, renders just the soft green gradient overlay. */
   backgroundImage?: string;
   /** 0..1; multiplied with the base 0.08 page-image opacity. Default 1. */
@@ -13,7 +13,7 @@ interface PageShellProps extends React.HTMLAttributes<HTMLDivElement> {
  * Wraps page content with a fixed, low-opacity background image and a green→transparent
  * gradient wash, sized to the main content area. Lives behind everything; never blocks input.
  *
- * Image is rendered as a fixed background — no backdrop-blur, so it's free on the GPU even
+ * Image is rendered as a fixed background - no backdrop-blur, so it's free on the GPU even
  * for dense data pages.
  */
 export function PageShell({

@@ -109,7 +109,7 @@ Create a new site, delete existing sites, or amend data drivers for the currentl
               {sites.map((site) => (
                 <TableRow key={site.id} data-site-id={site.id}>
                   <TableCell className="font-medium">{site.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{site.description ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{site.description ?? "-"}</TableCell>
                   <TableCell>
                     <button
                       type="button"

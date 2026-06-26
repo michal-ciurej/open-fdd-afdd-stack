@@ -1,4 +1,4 @@
-"""Tests for occupancy schedule helpers — mask alignment, tz/DST, hours."""
+"""Tests for occupancy schedule helpers - mask alignment, tz/DST, hours."""
 
 from datetime import time
 

@@ -33,11 +33,11 @@ then we know much more than "the point exists". We know which fault rules should
 
 For BACnet-backed verification, the test harness should always be able to retrieve or verify:
 
-1. **BACnet device inventory** — device instance, device address, device object presence in the graph
-2. **BACnet point addressing** — object identifier, point label / object-name alignment, point-to-device membership
-3. **Equipment semantic context** — AHU / VAV / zone / plant / building associations, Brick class of the point, whether the point is marked for polling
-4. **Rule relevance context** — which YAML fault rules are active, what `rule_input` mappings exist for the point/equipment, what rolling-window parameters matter for that rule
-5. **Operational intent** — whether the point is used for FDD only, useful for future optimization / supervisory control, operator-facing or only diagnostic
+1. **BACnet device inventory** - device instance, device address, device object presence in the graph
+2. **BACnet point addressing** - object identifier, point label / object-name alignment, point-to-device membership
+3. **Equipment semantic context** - AHU / VAV / zone / plant / building associations, Brick class of the point, whether the point is marked for polling
+4. **Rule relevance context** - which YAML fault rules are active, what `rule_input` mappings exist for the point/equipment, what rolling-window parameters matter for that rule
+5. **Operational intent** - whether the point is used for FDD only, useful for future optimization / supervisory control, operator-facing or only diagnostic
 
 ## Live system interpretation
 

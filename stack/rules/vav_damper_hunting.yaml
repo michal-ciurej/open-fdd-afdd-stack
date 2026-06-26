@@ -2,7 +2,7 @@
 # Catches aggressive PID tuning, sensor noise, undersized actuator, or conflicting zone/pressure resets.
 # Tuning: 2-hour rolling window at 5-min data (24 samples); 15% deviation threshold; 4 sign-changes ≈ 2 full cycles/hr.
 name: vav_damper_hunting
-description: VAV damper hunting — excessive oscillation around median position
+description: VAV damper hunting - excessive oscillation around median position
 type: expression
 flag: vav_damper_hunting_flag
 category: general
@@ -18,8 +18,8 @@ inputs:
     brick: Damper_Position_Sensor
 
 params:
-  range_threshold: 0.15       # fraction (0–1) — flag when peak-to-trough range exceeds 15% of full stroke
-  min_crossings: 4            # slope direction reversals in window — 4 ≈ 2 full up/down cycles
+  range_threshold: 0.15       # fraction (0–1) - flag when peak-to-trough range exceeds 15% of full stroke
+  min_crossings: 4            # slope direction reversals in window - 4 ≈ 2 full up/down cycles
   rolling_window: 24          # 2 h at 5-min sampling (debounce / analysis window)
 
 expression: |

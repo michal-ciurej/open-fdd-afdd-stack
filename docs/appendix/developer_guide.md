@@ -13,7 +13,7 @@ This page is for **developers and contributors** who work on the Open-FDD codeba
 
 ## Front-end: Config UI
 
-The **Configuration UI** is the small web app served at **`/app/`** when you open the API (e.g. http://localhost:8000/app/). It lets users browse the data model (sites, equipment, points), check BACnet status, and trigger an FDD run. It is **plain HTML, CSS, and JavaScript** — no Node, no bundler, no build step.
+The **Configuration UI** is the small web app served at **`/app/`** when you open the API (e.g. http://localhost:8000/app/). It lets users browse the data model (sites, equipment, points), check BACnet status, and trigger an FDD run. It is **plain HTML, CSS, and JavaScript** - no Node, no bundler, no build step.
 
 ### Where the code lives
 
@@ -32,7 +32,7 @@ The API serves this directory with FastAPI’s `StaticFiles` mounted at `/app` (
    - From repo root: `pip install -e ".[platform,brick]"` then start the API (e.g. `uvicorn openfdd_stack.platform.api.main:app --reload --host 0.0.0.0 --port 8000`), or
    - Use the full stack: `./scripts/bootstrap.sh` so the API runs in Docker.
 2. **Edit files** in `open_fdd/platform/static/` (HTML, JS, or CSS).
-3. **Reload the browser** at http://localhost:8000/app/ — there is no build step; changes are picked up on refresh. If you run the API in Docker, ensure the repo is mounted so your edits are visible inside the container (bootstrap mounts the repo into the API container where applicable).
+3. **Reload the browser** at http://localhost:8000/app/ - there is no build step; changes are picked up on refresh. If you run the API in Docker, ensure the repo is mounted so your edits are visible inside the container (bootstrap mounts the repo into the API container where applicable).
 4. **API surface:** The UI calls the same REST API as the rest of the platform (e.g. GET `/config`, GET `/sites`, GET `/equipment`, GET `/points`, POST `/run-fdd/trigger`, GET `/health`). It does not use a separate “front-end API”; it uses the OpenAPI-documented endpoints. Auth: if `OFDD_API_KEY` is set, the Config UI is still served without auth (see `auth.py`), but your JS can send `Authorization: Bearer <key>` if you add authenticated calls later.
 
 ### Where WebSockets come from (and how bootstrap fits)
@@ -47,8 +47,8 @@ The API serves this directory with FastAPI’s `StaticFiles` mounted at `/app` (
 ### Stack and conventions
 
 - **Bootstrap 5** is loaded from CDN in `index.html` (`bootstrap.min.css`). No npm or package.json.
-- **No framework** — vanilla JS in `app.js` (fetch, DOM, event listeners).
-- **Styling** — `styles.css` uses CSS variables and Bootstrap overrides where needed (e.g. `.text-ofdd-primary`, `.ofdd-sidebar`).
+- **No framework** - vanilla JS in `app.js` (fetch, DOM, event listeners).
+- **Styling** - `styles.css` uses CSS variables and Bootstrap overrides where needed (e.g. `.text-ofdd-primary`, `.ofdd-sidebar`).
 
 Adding a new page or panel means editing `index.html` and `app.js` (and optionally `styles.css`). For a larger SPA or build pipeline, you could later introduce a proper front-end stack and point the API’s `/app` mount at a build output directory; the current design keeps the bar low for small tweaks.
 
@@ -105,7 +105,7 @@ The **single source of truth** for the schema is the migration files in **`stack
 - **Equipment** → points (and related timeseries).
 - **Point** → timeseries_readings, bacnet_write_audit.
 
-So deleting a site removes all its equipment, points, and their timeseries. See [Danger zone — CRUD deletes](../howto/danger_zone#crud-deletes--cascade-behavior).
+So deleting a site removes all its equipment, points, and their timeseries. See [Danger zone - CRUD deletes](../howto/danger_zone#crud-deletes--cascade-behavior).
 
 ### Adding or changing schema
 
@@ -119,6 +119,6 @@ So deleting a site removes all its equipment, points, and their timeseries. See 
 ## Where to go next
 
 - **Environment variables, unit tests, BACnet scrape, data model API, bootstrap, LLM tagging:** [Technical reference](technical_reference).
-- **Running tests:** `pytest open_fdd/tests/ -v`. See [Technical reference — Unit tests](technical_reference#unit-tests).
-- **New SQL migrations and operations:** [Operations — New SQL migrations](../howto/operations#new-sql-migrations).
+- **Running tests:** `pytest open_fdd/tests/ -v`. See [Technical reference - Unit tests](technical_reference#unit-tests).
+- **New SQL migrations and operations:** [Operations - New SQL migrations](../howto/operations#new-sql-migrations).
 - **Grafana and SQL recipes:** [Grafana SQL cookbook](../howto/grafana_cookbook).

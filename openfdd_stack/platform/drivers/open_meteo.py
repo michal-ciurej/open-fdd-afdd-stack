@@ -158,7 +158,7 @@ def fetch_open_meteo(
     if wind_dir is not None:
         df["wind_dir_deg"] = np.round(wind_dir, 1)
 
-    # Solar/radiation (W/m²) — no conversion
+    # Solar/radiation (W/m²) - no conversion
     for api_key, col in [
         ("shortwave_radiation", "shortwave_wm2"),
         ("direct_radiation", "direct_wm2"),

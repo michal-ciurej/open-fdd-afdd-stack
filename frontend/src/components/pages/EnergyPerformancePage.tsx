@@ -19,12 +19,12 @@ const FAMILY_LABEL: Record<MeasureFamily, string> = {
 };
 
 function fmtCurrency(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "-";
   return `£${Math.round(value).toLocaleString()}`;
 }
 
 function fmtYears(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "-";
   if (value === 0) return "0 yr";
   if (value < 0.1) return "< 0.1 yr";
   return `${value.toFixed(1)} yr`;
@@ -137,7 +137,7 @@ export function EnergyPerformancePage() {
       {/* Prioritisation bubble chart */}
       <Card className="mb-6">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Prioritisation — impact vs payback</CardTitle>
+          <CardTitle className="text-base">Prioritisation - impact vs payback</CardTitle>
           <p className="text-sm font-normal text-muted-foreground">
             Top-left = best return. Bubble size shows capex; colour shows how much real data
             backs the estimate.

@@ -387,7 +387,7 @@ def run_fdd_loop(
     _log.info(
         "TTL equipment_types (%d): %s | column_map keys=%d",
         len(equipment_types),
-        equipment_types or "<empty — no rules with equipment_type filter will run>",
+        equipment_types or "<empty - no rules with equipment_type filter will run>",
         len(column_map),
     )
 

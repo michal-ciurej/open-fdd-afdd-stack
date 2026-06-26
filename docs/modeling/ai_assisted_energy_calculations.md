@@ -10,14 +10,14 @@ After the **Brick / BACnet data model** is in place ([AI-assisted data modeling]
 
 **Predefined calculators** (labels, parameter keys, units) are versioned in the platform (`openfdd_stack.platform.energy_calc_library`). The UI on **Energy Engineering** mirrors them; the LLM must **only** use `calc_type` values and **parameter keys** that appear in the export bundle.
 
-**Default FDD penalty narratives (18)** — Engineering descriptions, difficulty ordering, and suggested `calc_type` mappings are in [Default FDD energy penalty catalog](energy_penalty_equations). You can **materialize** them as disabled rows with **`POST /energy-calculations/seed-default-penalty-catalog?site_id=<uuid>`** (or **Seed default penalty catalog** in the UI), then enable and fill parameters / `point_bindings` per site. Seeded rows use `external_id` values `penalty_default_01` … `penalty_default_18` and may include `_penalty_catalog_seq` in `parameters`; the TTL emitter adds **`ofdd:penaltyCatalogSeq`** for SPARQL.
+**Default FDD penalty narratives (18)** - Engineering descriptions, difficulty ordering, and suggested `calc_type` mappings are in [Default FDD energy penalty catalog](energy_penalty_equations). You can **materialize** them as disabled rows with **`POST /energy-calculations/seed-default-penalty-catalog?site_id=<uuid>`** (or **Seed default penalty catalog** in the UI), then enable and fill parameters / `point_bindings` per site. Seeded rows use `external_id` values `penalty_default_01` … `penalty_default_18` and may include `_penalty_catalog_seq` in `parameters`; the TTL emitter adds **`ofdd:penaltyCatalogSeq`** for SPARQL.
 
 ---
 
 ## Two-phase workflow (data model, then energy)
 
-1. **Phase A — Data model** — `GET /data-model/export` → LLM tagging → `PUT /data-model/import` so equipment, points, `external_id`, and Brick types exist for the site. See [AI-assisted data modeling](ai_assisted_tagging) and [LLM workflow](llm_workflow).
-2. **Phase B — Energy** — `GET /energy-calculations/export?site_id=<uuid>` → LLM fills or edits calculation rows → `PUT /energy-calculations/import` with body `{ "site_id": "<same uuid>", "energy_calculations": [ ... ] }`. Optionally seed the 18 penalty templates first (UI or seed endpoint above).
+1. **Phase A - Data model** - `GET /data-model/export` → LLM tagging → `PUT /data-model/import` so equipment, points, `external_id`, and Brick types exist for the site. See [AI-assisted data modeling](ai_assisted_tagging) and [LLM workflow](llm_workflow).
+2. **Phase B - Energy** - `GET /energy-calculations/export?site_id=<uuid>` → LLM fills or edits calculation rows → `PUT /energy-calculations/import` with body `{ "site_id": "<same uuid>", "energy_calculations": [ ... ] }`. Optionally seed the 18 penalty templates first (UI or seed endpoint above).
 
 Always pass the **same `site_id`** as in the header site selector (or UUID from `GET /sites`). Calculations are **never** global.
 
@@ -31,11 +31,11 @@ Response (JSON):
 
 | Field | Purpose |
 |--------|---------|
-| `format` | `openfdd_energy_calculations_v1` — version tag for agents. |
+| `format` | `openfdd_energy_calculations_v1` - version tag for agents. |
 | `site_id`, `site_name` | Scope for the LLM. |
 | `exported_at` | ISO timestamp. |
-| `calc_types` | Same structure as `GET /energy-calculations/calc-types` — **embeds** every allowed calculator with `id`, `label`, `summary`, `category`, and `fields[]` (`key`, `label`, `type`, `min`/`max`, `default`, `options` for enums). |
-| `penalty_catalog` | Same 18 objects as **`GET /energy-calculations/penalty-catalog`** (`seq`, `layer`, `difficulty`, `name`, `fdd_trigger`, `math_summary`, `calc_type`, `default_parameters`) — reference for agents; see [energy penalty equations](energy_penalty_equations). |
+| `calc_types` | Same structure as `GET /energy-calculations/calc-types` - **embeds** every allowed calculator with `id`, `label`, `summary`, `category`, and `fields[]` (`key`, `label`, `type`, `min`/`max`, `default`, `options` for enums). |
+| `penalty_catalog` | Same 18 objects as **`GET /energy-calculations/penalty-catalog`** (`seq`, `layer`, `difficulty`, `name`, `fdd_trigger`, `math_summary`, `calc_type`, `default_parameters`) - reference for agents; see [energy penalty equations](energy_penalty_equations). |
 | `energy_calculations` | Existing rows: `id`, `external_id`, `name`, `description`, `calc_type`, `parameters`, `point_bindings`, `enabled`, `equipment_id`, **`equipment_name`** (resolved for display), timestamps. |
 
 Download this JSON from **Energy Engineering** (“Download export JSON”) or call the API from an agent.
@@ -44,10 +44,10 @@ Download this JSON from **Energy Engineering** (“Download export JSON”) or c
 
 ## Import body (`PUT /energy-calculations/import`)
 
-Top-level keys (**only** these — `extra=forbid` on the body model):
+Top-level keys (**only** these - `extra=forbid` on the body model):
 
-- **`site_id`** (UUID string) — must match the site you are editing.
-- **`energy_calculations`** (array) — rows to **create or update** by **`(site_id, external_id)`**.
+- **`site_id`** (UUID string) - must match the site you are editing.
+- **`energy_calculations`** (array) - rows to **create or update** by **`(site_id, external_id)`**.
 
 Each row:
 
@@ -60,7 +60,7 @@ Each row:
 | `point_bindings` | no | **Object** mapping **semantic keys** (e.g. `cfm`, `kw`) to **point `external_id`** strings. Must be a JSON object (not `[]` or a primitive); omit or use `{}` if empty. Stored and exported to TTL; preview library may not consume every binding yet. |
 | `enabled` | no | Default `true`. |
 | `equipment_id` | no | UUID of equipment on this site. |
-| `equipment_name` | no | Alternative to `equipment_id`: resolved under `site_id`. Fails with 400 if the name does not exist — **create equipment on Data Model BRICK first**. |
+| `equipment_name` | no | Alternative to `equipment_id`: resolved under `site_id`. Fails with 400 if the name does not exist - **create equipment on Data Model BRICK first**. |
 
 Unknown keys on each row are **ignored** so you can paste rows straight from an export (e.g. `id`, `created_at`) without hand-stripping.
 
@@ -79,9 +79,9 @@ The user will paste JSON from:
 GET /energy-calculations/export?site_id=<uuid>
 
 That JSON includes:
-- calc_types[] — the ONLY allowed calc_type string ids and the ONLY valid parameter keys per type.
-- penalty_catalog[] (when present) — 18 default FDD penalty narratives; use for context or to align copy with site-specific rows (optional for import output).
-- energy_calculations[] — existing saved rows (may be empty).
+- calc_types[] - the ONLY allowed calc_type string ids and the ONLY valid parameter keys per type.
+- penalty_catalog[] (when present) - 18 default FDD penalty narratives; use for context or to align copy with site-specific rows (optional for import output).
+- energy_calculations[] - existing saved rows (may be empty).
 
 Your job is to return ONLY valid JSON with EXACTLY these two top-level keys:
 
@@ -108,9 +108,9 @@ When returning JSON, the object must parse as Open-FDD PUT /energy-calculations/
 
 ## Agents and HTTP context
 
-- **`GET /model-context/docs`** — Regenerated doc bundle for RAG-style agents; include updates to this page when rebuilding.
-- **`GET /mcp/manifest`** — Discover export/import paths alongside data-model tools.
-- **Swagger** — `/docs` lists `GET /energy-calculations/export` and `PUT /energy-calculations/import`.
+- **`GET /model-context/docs`** - Regenerated doc bundle for RAG-style agents; include updates to this page when rebuilding.
+- **`GET /mcp/manifest`** - Discover export/import paths alongside data-model tools.
+- **Swagger** - `/docs` lists `GET /energy-calculations/export` and `PUT /energy-calculations/import`.
 
 ---
 
@@ -122,8 +122,8 @@ On **Energy Engineering** (Energy calculations tab), calculations appear under *
 
 ## See also
 
-- [AI-assisted data modeling](ai_assisted_tagging) — Phase A (Brick / points).
-- [LLM workflow](llm_workflow) — Canonical data-model prompt and validation habits.
-- [Default FDD energy penalty catalog](energy_penalty_equations) — 18 seeded templates, TTL `ofdd:penaltyCatalogSeq`, Open-Meteo / rates notes.
-- [Data model engineering](../howto/data_model_engineering) — Equipment `engineering` metadata and TTL / SPARQL.
-- [Frontend — Energy Engineering](../frontend#energy-engineering) — Tree, seed defaults, row actions / context menu, export/import buttons, Equipment metadata tab.
+- [AI-assisted data modeling](ai_assisted_tagging) - Phase A (Brick / points).
+- [LLM workflow](llm_workflow) - Canonical data-model prompt and validation habits.
+- [Default FDD energy penalty catalog](energy_penalty_equations) - 18 seeded templates, TTL `ofdd:penaltyCatalogSeq`, Open-Meteo / rates notes.
+- [Data model engineering](../howto/data_model_engineering) - Equipment `engineering` metadata and TTL / SPARQL.
+- [Frontend - Energy Engineering](../frontend#energy-engineering) - Tree, seed defaults, row actions / context menu, export/import buttons, Equipment metadata tab.

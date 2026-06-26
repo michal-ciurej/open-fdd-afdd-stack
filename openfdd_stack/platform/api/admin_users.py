@@ -47,7 +47,7 @@ def list_users() -> list[AdminUserRead]:
     """All users that have signed in at least once, with their granted site ids.
 
     Users appear here after their first ``/auth/me``. Admins show up with whatever
-    grants they happen to have, but those grants are inert — admins are
+    grants they happen to have, but those grants are inert - admins are
     unrestricted and bypass ``user_site_permissions`` entirely.
     """
     with get_conn() as conn, conn.cursor() as cur:
@@ -81,7 +81,7 @@ def _require_known_user(cur, oid: str) -> None:
     if cur.fetchone() is None:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            "Unknown user — they must sign in once before sites can be assigned",
+            "Unknown user - they must sign in once before sites can be assigned",
         )
 
 

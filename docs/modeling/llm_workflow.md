@@ -8,7 +8,7 @@ nav_order: 5
 
 This page describes a **single upload** workflow for mechanical engineers: send the **canonical prompt**, the **data-model export JSON**, and **fault/rule context** (strongly recommended) to an LLM; get back import-ready JSON; **validate** it so you know it will parse on the Open-FDD backend; then **PUT /data-model/import** and run FDD (or Sparkl/tests) as needed.
 
-**After the data model is stable:** use **[AI-assisted energy calculations](ai_assisted_energy_calculations)** for phase two — `GET /energy-calculations/export?site_id=…` (bundle includes **`calc_types`**, **`penalty_catalog`** (18 default narratives), and `energy_calculations`), LLM-authored or operator-edited rows, then `PUT /energy-calculations/import`. Optionally **[seed default penalty rows](energy_penalty_equations)** first. Same site-scoping rules as points and equipment.
+**After the data model is stable:** use **[AI-assisted energy calculations](ai_assisted_energy_calculations)** for phase two - `GET /energy-calculations/export?site_id=…` (bundle includes **`calc_types`**, **`penalty_catalog`** (18 default narratives), and `energy_calculations`), LLM-authored or operator-edited rows, then `PUT /energy-calculations/import`. Optionally **[seed default penalty rows](energy_penalty_equations)** first. Same site-scoping rules as points and equipment.
 
 **Best practice:** Decide **which Open-FDD faults and rules** you will run *before* finalizing `polling`. The canonical prompt is **fault-first**: it tells the model to gather job context (faults, YAML, units, production vs bench, weather scope) or to stay conservative on polling until that context exists.
 
@@ -16,18 +16,18 @@ This page describes a **single upload** workflow for mechanical engineers: send 
 
 > **Web-connected agents:** If your LLM can fetch HTTPS documentation, point it at the published **[Data modeling](https://bbartling.github.io/open-fdd-afdd-stack/modeling/)** hub and this page’s template anchor **[Copy/paste prompt template (recommended)](https://bbartling.github.io/open-fdd-afdd-stack/modeling/llm_workflow#copy-paste-prompt-template-recommended)** in addition to (or alongside) `GET /model-context/docs`, so instructions stay aligned with the live docs site.
 
-> **Full AFDD stack vs column-map resolvers:** This workflow still targets **Brick** point classes (`brick_type`), **`rule_input`**, and related import fields because **rule YAML** on the platform uses **Brick-class logical names**. In **`fdd-loop`**, the default **`BrickTtlColumnMapResolver`** (**`openfdd_stack.platform.brick_ttl_resolver`**) builds **`column_map`** from **`config/data_model.ttl`** (same semantic model you enrich with import JSON). The LLM does **not** emit a separate “ontology manifest” for PyPI-style **`ManifestColumnMapResolver`**—that path is for **library / custom** pipelines ([Engine-only deployment and external IoT pipelines](../howto/engine_only_iot), [column map resolver workshop](../../examples/column_map_resolver_workshop/README.md)). If you ever run the loop with a **manifest-only** resolver, keep **rule YAML** and **`brick_type`** aligned with whatever logical keys your rules use.
+> **Full AFDD stack vs column-map resolvers:** This workflow still targets **Brick** point classes (`brick_type`), **`rule_input`**, and related import fields because **rule YAML** on the platform uses **Brick-class logical names**. In **`fdd-loop`**, the default **`BrickTtlColumnMapResolver`** (**`openfdd_stack.platform.brick_ttl_resolver`**) builds **`column_map`** from **`config/data_model.ttl`** (same semantic model you enrich with import JSON). The LLM does **not** emit a separate “ontology manifest” for PyPI-style **`ManifestColumnMapResolver`**-that path is for **library / custom** pipelines ([Engine-only deployment and external IoT pipelines](../howto/engine_only_iot), [column map resolver workshop](../../examples/column_map_resolver_workshop/README.md)). If you ever run the loop with a **manifest-only** resolver, keep **rule YAML** and **`brick_type`** aligned with whatever logical keys your rules use.
 
 ---
 
 ## What you upload to the LLM
 
-1. **The canonical prompt** — Use **[AI-assisted data modeling](ai_assisted_tagging)** (section *LLM prompt and agent guidelines*), the inline template **below** on this page (“Copy/paste prompt template”), or the [Technical reference — LLM tagging workflow](../appendix/technical_reference#llm-tagging-workflow). You can copy from this page or keep an optional local mirror (e.g. `pdf/canonical_llm_prompt.txt`) for agents. The prompt must tell the LLM to return only `{"points": [...], "equipment": [...]}` with Brick types, rule_input slugs, equipment_name, feeds/fed_by, polling, and units (subject to the **pre-flight / job context** rules in the template).
+1. **The canonical prompt** - Use **[AI-assisted data modeling](ai_assisted_tagging)** (section *LLM prompt and agent guidelines*), the inline template **below** on this page (“Copy/paste prompt template”), or the [Technical reference - LLM tagging workflow](../appendix/technical_reference#llm-tagging-workflow). You can copy from this page or keep an optional local mirror (e.g. `pdf/canonical_llm_prompt.txt`) for agents. The prompt must tell the LLM to return only `{"points": [...], "equipment": [...]}` with Brick types, rule_input slugs, equipment_name, feeds/fed_by, polling, and units (subject to the **pre-flight / job context** rules in the template).
 
-2. **The export JSON** — From **GET /data-model/export** (optionally `?site_id=YourSiteName`). Each row includes point fields (`point_id`, `bacnet_device_id`, `object_identifier`, `object_name`, `external_id`, `site_id`, `site_name`, `equipment_id`, `equipment_name`, `brick_type`, `rule_input`, `unit`, `polling`, …). Rows may also include **`engineering`** (and **`equipment_metadata`**) — a **per-equipment** mirror from the DB so the LLM sees rated/submittal context next to points. On **import**, write engineering updates under **`equipment[].engineering`**, not as ad-hoc point fields (see [Data model engineering](../howto/data_model_engineering) and `examples/223P_engineering/`). Unimported BACnet rows have `point_id: null` and null tagging fields until you import.
+2. **The export JSON** - From **GET /data-model/export** (optionally `?site_id=YourSiteName`). Each row includes point fields (`point_id`, `bacnet_device_id`, `object_identifier`, `object_name`, `external_id`, `site_id`, `site_name`, `equipment_id`, `equipment_name`, `brick_type`, `rule_input`, `unit`, `polling`, …). Rows may also include **`engineering`** (and **`equipment_metadata`**) - a **per-equipment** mirror from the DB so the LLM sees rated/submittal context next to points. On **import**, write engineering updates under **`equipment[].engineering`**, not as ad-hoc point fields (see [Data model engineering](../howto/data_model_engineering) and `examples/223P_engineering/`). Unimported BACnet rows have `point_id: null` and null tagging fields until you import.
 
-3. **Faults and rules for this job (strongly recommended)** — So the LLM can align **rule_input**, **Brick types**, **units**, and especially **polling** with what you will actually run in Open-FDD:
-   - Paste **YAML** from your project’s rules (e.g. from `stack/rules/` or your own rule files). **This is the best input for correct polling decisions** — the model can see exactly which point inputs each rule uses.
+3. **Faults and rules for this job (strongly recommended)** - So the LLM can align **rule_input**, **Brick types**, **units**, and especially **polling** with what you will actually run in Open-FDD:
+   - Paste **YAML** from your project’s rules (e.g. from `stack/rules/` or your own rule files). **This is the best input for correct polling decisions** - the model can see exactly which point inputs each rule uses.
    - Or point the LLM at the **[Fault rules overview](../rules/overview)** and **[Expression Rule Cookbook](../expression_rule_cookbook)** (AHU, chiller, weather, advanced recipes) and list which fault IDs or recipes apply.
 
 > **Polling and YAML:** Without fault/rule context, many BACnet points may be tagged correctly but should still stay `polling: false`. The canonical prompt defaults to **asking for job context first** or emitting a **conservative draft** (mostly `polling: false`) until you provide which faults run and ideally the **actual rule YAML** for the job.
@@ -62,7 +62,7 @@ Exception for multi-turn chat: if fault/rule job context is still missing and yo
 PRE-FLIGHT / JOB CONTEXT (required before final polling decisions)
 --------------------------------------------------
 
-Polling must be driven by the **actual faults and rules** the operator plans to run in Open-FDD — not by “this point looks generally useful.”
+Polling must be driven by the **actual faults and rules** the operator plans to run in Open-FDD - not by “this point looks generally useful.”
 
 Before deciding final polling values, establish job context.
 
@@ -76,7 +76,7 @@ Ask or confirm the following (plain language) if not already answered:
 5. Do you want weather-related rules or weather polling included?
 6. Should polling be limited to points required by the selected faults, or also include extra plotting/trending points the operator explicitly wants?
 
-HARD RULE — if faults/rules context is missing:
+HARD RULE - if faults/rules context is missing:
 
 - Either (a) ask the pre-flight questions above and wait (no import JSON in that turn), OR (b) return import JSON that is an explicitly **conservative draft**: set polling=false for every point unless it is clearly essential; do **not** enable broad polling coverage by guesswork.
 - Do not treat aggressive polling=true choices as “final” until the operator has described which faults run and (ideally) supplied YAML or clear rule snippets.
@@ -89,7 +89,7 @@ If YAML rules or snippets **are** provided:
 
 **After faults/rules are known, you must:**
 
-- Infer which **Brick classes** and **rule_input** slugs those rules require (from YAML expressions and the Expression Rule Cookbook when YAML is thin). On the full Open-FDD stack, the engine maps those Brick names to trend/BACnet columns from the published data model (TTL), so keep **brick_type** and **rule_input** consistent with the YAML—not a separate hand-authored column_map in this JSON.
+- Infer which **Brick classes** and **rule_input** slugs those rules require (from YAML expressions and the Expression Rule Cookbook when YAML is thin). On the full Open-FDD stack, the engine maps those Brick names to trend/BACnet columns from the published data model (TTL), so keep **brick_type** and **rule_input** consistent with the YAML-not a separate hand-authored column_map in this JSON.
 - Set **polling=true** for points that clearly supply those required inputs once tagged.
 - Leave **polling=false** for unrelated points unless the operator explicitly asked for broader trending/plotting.
 
@@ -115,12 +115,12 @@ For each point in the input:
 Note: the export may include **engineering** / **equipment_metadata** on each row (a mirror of **equipment**-level metadata). For **PUT /data-model/import**, rated/submittal engineering belongs under **equipment[].engineering** (see EQUIPMENT RULES). Do not add spurious extra keys on point objects if your validator rejects them; fold engineering into the **equipment** array once per **equipment_name** + **site_id**.
 
 2. ADD or FILL these fields:
-- brick_type (Brick **point** class — sensor, command, setpoint, …)
+- brick_type (Brick **point** class - sensor, command, setpoint, …)
 - rule_input
 - polling
 - unit
 - equipment_name
-- equipment_type (Brick **equipment** class — see §4 — powers Data Model Testing summary buttons)
+- equipment_type (Brick **equipment** class - see §4 - powers Data Model Testing summary buttons)
 
 3. brick_type:
 Choose the best matching Brick class for the point.
@@ -144,19 +144,19 @@ Example:
 Do NOT use equipment_id or any UUID for equipment relationships.
 
 **Conservative equipment_name inference:**
-- Set or change **equipment_name** only when **strongly supported** by BACnet **device** grouping, consistent **object_name** / **external_id** patterns, and any operator brief — not from a single ambiguous point name.
+- Set or change **equipment_name** only when **strongly supported** by BACnet **device** grouping, consistent **object_name** / **external_id** patterns, and any operator brief - not from a single ambiguous point name.
 - If grouping is unclear, keep the export’s **equipment_name** / **equipment_id** relationship as-is rather than inventing AHUs/VAVs.
 
-**equipment_type (Brick 1.4 equipment class — best LLM guess, human verifies with one click):**
+**equipment_type (Brick 1.4 equipment class - best LLM guess, human verifies with one click):**
 - When you set **equipment_name** on points (or list equipment in **equipment[]**), also set **equipment_type** to the **most specific defensible Brick equipment class** as a **bare local name** (no `brick:` prefix), matching what Open-FDD writes to RDF for `rdf:type`.
 - Goal: the operator can open **Data Model Testing → Summarize your HVAC** and use preset buttons (**AHUs**, **VAV boxes**, **Chillers**, **Central plant**, **Meters**, …) without re-tagging. Those queries filter on Brick **1.4** classes such as:
-  - **Air_Handling_Unit** — central air handler (supply/return/mixed air, fan, coils context)
-  - **Variable_Air_Volume_Box** or **Variable_Air_Volume_Box_With_Reheat** — VAV / fan-powered terminal
+  - **Air_Handling_Unit** - central air handler (supply/return/mixed air, fan, coils context)
+  - **Variable_Air_Volume_Box** or **Variable_Air_Volume_Box_With_Reheat** - VAV / fan-powered terminal
   - **Chiller**, **Boiler**, **Cooling_Tower**, **Water_Pump**, **Heat_Exchanger**
-  - **Chilled_Water_System**, **Condenser_Water_System**, **Hot_Water_System** — distribution systems when the row truly represents that system
-  - **HVAC_Zone** — thermal / zoning context when points are zone-level only
-  - **Building_Electrical_Meter** — building-level electrical meter equipment (not every kW sensor)
-  - Generic fallback: **Equipment** (Open-FDD default) when class is unclear — better than mis-typing a VAV as a Chiller.
+  - **Chilled_Water_System**, **Condenser_Water_System**, **Hot_Water_System** - distribution systems when the row truly represents that system
+  - **HVAC_Zone** - thermal / zoning context when points are zone-level only
+  - **Building_Electrical_Meter** - building-level electrical meter equipment (not every kW sensor)
+  - Generic fallback: **Equipment** (Open-FDD default) when class is unclear - better than mis-typing a VAV as a Chiller.
 - **Same names as the UI presets** are maintained in **[open-fdd-afdd-stack](https://github.com/bbartling/open-fdd-afdd-stack)** in [`frontend/src/data/brick-1.4-query-class-allowlist.ts`](https://github.com/bbartling/open-fdd-afdd-stack/blob/main/frontend/src/data/brick-1.4-query-class-allowlist.ts) (regression test: [`data-model-testing-queries.brick.test.ts`](https://github.com/bbartling/open-fdd-afdd-stack/blob/main/frontend/src/data/data-model-testing-queries.brick.test.ts)).
 - On **equipment[]** rows, include **equipment_type** whenever you include **equipment_name** + **site_id** so created/updated equipment gets the correct type before points attach.
 
@@ -212,7 +212,7 @@ If uncertain:
 - rule_input = null
 - unit = null
 - polling = false
-- equipment_type = omit or null (backend defaults to generic Equipment — use this instead of a wrong class)
+- equipment_type = omit or null (backend defaults to generic Equipment - use this instead of a wrong class)
 
 --------------------------------------------------
 REAL-JOB / CONSERVATIVE MODE (not optional for production buildings)
@@ -233,7 +233,7 @@ Bench and demo setups can be forgiving; **on a real live HVAC job** the model mu
 
 **When unsure, prefer the safer default:**
 
-- `null` for unknown Brick type or unit — not a best guess
+- `null` for unknown Brick type or unit - not a best guess
 - `polling: false` unless the point is clearly needed for the faults/rules or plotting/trending the operator asked for
 - Omit `feeds` / `fed_by` rather than inferring ductwork relationships
 - Saying (in a side channel) “cannot determine X from export” is better than fabricating X in JSON
@@ -242,7 +242,7 @@ Bench and demo setups can be forgiving; **on a real live HVAC job** the model mu
 
 **Operator review before import (short checklist):**
 
-1. Compare row count and key BACnet fields to the latest `GET /data-model/export` — no mystery devices.
+1. Compare row count and key BACnet fields to the latest `GET /data-model/export` - no mystery devices.
 2. Confirm every non-null `site_id` is still a UUID from `GET /sites`.
 3. `PUT dry-run` is not currently supported by the Open-FDD API for `PUT /data-model/import`; use schema/Pydantic validation first, and if you need a no-risk rehearsal, run the same `PUT` against a staging instance while comparing inputs from `GET /data-model/export` and site UUIDs from `GET /sites`.
 4. After import, verify a handful of BACnet reads match the gateway for the same object ids.
@@ -280,8 +280,8 @@ Rules:
 - Include feeds/fed_by only when supported by the provided data or clearly specified by the user
 - Do not invent mechanical relationships unless they are explicitly given or obvious from the provided context
 
-**Optional — engineering metadata (`equipment[].engineering`):**
-- Open-FDD **GET /data-model/export** duplicates **equipment.metadata.engineering** on each point row as **engineering** for LLM context. On import, put updates under **equipment[]** using the same **equipment_name** + **site_id**, with an **engineering** object (nested sections such as **mechanical**, **electrical**, **controls**, **topology**, **documents** — see project examples).
+**Optional - engineering metadata (`equipment[].engineering`):**
+- Open-FDD **GET /data-model/export** duplicates **equipment.metadata.engineering** on each point row as **engineering** for LLM context. On import, put updates under **equipment[]** using the same **equipment_name** + **site_id**, with an **engineering** object (nested sections such as **mechanical**, **electrical**, **controls**, **topology**, **documents** - see project examples).
 - You **may** help capture **rated** data: design CFM, cooling/heating capacity, fan or pump motor nameplate (HP/kW/FLA), coil or heat-exchanger ratings, feeder/panel references, **when the operator provides submittal, schedule, or as-built values** (or asks you to transcribe pasted specs).
 - Do **not** invent numeric ratings (HP, tons, MBH, CFM, kW) from BACnet object names alone.
 - Preserve existing **engineering** from the export when present unless the operator asks to correct it.
@@ -315,17 +315,17 @@ After the final line, paste the **export JSON** (or send it as the next user mes
 
 | What | Where |
 |------|--------|
-| **Fault rules overview** | [docs/rules/overview](../rules/overview) — FDD rule types, YAML format, Brick-driven inputs. |
-| **Expression Rule Cookbook** | [docs/expression_rule_cookbook](../expression_rule_cookbook) — AHU, chiller, weather, and advanced recipes; **rule_input** examples and expression patterns. |
+| **Fault rules overview** | [docs/rules/overview](../rules/overview) - FDD rule types, YAML format, Brick-driven inputs. |
+| **Expression Rule Cookbook** | [docs/expression_rule_cookbook](../expression_rule_cookbook) - AHU, chiller, weather, and advanced recipes; **rule_input** examples and expression patterns. |
 | **Actual YAML rule files** | `stack/rules/` in the repo (or your `rules_dir`). Paste snippets into the LLM session so it uses the same input names **and** can set polling only where rules need data. |
 
-The cookbook is **not** a fault rule file itself; it’s documentation. The **rules you want to use** are the YAML files in `stack/rules/` (or your project’s rules). For the LLM, prefer pasting that YAML; you can also say “use rule_input slugs from the Expression Rule Cookbook (sat, rat, zone_temp, …)” when YAML is not at hand — but polling decisions will be less certain until you tie them to concrete faults.
+The cookbook is **not** a fault rule file itself; it’s documentation. The **rules you want to use** are the YAML files in `stack/rules/` (or your project’s rules). For the LLM, prefer pasting that YAML; you can also say “use rule_input slugs from the Expression Rule Cookbook (sat, rat, zone_temp, …)” when YAML is not at hand - but polling decisions will be less certain until you tie them to concrete faults.
 
 ---
 
 ## Engineering metadata (fan HP, pumps, coils, design CFM, …)
 
-Yes — the **export** exposes equipment-level engineering on each row as **`engineering`** (and raw **`equipment_metadata`**). The **import** accepts the same data on **`equipment[]`** via **`engineering`**, merged into `equipment.metadata.engineering` in PostgreSQL and emitted into the knowledge graph (see **`open_fdd/platform/data_model_ttl.py`**).
+Yes - the **export** exposes equipment-level engineering on each row as **`engineering`** (and raw **`equipment_metadata`**). The **import** accepts the same data on **`equipment[]`** via **`engineering`**, merged into `equipment.metadata.engineering` in PostgreSQL and emitted into the knowledge graph (see **`open_fdd/platform/data_model_ttl.py`**).
 
 Use this for **nameplate / submittal** style fields (design CFM, cooling/heating capacity, motor HP or FLA, feeder panel, topology sketches, source drawing references). **FDD rules still run on time-series columns** from polled points; engineering scalars are for **context**, SPARQL, dashboards, and downstream analytics unless you extend the runner.
 
@@ -333,14 +333,14 @@ Use this for **nameplate / submittal** style fields (design CFM, cooling/heating
 - **Example import:** `examples/223P_engineering/engineering_import_example.json`
 - **UI:** **Energy Engineering → Equipment metadata** edits the same `equipment.metadata.engineering` store (and optional topology JSON) without a separate import round-trip when you prefer forms over LLM JSON.
 
-The canonical prompt tells the LLM to **only** fill or change engineering when the operator supplies evidence — not to invent tons, HP, or CFM from BACnet names alone.
+The canonical prompt tells the LLM to **only** fill or change engineering when the operator supplies evidence - not to invent tons, HP, or CFM from BACnet names alone.
 
 ---
 
 ## Feeds / fed_by (HVAC topology)
 
-- **feeds** — This equipment supplies another (e.g. AHU feeds VAV).
-- **fed_by** — This equipment is supplied by another (e.g. VAV fed_by AHU).
+- **feeds** - This equipment supplies another (e.g. AHU feeds VAV).
+- **fed_by** - This equipment is supplied by another (e.g. VAV fed_by AHU).
 
 If topology is not known confidently, omit feeds/fed_by rather than guessing. You can add or refine relationships later.
 
@@ -352,12 +352,12 @@ The Open-FDD **PUT /data-model/import** endpoint expects a body that matches the
 
 To avoid that:
 
-1. **Instruct the LLM** — In your prompt, add: “Return only valid JSON that conforms to the Open-FDD import schema: top-level keys `points` and `equipment` only; each point has the fields listed in the prompt; equipment items use `equipment_name`, `site_id`, optional `feeds` / `fed_by`, optional `engineering` / `metadata`.”
+1. **Instruct the LLM** - In your prompt, add: “Return only valid JSON that conforms to the Open-FDD import schema: top-level keys `points` and `equipment` only; each point has the fields listed in the prompt; equipment items use `equipment_name`, `site_id`, optional `feeds` / `fed_by`, optional `engineering` / `metadata`.”
 
-2. **Use the API’s JSON Schema** — The OpenAPI spec at **GET /openapi.json** (or **GET /docs** and “openapi.json”) includes a **schema** for the import body. You can:
+2. **Use the API’s JSON Schema** - The OpenAPI spec at **GET /openapi.json** (or **GET /docs** and “openapi.json”) includes a **schema** for the import body. You can:
    - Export that schema (e.g. the `DataModelImportBody` and nested `PointImportRow` / `EquipmentImportRow` from the spec) and give it to the LLM: “Return JSON that validates against this schema.”
    - Or run a local **validation step** before pasting into the UI: validate the LLM’s JSON against the same schema (e.g. with a small script or tool that loads the schema and runs `jsonschema.validate`). If it passes, PUT /data-model/import will accept it (aside from referential issues like missing site_id).
-3. **Common failure: `site_id` is not a UUID** — `PUT /data-model/import` expects `points[].site_id` to be either:
+3. **Common failure: `site_id` is not a UUID** - `PUT /data-model/import` expects `points[].site_id` to be either:
    - a UUID string (as returned by `GET /data-model/export`), or
    - `null`/omitted (so the backend can resolve it from `points[].site_name`).
 
@@ -365,26 +365,26 @@ To avoid that:
    `site_id must be a valid UUID from GET /sites ... Got: 'BensOffice'`
    then your LLM replaced the UUID with the human-readable site name. Reinforce: **never** replace `site_id` with `site_name`; if the export has no UUID, keep `site_id` null and keep `site_name`.
 
-4. **Pydantic in the repo** — The backend defines the import shape in **open_fdd/platform/api/data_model.py**: `DataModelImportBody`, `PointImportRow`, `EquipmentImportRow`. A script or pipeline can import those models and validate the LLM output (e.g. `DataModelImportBody.model_validate(json.loads(llm_output))`) before returning it to the human. That way the human only sees JSON that is known to parse on the backend.
+4. **Pydantic in the repo** - The backend defines the import shape in **open_fdd/platform/api/data_model.py**: `DataModelImportBody`, `PointImportRow`, `EquipmentImportRow`. A script or pipeline can import those models and validate the LLM output (e.g. `DataModelImportBody.model_validate(json.loads(llm_output))`) before returning it to the human. That way the human only sees JSON that is known to parse on the backend.
 
 ---
 
 ## Mechanical engineer flow (short)
 
 1. **Create site** (and optionally equipment) via API or UI; note **site_id**.
-2. **Export** — GET /data-model/export?site_id=YourSiteName (or no filter for full dump).
-3. **Upload to LLM** — Paste (a) the [canonical template above](#copy-paste-prompt-template-recommended) (or your saved copy of the same text), (b) **fault/rule context** (which faults you run + **YAML snippets when possible**), then (c) export JSON. Optionally include the import JSON Schema so the LLM returns a valid payload.
+2. **Export** - GET /data-model/export?site_id=YourSiteName (or no filter for full dump).
+3. **Upload to LLM** - Paste (a) the [canonical template above](#copy-paste-prompt-template-recommended) (or your saved copy of the same text), (b) **fault/rule context** (which faults you run + **YAML snippets when possible**), then (c) export JSON. Optionally include the import JSON Schema so the LLM returns a valid payload.
    - **Fault-first:** Answer the pre-flight questions (or let the model ask them) before treating polling as final.
    - **UUID reminder:** Never replace `points[].site_id` with a human-readable site name; keep the UUID from the export (see **Validate before import** below).
-4. **Validate** — Run schema validation or Pydantic validation on the LLM reply so you know it will parse on the backend.
-5. **Import** — PUT /data-model/import with the validated JSON.
-6. **Run FDD / tests** — Trigger an FDD run or Sparkl (or other) tests as needed for the project.
+4. **Validate** - Run schema validation or Pydantic validation on the LLM reply so you know it will parse on the backend.
+5. **Import** - PUT /data-model/import with the validated JSON.
+6. **Run FDD / tests** - Trigger an FDD run or Sparkl (or other) tests as needed for the project.
 
 ---
 
 ## See also
 
-- [AI-assisted data modeling](ai_assisted_tagging) — Export → tag → import and API contract.
-- [Data model engineering](../howto/data_model_engineering) — `equipment.metadata.engineering`, import/export, TTL / SPARQL.
-- [Technical reference](../appendix/technical_reference) — PyPI vs repo, LLM tagging workflow; full prompt is above on this page.
-- [Fault rules overview](../rules/overview) and [Expression Rule Cookbook](../expression_rule_cookbook) — Rules and rule_input reference.
+- [AI-assisted data modeling](ai_assisted_tagging) - Export → tag → import and API contract.
+- [Data model engineering](../howto/data_model_engineering) - `equipment.metadata.engineering`, import/export, TTL / SPARQL.
+- [Technical reference](../appendix/technical_reference) - PyPI vs repo, LLM tagging workflow; full prompt is above on this page.
+- [Fault rules overview](../rules/overview) and [Expression Rule Cookbook](../expression_rule_cookbook) - Rules and rule_input reference.

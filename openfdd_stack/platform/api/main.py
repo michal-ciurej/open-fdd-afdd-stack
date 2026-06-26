@@ -1,4 +1,4 @@
-"""Open-FDD CRUD API — data model, sites, points, equipment."""
+"""Open-FDD CRUD API - data model, sites, points, equipment."""
 
 import importlib.metadata
 import logging
@@ -129,7 +129,7 @@ app = FastAPI(
         },
         {
             "name": "IQVision",
-            "description": "IQVision station scan + history sync. Same ORD/BQL shape as Niagara; differs only in equipment grouping — points are grouped by the BQL Device column (proxyExt.device.displayName) instead of the nav ORD folder twice removed. One IQVision endpoint per site (stored in site_iqvision_endpoints).",
+            "description": "IQVision station scan + history sync. Same ORD/BQL shape as Niagara; differs only in equipment grouping - points are grouped by the BQL Device column (proxyExt.device.displayName) instead of the nav ORD folder twice removed. One IQVision endpoint per site (stored in site_iqvision_endpoints).",
         },
     ],
 )
@@ -168,7 +168,7 @@ app.openapi = _custom_openapi
 
 app.add_middleware(EntraPrincipalMiddleware)
 # SWA proxies /api/* server-side to ACA, so SPA traffic arrives without a browser Origin
-# header — no CORS exchange happens for the linked-backend hop. Keep CORS off by default
+# header - no CORS exchange happens for the linked-backend hop. Keep CORS off by default
 # and only re-enable for explicit cross-origin integrations.
 app.add_middleware(
     CORSMiddleware,
@@ -288,13 +288,13 @@ def root():
 
 @app.get("/api/")
 def api_root():
-    """Same as `/` — exposed under /api/ for SPA calls that come in via SWA linked-backend (which preserves the /api prefix)."""
+    """Same as `/` - exposed under /api/ for SPA calls that come in via SWA linked-backend (which preserves the /api prefix)."""
     return root()
 
 
 @app.get("/api/health")
 def api_health():
-    """Same as `/health` — exposed under /api/health for SPA same-origin calls via SWA."""
+    """Same as `/health` - exposed under /api/health for SPA same-origin calls via SWA."""
     return health()
 
 
@@ -372,7 +372,7 @@ def capabilities():
 
 @app.get("/api/capabilities", response_model=CapabilityResponse)
 def api_capabilities():
-    """Same as `/capabilities` — exposed under /api for SPA same-origin calls via
+    """Same as `/capabilities` - exposed under /api for SPA same-origin calls via
     the SWA linked-backend (which preserves the /api prefix). Without this the
     frontend's useCapabilities() hits a 404 and AI-tagging gating can't read
     ai_available."""

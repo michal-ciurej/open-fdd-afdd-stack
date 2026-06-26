@@ -1,8 +1,8 @@
-"""Equipment energy profile API — typed engineering/sizing values per equipment.
+"""Equipment energy profile API - typed engineering/sizing values per equipment.
 
 One row per equipment (PK = equipment_id) seeded sparsely by migration 025.
 GET upserts a default (all-NULL) row if none exists so the endpoint never 404s;
-PUT is a partial upsert — fields omitted from the body are left unchanged.
+PUT is a partial upsert - fields omitted from the body are left unchanged.
 
 This data drives the energy opportunity cost calculator in phase 2: the resolver
 reads design CFM, motor HP, COP, etc. from here rather than from the per-calc
@@ -113,7 +113,7 @@ def put_equipment_energy_profile(
             _check_equipment_access(cur, equipment_id, user)
 
             if not body_dict:
-                # No-op PUT — return current state, creating default if needed.
+                # No-op PUT - return current state, creating default if needed.
                 cur.execute(
                     f"SELECT {_COLS} FROM equipment_energy_profile WHERE equipment_id = %s",
                     (str(equipment_id),),

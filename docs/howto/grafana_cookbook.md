@@ -5,7 +5,7 @@ nav_order: 40
 ---
 
 
-# Grafana SQL cookbook — 
+# Grafana SQL cookbook - 
 
 
 ## BACnet 
@@ -331,13 +331,13 @@ WHERE $__timeFilter(ts)
 ORDER BY 1;
 ```
 
-### Host — Memory (used / available / total)
+### Host - Memory (used / available / total)
 
 ```json
 {
   "id": null,
   "type": "timeseries",
-  "title": "Host — Memory (used / available / total)",
+  "title": "Host - Memory (used / available / total)",
   "gridPos": { "x": 0, "y": 0, "h": 10, "w": 24 },
   "fieldConfig": {
     "defaults": {
@@ -382,13 +382,13 @@ ORDER BY 1;
 }
 ```
 
-### Host — Load (1 / 5 / 15 min)
+### Host - Load (1 / 5 / 15 min)
 
 ```json
 {
   "id": null,
   "type": "timeseries",
-  "title": "Host — Load (1 / 5 / 15 min)",
+  "title": "Host - Load (1 / 5 / 15 min)",
   "gridPos": { "x": 0, "y": 10, "h": 8, "w": 24 },
   "fieldConfig": {
     "defaults": {
@@ -416,13 +416,13 @@ ORDER BY 1;
 }
 ```
 
-### Host — Swap (used / total)
+### Host - Swap (used / total)
 
 ```json
 {
   "id": null,
   "type": "timeseries",
-  "title": "Host — Swap (used / total)",
+  "title": "Host - Swap (used / total)",
   "gridPos": { "x": 0, "y": 18, "h": 6, "w": 24 },
   "fieldConfig": {
     "defaults": {
@@ -450,7 +450,7 @@ ORDER BY 1;
 }
 ```
 
-### Host — Disk space (free / used / total)
+### Host - Disk space (free / used / total)
 
 Disk metrics come from `disk_metrics` (mount path from env `OFDD_DISK_MOUNT_PATHS`, default `/`). The table is created by the same migration as `host_metrics` (`stack/sql/006_host_metrics.sql`); re-run migrations if you added host-stats after an older deploy.
 
@@ -458,7 +458,7 @@ Disk metrics come from `disk_metrics` (mount path from env `OFDD_DISK_MOUNT_PATH
 {
   "id": null,
   "type": "timeseries",
-  "title": "Host — Disk space (free / used / total)",
+  "title": "Host - Disk space (free / used / total)",
   "gridPos": { "x": 0, "y": 24, "h": 10, "w": 24 },
   "fieldConfig": {
     "defaults": {
@@ -487,13 +487,13 @@ Disk metrics come from `disk_metrics` (mount path from env `OFDD_DISK_MOUNT_PATH
 }
 ```
 
-### Host — Disk available (gauge, latest)
+### Host - Disk available (gauge, latest)
 
 ```json
 {
   "id": null,
   "type": "gauge",
-  "title": "Host — Disk space available (latest)",
+  "title": "Host - Disk space available (latest)",
   "gridPos": { "x": 0, "y": 34, "h": 6, "w": 8 },
   "fieldConfig": {
     "defaults": {
@@ -517,13 +517,13 @@ Disk metrics come from `disk_metrics` (mount path from env `OFDD_DISK_MOUNT_PATH
 }
 ```
 
-### Containers — CPU %
+### Containers - CPU %
 
 ```json
 {
   "id": null,
   "type": "timeseries",
-  "title": "Containers — CPU %",
+  "title": "Containers - CPU %",
   "gridPos": { "x": 0, "y": 40, "h": 8, "w": 24 },
   "fieldConfig": {
     "defaults": {
@@ -548,13 +548,13 @@ Disk metrics come from `disk_metrics` (mount path from env `OFDD_DISK_MOUNT_PATH
 }
 ```
 
-### Containers — Memory %
+### Containers - Memory %
 
 ```json
 {
   "id": null,
   "type": "timeseries",
-  "title": "Containers — Memory %",
+  "title": "Containers - Memory %",
   "gridPos": { "x": 0, "y": 48, "h": 8, "w": 24 },
   "fieldConfig": {
     "defaults": {
@@ -580,13 +580,13 @@ Disk metrics come from `disk_metrics` (mount path from env `OFDD_DISK_MOUNT_PATH
 }
 ```
 
-### Containers — Table (latest)
+### Containers - Table (latest)
 
 ```json
 {
   "id": null,
   "type": "table",
-  "title": "Containers — Latest stats",
+  "title": "Containers - Latest stats",
   "gridPos": { "x": 0, "y": 56, "h": 12, "w": 24 },
   "fieldConfig": {
     "defaults": { "custom": { "align": "auto", "displayMode": "auto" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}] } },
@@ -619,7 +619,7 @@ Disk metrics come from `disk_metrics` (mount path from env `OFDD_DISK_MOUNT_PATH
 {
   "id": 21,
   "type": "timeseries",
-  "title": "Weather — Temp / RH / Dewpoint",
+  "title": "Weather - Temp / RH / Dewpoint",
   "gridPos": {
     "x": 0,
     "y": 0,
@@ -788,7 +788,7 @@ Disk metrics come from `disk_metrics` (mount path from env `OFDD_DISK_MOUNT_PATH
 {
   "id": 22,
   "type": "timeseries",
-  "title": "Weather — Wind (Speed / Gust / Direction)",
+  "title": "Weather - Wind (Speed / Gust / Direction)",
   "gridPos": {
     "x": 0,
     "y": 10,
@@ -961,7 +961,7 @@ Disk metrics come from `disk_metrics` (mount path from env `OFDD_DISK_MOUNT_PATH
 {
   "id": 22,
   "type": "timeseries",
-  "title": "Weather — Wind (Speed / Gust / Direction)",
+  "title": "Weather - Wind (Speed / Gust / Direction)",
   "gridPos": {
     "x": 0,
     "y": 10,
@@ -1135,7 +1135,7 @@ Disk metrics come from `disk_metrics` (mount path from env `OFDD_DISK_MOUNT_PATH
 {
   "id": 23,
   "type": "timeseries",
-  "title": "Weather — Solar / Radiation (W/m²)",
+  "title": "Weather - Solar / Radiation (W/m²)",
   "gridPos": {
     "x": 0,
     "y": 19,
@@ -1286,7 +1286,7 @@ Disk metrics come from `disk_metrics` (mount path from env `OFDD_DISK_MOUNT_PATH
 {
   "id": 24,
   "type": "timeseries",
-  "title": "Weather — Cloud Cover (%)",
+  "title": "Weather - Cloud Cover (%)",
   "gridPos": {
     "x": 0,
     "y": 28,

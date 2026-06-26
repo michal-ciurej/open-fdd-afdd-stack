@@ -6,11 +6,11 @@ a piece of equipment, or a whole site, and upserts the cached row in
 ``energy_opportunity_results``.
 
 Called from:
-  * end of an FDD-loop tick (see openfdd_stack.platform.loop) — passes
+  * end of an FDD-loop tick (see openfdd_stack.platform.loop) - passes
     the set of sites just processed, so trailing fault-hours and latest
     evidence get refreshed without explicit operator action.
   * background jobs queued from rate or profile PUT handlers (see
-    openfdd_stack.platform.api.energy_rates / equipment_energy_profile) —
+    openfdd_stack.platform.api.energy_rates / equipment_energy_profile) -
     cascades a change in shared inputs to every dependent opportunity.
 
 Each entry-point is idempotent and best-effort: failures are logged and
@@ -128,12 +128,12 @@ def _recompute_one(cur, opp: dict[str, Any]) -> Optional[dict[str, Any]]:
     """Run resolver + compute for a single opportunity row dict; upsert result.
 
     Returns the result dict for telemetry, or None if the calc_type is unknown
-    (defensive — bad rows shouldn't kill a sweep).
+    (defensive - bad rows shouldn't kill a sweep).
     """
     calc_type = opp.get("calc_type")
     if calc_type not in ALLOWED_CALC_TYPES:
         logger.warning(
-            "recompute: opportunity %s has unknown calc_type %r — skipping",
+            "recompute: opportunity %s has unknown calc_type %r - skipping",
             opp.get("id"),
             calc_type,
         )
@@ -151,7 +151,7 @@ def _recompute_one(cur, opp: dict[str, Any]) -> Optional[dict[str, Any]]:
     profile = _load_profile_row(cur, opp["equipment_id"])
     rates = _load_rates_row(cur, site_id)
 
-    # Observed channel — only meaningful when the opportunity is tied to an FDD rule.
+    # Observed channel - only meaningful when the opportunity is tied to an FDD rule.
     observed_hours = None
     observed_evidence = None
     fdd_rule_id = opp.get("fdd_rule_id")
@@ -259,7 +259,7 @@ def recompute_for_site(site_id: UUID | str) -> int:
 
 
 def recompute_all_enabled() -> int:
-    """Sweep every enabled opportunity across all sites — used by the
+    """Sweep every enabled opportunity across all sites - used by the
     end-of-FDD-tick hook in :mod:`openfdd_stack.platform.loop`."""
     succeeded = 0
     with get_conn() as conn:

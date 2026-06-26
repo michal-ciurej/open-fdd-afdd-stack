@@ -86,11 +86,11 @@ You can confirm that the BACnet scraper, weather scraper, and FDD loop are runni
    `docker logs openfdd_bacnet_scraper --tail 30`  
    Look for "Scraped N points" or similar; no repeated connection/401 errors.
 
-2. **API — latest readings (BACnet + weather):**  
+2. **API - latest readings (BACnet + weather):**  
    `curl -s "http://localhost:8000/timeseries/latest"`  
    If scraping is working, you get at least one object with `point_id`, `value`, and a recent `ts` (e.g. within the last scrape interval). With auth: `curl -s -H "Authorization: Bearer YOUR_KEY" "http://localhost:8000/timeseries/latest"`.
 
-3. **DB — recent BACnet-only rows:**  
+3. **DB - recent BACnet-only rows:**  
    `docker exec openfdd_timescale psql -U postgres -d openfdd -t -c "SELECT ts, p.external_id, tr.value FROM timeseries_readings tr JOIN points p ON p.id = tr.point_id WHERE p.bacnet_device_id IS NOT NULL ORDER BY tr.ts DESC LIMIT 10;"`  
    Recent `ts` and rows = scraper is writing. Empty or stale `ts` (older than the expected scrape interval) = no BACnet points in the data model, or scraper not reaching the gateway.
 
@@ -101,8 +101,8 @@ You can confirm that the BACnet scraper, weather scraper, and FDD loop are runni
 
 **Manual verification (BACnet scraping after graph_and_crud_test.py):**
 
-1. **Grafana** — Open http://localhost:3000, go to **Explore**, choose the **openfdd_timescale** datasource, and run the BACnet scraper status or time series SQL from the [Grafana SQL cookbook](grafana_cookbook) (Recipe 1). Or build a full dashboard from the cookbook and confirm panels show recent data.
-2. **API** — List BACnet points (replace `SITE_ID` with your BensOffice site UUID from `curl -s http://localhost:8000/sites`):
+1. **Grafana** - Open http://localhost:3000, go to **Explore**, choose the **openfdd_timescale** datasource, and run the BACnet scraper status or time series SQL from the [Grafana SQL cookbook](grafana_cookbook) (Recipe 1). Or build a full dashboard from the cookbook and confirm panels show recent data.
+2. **API** - List BACnet points (replace `SITE_ID` with your BensOffice site UUID from `curl -s http://localhost:8000/sites`):
    ```bash
    curl -s "http://localhost:8000/points?site_id=SITE_ID" | python3 -c "
    import sys, json
@@ -114,8 +114,8 @@ You can confirm that the BACnet scraper, weather scraper, and FDD loop are runni
    "
    ```
    If you see output like `SA-T analog-input,2 True`, those points are in the DB and the scraper will poll them. If the API returns an error (e.g. invalid `SITE_ID`), you will see no output instead of a crash.
-3. **Scraper logs** — `docker logs openfdd_bacnet_scraper --tail 40` — look for "Scraped N points" or polling/write lines without errors.
-4. **DB (optional)** — Recent BACnet readings:
+3. **Scraper logs** - `docker logs openfdd_bacnet_scraper --tail 40` - look for "Scraped N points" or polling/write lines without errors.
+4. **DB (optional)** - Recent BACnet readings:
    ```bash
    docker exec openfdd_timescale psql -U postgres -d openfdd -t -c "SELECT ts, p.external_id, tr.value FROM timeseries_readings tr JOIN points p ON p.id = tr.point_id WHERE p.bacnet_device_id IS NOT NULL ORDER BY tr.ts DESC LIMIT 10;"
    ```
@@ -128,7 +128,7 @@ You can confirm that the BACnet scraper, weather scraper, and FDD loop are runni
 - **Grafana:** Use Recipe 4 in the [Grafana SQL cookbook](grafana_cookbook) to build a Weather dashboard (status, last data, temp/humidity series).
 - **API / logs:** `GET /points` and filter for weather `external_id`s (e.g. `temp_f`, `rh_pct`). Or `docker logs openfdd_weather_scraper --tail 30` to see the last fetch.
 
-**Plots — fault line (0/1 when condition is true):**
+**Plots - fault line (0/1 when condition is true):**
 
 The fault overlay on Plots is driven by `GET /analytics/fault-timeseries`: one row per (time bucket, fault_id) where `fault_results` has data. The Plots page passes **`equipment_ids`** (repeatable query param) so series are limited to the selected BACnet device’s equipment rows; omit it for site-wide charts (e.g. dashboard). The frontend shows **1** only in buckets where the fault fired, and **0** otherwise.
 
@@ -138,7 +138,7 @@ If you see a **constant flat line** (usually flat at 1):
 
 - **One long segment:** The API returns one time bucket per fault (e.g. one FDD run). With a **day** bucket and a 1-day range, that one bucket fills the chart → flat 1 all day. To see discrete 0/1 steps: use a **wider time range** (e.g. 7 days) so you get multiple buckets and see which days/hours had the fault, or use **hour** bucket (used automatically when range ≤ 2 days) so each hour is 0 or 1.
 - **FDD run frequency:** Fault results are written when the FDD loop runs (e.g. every `rule_interval_hours`). To see the fault only when the condition is true, ensure the loop runs multiple times in your range and the rule actually evaluates to 0 sometimes; otherwise every bucket may show 1.
-- **Check the API:** `curl -s "http://localhost:8000/analytics/fault-timeseries?site_id=YOUR_SITE&start_date=2026-03-01&end_date=2026-03-08&bucket=hour"` — you should see multiple `series` entries with different `time` values when the fault fires in different hours.
+- **Check the API:** `curl -s "http://localhost:8000/analytics/fault-timeseries?site_id=YOUR_SITE&start_date=2026-03-01&end_date=2026-03-08&bucket=hour"` - you should see multiple `series` entries with different `time` values when the fault fires in different hours.
 
 ---
 
@@ -194,8 +194,8 @@ The Weather UI shows points (`temp_f`, `rh_pct`, `wind_mph`, etc.) only after **
 
 - **Open-Meteo enabled:** Config → Open-Meteo (weather) → "Enable Open-Meteo" on, or `GET /config` has `open_meteo_enabled: true` (and in `config/data_model.ttl`: `ofdd:openMeteoEnabled true`).
 - **Which runner is active:**
-  - `docker logs openfdd_weather_scraper --tail 30` — look for "Open-Meteo fetch OK" and "Sleeping N h until next fetch".
-  - `docker logs openfdd_fdd_loop --tail 50` — look for "Open-Meteo fetch OK before FDD run".
+  - `docker logs openfdd_weather_scraper --tail 30` - look for "Open-Meteo fetch OK" and "Sleeping N h until next fetch".
+  - `docker logs openfdd_fdd_loop --tail 50` - look for "Open-Meteo fetch OK before FDD run".
 - **Site match:** Weather is stored for the site given by `open_meteo_site_id` (default `"default"`), which resolves to the **first site** in the DB if no site named "default" exists. Ensure the site you have selected in the UI is that site (e.g. TestBenchSite if it’s the only/first site).
 
 **If the fetch ran recently but the Weather page still shows "No weather points for this site":** (1) Note which site is selected in the top bar (e.g. TestBenchSite). (2) In Config → Open-Meteo set **"Site for weather points"** to that exact site name and Save. (3) Run a one-off fetch below or wait for the next run. (4) On the Weather page, keep that site selected and refresh. To confirm points: `curl -s "http://localhost:8000/points?site_id=<SITE_UUID>" | grep -E "temp_f|rh_pct"` (use UUID from GET /sites or the frontend URL `?site=...`).
@@ -243,4 +243,4 @@ docker logs openfdd_fdd_loop --tail 50
 
 ## Database retention
 
-Data retention is set at bootstrap (default 365 days). TimescaleDB drops chunks older than the configured interval. To change: use `--retention-days N` when running bootstrap or set `OFDD_RETENTION_DAYS` in `stack/.env`. See [Configuration — Edge / resource limits](../configuration#edge--resource-limits).
+Data retention is set at bootstrap (default 365 days). TimescaleDB drops chunks older than the configured interval. To change: use `--retention-days N` when running bootstrap or set `OFDD_RETENTION_DAYS` in `stack/.env`. See [Configuration - Edge / resource limits](../configuration#edge--resource-limits).

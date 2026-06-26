@@ -13,7 +13,7 @@ Use **BASE** = your API base URL (e.g. `http://localhost:8000` or `http://192.16
 
 ---
 
-## 1. (Optional) Discover devices — Who-Is
+## 1. (Optional) Discover devices - Who-Is
 
 See which BACnet devices respond in an instance range:
 
@@ -28,7 +28,7 @@ Use the gateway `url` in the body if needed (e.g. `"url": "http://192.168.1.50:8
 
 ---
 
-## 2. Get points for one device — Point discovery (JSON only)
+## 2. Get points for one device - Point discovery (JSON only)
 
 Returns the list of objects for that device. You’ll use this to create points in the DB:
 
@@ -41,8 +41,8 @@ curl -X POST "${BASE}/bacnet/point_discovery" \
 
 Response shape (from diy-bacnet-server): `result.data.objects` is a list of objects. Each has at least:
 
-- **object_identifier** — e.g. `"analog-input,1"`, `"device,3456789"`
-- **object_name** or **name** — human-readable name
+- **object_identifier** - e.g. `"analog-input,1"`, `"device,3456789"`
+- **object_name** or **name** - human-readable name
 
 Skip the `device` object when creating points; use analog-input, binary-value, etc. Save the **device_instance** and the **objects** list; you’ll use them in step 4.
 
@@ -124,7 +124,7 @@ Repeat for each object you want to scrape. You can add **brick_type** and **fdd_
 
 ## 7. (Optional) Tag Brick / rule_input in bulk
 
-- **GET /data-model/export?site_id=...** — list points with BACnet refs.
+- **GET /data-model/export?site_id=...** - list points with BACnet refs.
 - Edit the JSON (set **brick_type**, **rule_input** per point).
 - **PUT /data-model/import** with the edited list (use **point_id** from export). BACnet refs are preserved.
 
@@ -132,9 +132,9 @@ Repeat for each object you want to scrape. You can add **brick_type** and **fdd_
 
 ## 8. Verify
 
-- **GET /sites** — list sites.
-- **GET /points?site_id=...** — list points; check `bacnet_device_id` and `object_identifier`.
-- **GET /data-model/check** — triple count, orphan count, sites/devices.
-- **GET /data-model/ttl** — full TTL (Brick + BACnet).
+- **GET /sites** - list sites.
+- **GET /points?site_id=...** - list points; check `bacnet_device_id` and `object_identifier`.
+- **GET /data-model/check** - triple count, orphan count, sites/devices.
+- **GET /data-model/ttl** - full TTL (Brick + BACnet).
 
 Then run the BACnet scraper; it will read only points that have `bacnet_device_id` and `object_identifier` set.

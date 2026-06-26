@@ -76,7 +76,7 @@ function ConfigSwitch({
 }
 
 function formatConfigValue(v: unknown): string {
-  if (v === null || v === undefined) return "—";
+  if (v === null || v === undefined) return "-";
   if (typeof v === "boolean") return v ? "On" : "Off";
   if (typeof v === "string" && v.length > 48) return `${v.slice(0, 45)}…`;
   return String(v);

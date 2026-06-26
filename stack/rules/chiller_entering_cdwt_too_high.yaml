@@ -17,7 +17,7 @@ inputs:
     brick: Chiller_Run_Status
 
 params:
-  cdwt_high_limit: 30.0   # °C — entering CDWT above this indicates condenser water system issue
+  cdwt_high_limit: 30.0   # °C - entering CDWT above this indicates condenser water system issue
   rolling_window: 6        # 30 min at 5-min sampling (debounce)
 
 expression: |

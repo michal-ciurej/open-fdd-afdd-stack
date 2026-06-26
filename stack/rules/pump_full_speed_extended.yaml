@@ -1,4 +1,4 @@
-# Pump at full speed for an extended rolling window — loop is not being satisfied,
+# Pump at full speed for an extended rolling window - loop is not being satisfied,
 # DP reset is hitting floor, or there's a hidden load. Uses rolling min like the cookbook's
 # "zone damper full open" pattern.
 name: pump_full_speed_extended

@@ -20,7 +20,7 @@ inputs:
     brick: Supply_Fan_Status
 
 params:
-  damper_full_open_threshold: 0.99  # fraction — both dampers at or above 99% open triggers fault
+  damper_full_open_threshold: 0.99  # fraction - both dampers at or above 99% open triggers fault
   rolling_window: 6                 # 30 min at 5-min sampling (matches legacy 30-min trigger period)
 
 expression: |

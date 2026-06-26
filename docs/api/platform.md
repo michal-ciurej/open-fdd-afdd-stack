@@ -12,7 +12,7 @@ REST API for the Open-FDD platform: CRUD, data model, bulk download, analytics, 
 **Base URL:** `http://localhost:8000`  
 **Interactive docs:** When the API is running, open [Swagger UI](http://localhost:8000/docs) or [ReDoc](http://localhost:8000/redoc).
 
-**Authentication:** When **`OFDD_API_KEY`** and/or **app-user** config is active, the API requires `Authorization: Bearer <token>` on protected routes: `<token>` is either **`OFDD_API_KEY`** or a **JWT access token** from **`POST /auth/login`**. Exemptions include `/`, `/health`, `/docs`, `/redoc`, `/openapi.json`, `/app`, and **`/auth/*`**. The React app uses **login + JWT** (and HttpOnly refresh cookies) for REST and WebSocket; see [Security — authentication](../security#frontend-and-api-authentication).
+**Authentication:** When **`OFDD_API_KEY`** and/or **app-user** config is active, the API requires `Authorization: Bearer <token>` on protected routes: `<token>` is either **`OFDD_API_KEY`** or a **JWT access token** from **`POST /auth/login`**. Exemptions include `/`, `/health`, `/docs`, `/redoc`, `/openapi.json`, `/app`, and **`/auth/*`**. The React app uses **login + JWT** (and HttpOnly refresh cookies) for REST and WebSocket; see [Security - authentication](../security#frontend-and-api-authentication).
 
 ---
 
@@ -138,7 +138,7 @@ Brick-semantic data model: **single export route** (BACnet discovery + DB points
 | site_id       | string  | no       | Site UUID or name; omit for all sites |
 | bacnet_only   | boolean | no       | If true, return only rows with `bacnet_device_id` and `object_identifier` (discovery rows). Default false = full dump. |
 
-**Response:** `200 OK` — JSON array. Each row: `point_id` (null if unimported), `bacnet_device_id`, `object_identifier`, `object_name`, `site_id`, `site_name`, `equipment_id`, `equipment_name`, `external_id`, `brick_type`, `rule_input`, `unit`, **`polling`** (default false for unimported). Points to poll for the BACnet scraper = rows where **polling === true**.
+**Response:** `200 OK` - JSON array. Each row: `point_id` (null if unimported), `bacnet_device_id`, `object_identifier`, `object_name`, `site_id`, `site_name`, `equipment_id`, `equipment_name`, `external_id`, `brick_type`, `rule_input`, `unit`, **`polling`** (default false for unimported). Points to poll for the BACnet scraper = rows where **polling === true**.
 
 ---
 
@@ -156,7 +156,7 @@ Bulk create/update **points** and optionally update **equipment** feeds/fed_by. 
 | brick_type, rule_input, equipment_id, unit, polling | optional | polling = true for points to log (BACnet scraper) |
 | equipment (array) | optional | Each item: `equipment_id`, `feeds_equipment_id`, `fed_by_equipment_id` (Brick feeds/isFedBy; UUIDs from GET /equipment) |
 
-**Response:** `200 OK` — e.g. `{"created": N, "updated": M, "total": ...}`
+**Response:** `200 OK` - e.g. `{"created": N, "updated": M, "total": ...}`
 
 ---
 
@@ -166,10 +166,10 @@ Generate Brick TTL from current DB state. Returns Turtle (text/turtle).
 
 | Query param | Type   | Default | Description |
 |-------------|--------|---------|-------------|
-| site_id     | string | —       | Filter by site UUID or name; omit for all sites |
+| site_id     | string | -       | Filter by site UUID or name; omit for all sites |
 | save        | bool   | true    | If true, write TTL to config/data_model.ttl (best-effort; may fail if read-only) |
 
-**Response:** `200 OK` — Turtle document. On save failure, body still returns TTL; headers `X-TTL-Save: failed` and `X-TTL-Save-Error` indicate the error.
+**Response:** `200 OK` - Turtle document. On save failure, body still returns TTL; headers `X-TTL-Save: failed` and `X-TTL-Save-Error` indicate the error.
 
 ---
 
@@ -179,7 +179,7 @@ Run a SPARQL query against the current data model (TTL generated from DB). Use i
 
 **Body:** `{"query": "PREFIX brick: <...> SELECT ?s ?p ?o WHERE { ... } LIMIT 10"}`
 
-**Response:** `200 OK` — `{"bindings": [{ "s": "...", "p": "...", "o": "..." }, ...]}`
+**Response:** `200 OK` - `{"bindings": [{ "s": "...", "p": "...", "o": "..." }, ...]}`
 
 **Errors:** `400` invalid TTL or SPARQL; `503` if rdflib not installed (`pip install open-fdd[brick]`).
 
@@ -210,7 +210,7 @@ Download timeseries as CSV. Use for bookmarking or simple curl.
 | end_date    | date   | yes      | End of range |
 | format      | string | no       | `wide` (default, Excel) or `long` (ts, point_key, value) |
 
-**Response:** `200 OK` — CSV attachment `openfdd_timeseries_{start}_{end}.csv`. `404` if site not found or no data.
+**Response:** `200 OK` - CSV attachment `openfdd_timeseries_{start}_{end}.csv`. `404` if site not found or no data.
 
 ---
 
@@ -245,8 +245,8 @@ Export fault results for MSI/cloud integration. Poll this endpoint (e.g. cron) t
 
 **Response:**
 
-- **CSV:** `200 OK` — attachment `openfdd_faults_{start}_{end}.csv` (ts, site_id, equipment_id, fault_id, flag_value, evidence).
-- **JSON:** `200 OK` — `{"faults": [...], "count": N}`.
+- **CSV:** `200 OK` - attachment `openfdd_faults_{start}_{end}.csv` (ts, site_id, equipment_id, fault_id, flag_value, evidence).
+- **JSON:** `200 OK` - `{"faults": [...], "count": N}`.
 
 `404` if site_id provided and not found.
 
@@ -266,7 +266,7 @@ Motor runtime hours from fan/VFD points. If no suitable point exists, returns `N
 | start_date  | date   | yes      | Start of range |
 | end_date    | date   | yes      | End of range |
 
-**Response:** `200 OK` — `{"motor_runtime_hours": 123.45, "point": {...}}` or `{"status": "NO DATA", "reason": "..."}`. Cached to `analytics_motor_runtime` for Grafana.
+**Response:** `200 OK` - `{"motor_runtime_hours": 123.45, "point": {...}}` or `{"status": "NO DATA", "reason": "..."}`. Cached to `analytics_motor_runtime` for Grafana.
 
 ---
 
@@ -280,7 +280,7 @@ Fault counts by fault_id. For dashboards and cloud integration.
 | end_date    | date   | yes      | End of range |
 | site_id     | string | no       | Site name or UUID; omit for all sites |
 
-**Response:** `200 OK` — `{"site_id": "...", "period": {"start": "...", "end": "..."}, "by_fault_id": [{"fault_id": "...", "count": N, "flag_sum": M}, ...], "total_faults": N}`.
+**Response:** `200 OK` - `{"site_id": "...", "period": {"start": "...", "end": "..."}, "by_fault_id": [{"fault_id": "...", "count": N, "flag_sum": M}, ...], "total_faults": N}`.
 
 ---
 
@@ -304,12 +304,12 @@ System resource metrics for the React **System resources** page (and optional Gr
 
 Trigger an immediate FDD rule run and reset the loop timer when the fdd-loop container runs with `--loop`. Touches the trigger file; the loop picks it up within 60 seconds.
 
-**Response:** `200 OK` — `{"status": "triggered", "path": "config/.run_fdd_now"}` (or configured path).
+**Response:** `200 OK` - `{"status": "triggered", "path": "config/.run_fdd_now"}` (or configured path).
 
 ---
 
 ## OpenAPI
 
-- **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs) — try all endpoints; version = installed open-fdd package.
+- **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs) - try all endpoints; version = installed open-fdd package.
 - **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc).
 - **OpenAPI JSON:** [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json).

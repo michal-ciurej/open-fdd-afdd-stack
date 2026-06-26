@@ -12,7 +12,7 @@ This page explains how the **in-repo** package **`packages/openfdd-engine/`** (P
 
 ---
 
-## Re-exports only — no duplicated types
+## Re-exports only - no duplicated types
 
 **`openfdd_engine` does not define its own rule engine, Pydantic models, or resolver types.** The shim **`__init__.py`** imports from **`open_fdd.engine`** (e.g. **`RuleRunner`**, **`ManifestColumnMapResolver`**, **`ColumnMapResolver`**) and lists them in **`__all__`**. Brick TTL mapping lives in **`openfdd_stack.platform.brick_ttl_resolver`** (stack repo). Any new public engine API should be added **once** under **`open_fdd.engine`**; the shim only gains new names via **import + re-export**.
 
@@ -48,7 +48,7 @@ from open_fdd.engine.runner import RuleRunner, load_rule, load_rules_from_dir
 from open_fdd.engine.column_map_resolver import load_column_map_manifest
 ```
 
-**Optional `openfdd-engine` distribution** — use only if you **intentionally** want:
+**Optional `openfdd-engine` distribution** - use only if you **intentionally** want:
 
 - A **separate PyPI project name** (`openfdd-engine`) for procurement or a minimal dependency line that still pulls **`open-fdd`** underneath, or  
 - An **editable install** of only the shim while developing the monorepo:
@@ -87,13 +87,13 @@ That driver:
 
 So: **same YAML and same `RuleRunner` semantics** as a standalone script; the platform adds **DB, schedule, TTL, and weather**.
 
-Operational triggers (touch file, one-shot exec): [Operations — FDD loop](operations#option-a-trigger-the-running-loop-recommended-when-fdd-loop-is-in-docker).
+Operational triggers (touch file, one-shot exec): [Operations - FDD loop](operations#option-a-trigger-the-running-loop-recommended-when-fdd-loop-is-in-docker).
 
 ---
 
 ## Library-only / external data (no Docker engine mode)
 
-If your data is already in a warehouse or a CSV pipeline, you do **not** need `openfdd_engine` — use **`open_fdd.engine`** on a **`DataFrame`** and the same rule files as the platform. Step-by-step and **`column_map`**: [Engine-only deployment and external IoT pipelines](engine_only_iot).
+If your data is already in a warehouse or a CSV pipeline, you do **not** need `openfdd_engine` - use **`open_fdd.engine`** on a **`DataFrame`** and the same rule files as the platform. Step-by-step and **`column_map`**: [Engine-only deployment and external IoT pipelines](engine_only_iot).
 
 Worked example under the repo: `examples/engine_iot_playground/`.
 
@@ -111,8 +111,8 @@ Worked example under the repo: `examples/engine_iot_playground/`.
 
 ## See also
 
-- [Engine-only deployment and external IoT pipelines](engine_only_iot) — `--mode engine` vs pandas `RuleRunner`  
-- [PyPI releases (`open-fdd`)](openfdd_engine_pypi) — tags, publishing, `openfdd-engine` scope  
-- [Modular architecture](../modular_architecture) — which services run in **engine** mode  
-- [Expression rule cookbook](../expression_rule_cookbook) — YAML rule types and patterns  
+- [Engine-only deployment and external IoT pipelines](engine_only_iot) - `--mode engine` vs pandas `RuleRunner`  
+- [PyPI releases (`open-fdd`)](openfdd_engine_pypi) - tags, publishing, `openfdd-engine` scope  
+- [Modular architecture](../modular_architecture) - which services run in **engine** mode  
+- [Expression rule cookbook](../expression_rule_cookbook) - YAML rule types and patterns  
 - Package README: `packages/openfdd-engine/README.md`

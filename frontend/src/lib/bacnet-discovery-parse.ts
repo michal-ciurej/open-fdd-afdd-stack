@@ -58,8 +58,8 @@ export function extractPointDiscoveryObjects(res: PointDiscoveryResponse): Point
     commandable?: boolean;
   }[];
   return objects.map((o) => ({
-    object_identifier: o.object_identifier ?? "—",
-    name: o.name ?? "—",
+    object_identifier: o.object_identifier ?? "-",
+    name: o.name ?? "-",
     commandable: o.commandable ?? false,
   }));
 }

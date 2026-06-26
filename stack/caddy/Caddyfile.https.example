@@ -1,6 +1,6 @@
 # Example: HTTPS on :443 with automatic certs (replace with your public hostname).
 # Copy to Caddyfile or include from the main file after you have DNS + ports 80/443.
-# See docs/security.md — Phase 2 (issue #73).
+# See docs/security.md - Phase 2 (issue #73).
 #
 # On the API service set: OFDD_TRUST_FORWARDED_PROTO=true so refresh cookies use Secure.
 

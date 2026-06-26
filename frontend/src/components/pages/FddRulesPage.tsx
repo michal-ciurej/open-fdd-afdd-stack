@@ -49,12 +49,12 @@ function FaultDefinitionsSection() {
             <TableRow key={d.fault_id}>
               <TableCell className="font-mono text-xs">{d.fault_id}</TableCell>
               <TableCell className="font-medium">{d.name}</TableCell>
-              <TableCell className="text-muted-foreground">{d.category ?? "—"}</TableCell>
+              <TableCell className="text-muted-foreground">{d.category ?? "-"}</TableCell>
               <TableCell>
                 <Badge variant={severityVariant(d.severity)}>{d.severity}</Badge>
               </TableCell>
               <TableCell className="text-right text-muted-foreground text-xs">
-                {d.equipment_types?.length ? d.equipment_types.join(", ") : "—"}
+                {d.equipment_types?.length ? d.equipment_types.join(", ") : "-"}
               </TableCell>
             </TableRow>
           ))}
@@ -546,7 +546,7 @@ function FddLoopStatusSection({ siteId }: { siteId: string | undefined }) {
                 disabled={triggerMutation.isPending}
                 data-testid="fdd-run-now-button"
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-                title="POST /run-fdd — touches trigger file; loop picks it up within 60s"
+                title="POST /run-fdd - touches trigger file; loop picks it up within 60s"
               >
                 <Play className="h-4 w-4" />
                 {triggerMutation.isPending ? "Triggering…" : "Run FDD now"}

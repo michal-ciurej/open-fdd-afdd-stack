@@ -36,8 +36,8 @@ curl -s https://pypi.org/pypi/open-fdd/json | python3 -c "import sys, json; prin
 
 ## 1) Before a release of `open-fdd`
 
-1. **Version** — Root **`pyproject.toml`** → `[project] version` (e.g. `2.0.11`).
-2. **`openfdd-engine`** — Bump **`packages/openfdd-engine/pyproject.toml`** `version` to the **same `X.Y.Z`** as `open-fdd`, and set **`open-fdd>=X.Y.Z`** in dependencies. Tag **`openfdd-engine-vX.Y.Z`** if you publish that project.
+1. **Version** - Root **`pyproject.toml`** → `[project] version` (e.g. `2.0.11`).
+2. **`openfdd-engine`** - Bump **`packages/openfdd-engine/pyproject.toml`** `version` to the **same `X.Y.Z`** as `open-fdd`, and set **`open-fdd>=X.Y.Z`** in dependencies. Tag **`openfdd-engine-vX.Y.Z`** if you publish that project.
 
 ### Transition checklist (legacy 0.1.x → 2.x on PyPI)
 
@@ -75,8 +75,8 @@ with:
 ### If CI shows `invalid-publisher` or `403`
 
 - Trusted publisher on PyPI doesn’t match the **exact** workflow filename or repository.
-- Tag points to a commit **before** the OIDC workflow existed — merge fix, retag.
-- **Version already on PyPI** — bump version and use a **new** tag.
+- Tag points to a commit **before** the OIDC workflow existed - merge fix, retag.
+- **Version already on PyPI** - bump version and use a **new** tag.
 
 ---
 
@@ -106,7 +106,7 @@ git push origin open-fdd-v2.0.11
 
 1. Create project **`openfdd-engine`** on PyPI (if it does not exist).
 2. Add a **trusted publisher** pointing at workflow **`publish-openfdd-engine.yml`** (same repository as `open-fdd`).
-3. Tag **`openfdd-engine-vX.Y.Z`** (same numbers as **`open-fdd-vX.Y.Z`**) and push — only after PyPI is configured, or OIDC fails with `invalid-publisher`.
+3. Tag **`openfdd-engine-vX.Y.Z`** (same numbers as **`open-fdd-vX.Y.Z`**) and push - only after PyPI is configured, or OIDC fails with `invalid-publisher`.
 
 ---
 

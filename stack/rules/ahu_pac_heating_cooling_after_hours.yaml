@@ -25,7 +25,7 @@ inputs:
     brick: On_Coil_Temperature_Sensor
 
 params:
-  sat_oct_delta_threshold: 3.0   # °C — minimum ΔT between SAT and on-coil temp to confirm active conditioning
+  sat_oct_delta_threshold: 3.0   # °C - minimum ΔT between SAT and on-coil temp to confirm active conditioning
   rolling_window: 12             # 12 samples = 1 h at 5-min data (matches 1-hour trigger period)
   schedule:
     enabled: true

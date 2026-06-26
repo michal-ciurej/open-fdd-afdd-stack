@@ -69,7 +69,7 @@ export function DataModelPage() {
   const equipmentLoading = selectedSiteId ? equipmentSiteLoading : equipmentAllLoading;
   const siteMap = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites]);
   // Estimate of equipment with no points, from data already loaded on the page.
-  // The backend re-checks authoritatively on delete, so this is a UI hint only —
+  // The backend re-checks authoritatively on delete, so this is a UI hint only -
   // in the all-sites view `points` is capped at the API default, so this may
   // over-count; it never causes a non-empty equipment to be deleted.
   const emptyEquipment = useMemo(() => {
@@ -245,11 +245,11 @@ export function DataModelPage() {
           >
             Site Configuration
           </Link>{" "}
-          under <strong>Step 1 — Sites</strong>, then use <strong>Step 2 — BACnet discovery</strong> to add devices to the graph.
+          under <strong>Step 1 - Sites</strong>, then use <strong>Step 2 - BACnet discovery</strong> to add devices to the graph.
         </p>
       )}
 
-      {/* Step-by-step guide — AI context via /model-context/docs + /mcp/manifest 
+      {/* Step-by-step guide - AI context via /model-context/docs + /mcp/manifest 
       <Card className="mb-8 border-primary/20 bg-primary/5">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -263,37 +263,37 @@ export function DataModelPage() {
         <CardContent className="space-y-4">
           <ol className="list-decimal space-y-3 pl-5 text-sm">
             <li>
-              <strong>Sites + BACnet discovery</strong> — On{" "}
+              <strong>Sites + BACnet discovery</strong> - On{" "}
               <Link
                 to={{ pathname: "/site-configuration", search: location.search }}
                 className="font-medium text-primary underline-offset-4 hover:underline"
               >
                 Site Configuration
               </Link>
-              : <strong>Step 1 — Sites</strong> (create a site if needed), then <strong>Step 2 — BACnet discovery</strong> (Who-Is,
+              : <strong>Step 1 - Sites</strong> (create a site if needed), then <strong>Step 2 - BACnet discovery</strong> (Who-Is,
               point discovery, <strong>Add to data model</strong>). Optional read/write tools on that page are not required for
               this flow.
             </li>
             <li>
-              <strong>Export JSON and open your LLM</strong> — Download the export (Export section), then open your LLM chat. Pull prompt/context from{" "}
+              <strong>Export JSON and open your LLM</strong> - Download the export (Export section), then open your LLM chat. Pull prompt/context from{" "}
               <code className="rounded bg-muted px-1 text-xs">GET /model-context/docs</code> and tool mappings from{" "}
               <code className="rounded bg-muted px-1 text-xs">GET /mcp/manifest</code>. Upload your{" "}
               <strong>fault rule YAML files</strong> (from the Faults page) so the LLM knows which points your rules need.
             </li>
             <li>
-              <strong>Chat with the LLM</strong> — Paste the exported JSON into the LLM. Confirm with the LLM that Brick types, feeds/fed-by, and rule_input are correct before asking for the final JSON.
+              <strong>Chat with the LLM</strong> - Paste the exported JSON into the LLM. Confirm with the LLM that Brick types, feeds/fed-by, and rule_input are correct before asking for the final JSON.
             </li>
             <li>
-              <strong>Apply back in Open-FDD</strong> — Copy the LLM’s JSON output and paste it into the “Paste from AI” section below (or choose a JSON file), then click <strong>Apply to data model</strong>.
+              <strong>Apply back in Open-FDD</strong> - Copy the LLM’s JSON output and paste it into the “Paste from AI” section below (or choose a JSON file), then click <strong>Apply to data model</strong>.
             </li>
             <li>
-              <strong>SPARQL test</strong> — Use the Data Model Testing page to run predefined summary queries (e.g. count AHUs, chillers) or your own SPARQL to confirm the data model returns the relationships and points you need for your algorithms and fault rules.
+              <strong>SPARQL test</strong> - Use the Data Model Testing page to run predefined summary queries (e.g. count AHUs, chillers) or your own SPARQL to confirm the data model returns the relationships and points you need for your algorithms and fault rules.
             </li>
           </ol>
         </CardContent>
       </Card>
 */}
-      {/* Data model TTL — view, serialize, check */}
+      {/* Data model TTL - view, serialize, check */}
       <Card className="mt-6">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -307,16 +307,16 @@ export function DataModelPage() {
             <p className="font-medium text-foreground/80">How this fits together</p>
             <ul className="list-disc pl-4 space-y-1">
               <li>
-                <span className="text-foreground/90">Database (Postgres)</span> — source of truth for sites, equipment, and
+                <span className="text-foreground/90">Database (Postgres)</span> - source of truth for sites, equipment, and
                 points (including BACnet addressing fields and <code className="rounded bg-muted px-1">external_id</code>, which
                 maps samples in the time-series table). Deleting sites here removes that relational data.
               </li>
               <li>
-                <span className="text-foreground/90">In-memory RDF graph</span> — Brick triples are rebuilt from the DB; BACnet
+                <span className="text-foreground/90">In-memory RDF graph</span> - Brick triples are rebuilt from the DB; BACnet
                 discovery adds extra triples for SPARQL and tooling. Import/reset/sync all refresh this merge.
               </li>
               <li>
-                <span className="text-foreground/90">TTL file on disk</span> — a persisted snapshot of that graph (default{" "}
+                <span className="text-foreground/90">TTL file on disk</span> - a persisted snapshot of that graph (default{" "}
                 <code className="rounded bg-muted px-1">config/data_model.ttl</code>). The API also saves periodically in the
                 background; &quot;Serialize to TTL&quot; forces a write without changing graph contents.
               </li>
@@ -359,7 +359,7 @@ export function DataModelPage() {
           )}
           {serializeMutation.isSuccess && (
             <p className="text-sm text-muted-foreground">
-              Serialized to {String((serializeMutation.data as { path?: string })?.path ?? "—")}
+              Serialized to {String((serializeMutation.data as { path?: string })?.path ?? "-")}
             </p>
           )}
           {checkResult != null && (
@@ -384,7 +384,7 @@ export function DataModelPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              GET /data-model/export?shape=structured — returns <code className="rounded bg-muted px-1 text-xs">{"{ equipment, points }"}</code>{" "}
+              GET /data-model/export?shape=structured - returns <code className="rounded bg-muted px-1 text-xs">{"{ equipment, points }"}</code>{" "}
               (BACnet discovery + DB points, plus the equipment list with <code className="rounded bg-muted px-1 text-xs">equipment_type</code> and{" "}
               <code className="rounded bg-muted px-1 text-xs">member_brick_types</code>) so a tag pass can set both equipment and point types in
               one file that PUTs straight back to import. When a site is selected in the top bar, the export adds{" "}
@@ -411,7 +411,7 @@ export function DataModelPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Downloads both the <strong>equipment</strong> and <strong>points</strong> arrays for the selected site (or all
-                  sites) — tag <code className="rounded bg-muted px-1">equipment_type</code> and{" "}
+                  sites) - tag <code className="rounded bg-muted px-1">equipment_type</code> and{" "}
                   <code className="rounded bg-muted px-1">brick_type</code> / <code className="rounded bg-muted px-1">rule_input</code>,
                   then re-upload via Import below.
                 </p>
@@ -424,7 +424,7 @@ export function DataModelPage() {
           </CardContent>
         </Card>
 
-        {/* AI tagging (Anthropic) — embedded export → tag → review → onboard */}
+        {/* AI tagging (Anthropic) - embedded export → tag → review → onboard */}
         <AiTaggingPanel available={capabilities?.ai_available} />
 
         {/* Import */}
@@ -502,7 +502,7 @@ export function DataModelPage() {
                   {importResult.updated != null && ` Updated: ${importResult.updated}`}
                   {importResult.total != null && ` Total: ${importResult.total}`}
                   {importResult.equipment_updated != null && ` Equipment updated: ${importResult.equipment_updated}`}
-                  {importResult.warnings?.length ? ` — ${importResult.warnings.join("; ")}` : ""}
+                  {importResult.warnings?.length ? ` - ${importResult.warnings.join("; ")}` : ""}
                 </span>
               )}
             </div>
@@ -533,7 +533,7 @@ export function DataModelPage() {
           </CardContent>
         </Card>
 
-        {/* Danger zone — lower-risk reset first, nuclear delete-all last */}
+        {/* Danger zone - lower-risk reset first, nuclear delete-all last */}
         <Card className="border-amber-500/30">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg text-amber-700 dark:text-amber-400">
@@ -541,7 +541,7 @@ export function DataModelPage() {
               Danger zone
             </CardTitle>
             <p className="text-sm font-normal text-muted-foreground">
-              <strong>Lower risk</strong> (below): reset the in-memory RDF graph and TTL from the current database — no Postgres
+              <strong>Lower risk</strong> (below): reset the in-memory RDF graph and TTL from the current database - no Postgres
               deletes. <strong>Maximum risk</strong> (bottom): delete every site in the database (cascade), then the same graph
               reset. See also{" "}
               <a
@@ -558,7 +558,7 @@ export function DataModelPage() {
           <CardContent className="space-y-6">
             <div className="rounded-lg border border-border/60 p-4">
               <p className="mb-1 text-sm font-medium text-amber-800 dark:text-amber-300/90">
-                Lower risk — RDF / TTL reset only
+                Lower risk - RDF / TTL reset only
               </p>
               <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
                 <span className="font-medium text-foreground/80">Danger level: moderate.</span> Calls{" "}
@@ -601,13 +601,13 @@ export function DataModelPage() {
             </div>
             <div className="rounded-lg border border-border/60 p-4">
               <p className="mb-1 text-sm font-medium text-amber-800 dark:text-amber-300/90">
-                Low risk — delete empty equipment
+                Low risk - delete empty equipment
               </p>
               <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
                 <span className="font-medium text-foreground/80">Danger level: low.</span> Calls{" "}
                 <code className="rounded bg-muted px-1">POST /equipment/delete-empty</code> for{" "}
                 <strong>{selectedSiteId ? siteMap.get(selectedSiteId)?.name ?? "the selected site" : "all sites"}</strong>.
-                Removes equipment shells that have <strong>no points</strong> — left over after dissolving or re-tagging.
+                Removes equipment shells that have <strong>no points</strong> - left over after dissolving or re-tagging.
                 Equipment that still has points is kept; <strong>points and time-series readings are not touched</strong>.
                 {selectedSiteId
                   ? " Pick a different site (or clear the selection) to change the scope."
@@ -659,12 +659,12 @@ export function DataModelPage() {
             </div>
             <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
               <p className="mb-1 text-sm font-medium text-destructive">
-                High risk — reset fault history for the selected site
+                High risk - reset fault history for the selected site
               </p>
               <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
                 <span className="font-medium text-destructive/90">Danger level: high.</span> Calls{" "}
                 <code className="rounded bg-background/80 px-1">POST /faults/reset</code> for{" "}
-                <strong>only the selected site</strong>. Permanently deletes that site's fault history —{" "}
+                <strong>only the selected site</strong>. Permanently deletes that site's fault history -{" "}
                 <code className="rounded bg-background/80 px-1">fault_results</code>,{" "}
                 <code className="rounded bg-background/80 px-1">fault_events</code>, and current{" "}
                 <code className="rounded bg-background/80 px-1">fault_state</code>. Sites, equipment, points, and time-series
@@ -721,13 +721,13 @@ export function DataModelPage() {
             </div>
             {sites.length > 0 && (
               <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
-                <p className="mb-1 text-sm font-medium text-destructive">Maximum risk — empty the database</p>
+                <p className="mb-1 text-sm font-medium text-destructive">Maximum risk - empty the database</p>
                 <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
                   <span className="font-medium text-destructive/90">Danger level: nuclear.</span> Calls{" "}
                   <code className="rounded bg-background/80 px-1">DELETE /sites/…</code> for every site (removes equipment,
                   points, and related data in the DB), then <code className="rounded bg-background/80 px-1">POST /data-model/reset</code>{" "}
                   so the RDF graph and TTL match the now-empty model. Time-series history for those points is gone with the site
-                  cascade — not just the graph file.
+                  cascade - not just the graph file.
                 </p>
                 <p className="mb-2 text-sm font-medium text-muted-foreground">Remove all sites from data model</p>
                 <div className="flex flex-wrap items-center gap-2">

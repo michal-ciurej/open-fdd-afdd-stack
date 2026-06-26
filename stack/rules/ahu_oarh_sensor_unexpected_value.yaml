@@ -15,11 +15,11 @@ inputs:
     brick: Outside_Air_Humidity_Sensor
 
 params:
-  rh_low: 0.2          # %RH — lower bound of valid sensor range
-  rh_high: 99.8        # %RH — upper bound of valid sensor range
-  flatline_tol: 0.1    # %RH — rolling spread below this is considered flat-lined
-  flatline_window: 36  # samples — 3 h at 5-min data, matches trigger period
-  rolling_window: 36   # samples — 3 h at 5-min data (debounce)
+  rh_low: 0.2          # %RH - lower bound of valid sensor range
+  rh_high: 99.8        # %RH - upper bound of valid sensor range
+  flatline_tol: 0.1    # %RH - rolling spread below this is considered flat-lined
+  flatline_window: 36  # samples - 3 h at 5-min data, matches trigger period
+  rolling_window: 36   # samples - 3 h at 5-min data (debounce)
 
 expression: |
   (

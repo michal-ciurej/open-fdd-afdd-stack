@@ -1,4 +1,4 @@
-"""Trigger FDD run now — touch trigger file for loop, or run directly."""
+"""Trigger FDD run now - touch trigger file for loop, or run directly."""
 
 from pathlib import Path
 

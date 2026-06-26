@@ -1,7 +1,7 @@
 -- Login-derived roster of Entra-authenticated users.
 --
 -- The SWA principal only forwards the Entra object id (oid), preferred_username
--- (email), and App Roles — there is no Graph integration to enumerate the whole
+-- (email), and App Roles - there is no Graph integration to enumerate the whole
 -- directory. We capture identity on every /auth/me call so the admin "User access"
 -- page has a roster to assign sites against. A user therefore appears here once
 -- they have signed in at least once.

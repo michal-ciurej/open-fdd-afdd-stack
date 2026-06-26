@@ -15,7 +15,7 @@ inputs:
     brick: Electric_Power_Sensor
 
 params:
-  power_min: -0.1       # kW — readings below this threshold are considered erroneous negatives
+  power_min: -0.1       # kW - readings below this threshold are considered erroneous negatives
   rolling_window: 6     # 30 min at 5-min sampling (debounce)
 
 expression: |

@@ -20,9 +20,9 @@ inputs:
     brick: Outside_Air_Temperature_Sensor
 
 params:
-  oat_frost_threshold: 5.0   # °C — above this OAT, frost coil should not be needed
-  vlv_open: 0.05             # fraction — treat anything above 5% as "open"
-  fan_on_threshold: 0.5      # fraction — normalized fan status above 50% treated as "running"
+  oat_frost_threshold: 5.0   # °C - above this OAT, frost coil should not be needed
+  vlv_open: 0.05             # fraction - treat anything above 5% as "open"
+  fan_on_threshold: 0.5      # fraction - normalized fan status above 50% treated as "running"
   rolling_window: 12         # 12 samples = ~1 h at 5-min data (matches 1-hour trigger period)
 
 expression: |

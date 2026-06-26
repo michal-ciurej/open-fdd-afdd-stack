@@ -13,9 +13,9 @@ inputs:
     brick: Pump_Status
 
 params:
-  cmd_on_threshold: 0.5       # fraction — command above 50% treated as "on"
-  status_off_threshold: 0.5   # fraction — status below 50% treated as "off"
-  rolling_window: 3           # 3 consecutive samples (~15 min at 5-min data) debounce — ignore start/stop transients
+  cmd_on_threshold: 0.5       # fraction - command above 50% treated as "on"
+  status_off_threshold: 0.5   # fraction - status below 50% treated as "off"
+  rolling_window: 3           # 3 consecutive samples (~15 min at 5-min data) debounce - ignore start/stop transients
 
 expression: |
   (normalize_cmd(Pump_Command) > cmd_on_threshold) & (normalize_cmd(Pump_Status) < status_off_threshold)

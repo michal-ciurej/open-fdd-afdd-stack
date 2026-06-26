@@ -244,7 +244,7 @@ export function Sidebar() {
 
 
 
-      {/* Health indicator — click to open status details */}
+      {/* Health indicator - click to open status details */}
       <div className="border-t border-border/60 px-5 py-3" ref={healthRef}>
         <button
           type="button"

@@ -1,6 +1,6 @@
 # Open-FDD AFDD stack
 
-> **Deprecated (AFDD platform)** — Active development of the Docker AFDD stack (Compose, API, BACnet scrapers, React UI, `bootstrap.sh`) now lives in the **[open-fdd monorepo](https://github.com/bbartling/open-fdd)** under **`afdd_stack/`**. Clone that repository and run **`./afdd_stack/scripts/bootstrap.sh`** from the repo root. Documentation is published with the engine at **[bbartling.github.io/open-fdd](https://bbartling.github.io/open-fdd/)**. This **`open-fdd-afdd-stack`** repository is retained only for history and inbound links; do not start new work here. The **`open-fdd`** package on **[PyPI](https://pypi.org/project/open-fdd/)** remains the published rules engine.
+> **Deprecated (AFDD platform)** - Active development of the Docker AFDD stack (Compose, API, BACnet scrapers, React UI, `bootstrap.sh`) now lives in the **[open-fdd monorepo](https://github.com/bbartling/open-fdd)** under **`afdd_stack/`**. Clone that repository and run **`./afdd_stack/scripts/bootstrap.sh`** from the repo root. Documentation is published with the engine at **[bbartling.github.io/open-fdd](https://bbartling.github.io/open-fdd/)**. This **`open-fdd-afdd-stack`** repository is retained only for history and inbound links; do not start new work here. The **`open-fdd`** package on **[PyPI](https://pypi.org/project/open-fdd/)** remains the published rules engine.
 
 [![Discord](https://img.shields.io/badge/Discord-Join%20Server-5865F2.svg?logo=discord&logoColor=white)](https://discord.gg/Ta48yQF8fC)
 [![CI](https://github.com/bbartling/open-fdd-afdd-stack/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bbartling/open-fdd-afdd-stack/actions/workflows/ci.yml)
@@ -15,7 +15,7 @@
 
 </div>
 
-Open-FDD is an open-source knowledge graph fault-detection platform for HVAC systems that helps facilities optimize their energy usage and cost-savings. Because it runs on-prem, facilities never have to worry about a vendor hiking prices, going dark, or walking away with their data. The platform is an AFDD stack designed to run inside the building, behind the firewall, under the owner’s control. It transforms operational data into actionable, cost-saving insights and provides a secure integration layer that any cloud platform can use without vendor lock-in. U.S. Department of Energy research reports median energy savings of roughly 8–9% from FDD programs—meaningful annual savings depending on facility size and energy spend.
+Open-FDD is an open-source knowledge graph fault-detection platform for HVAC systems that helps facilities optimize their energy usage and cost-savings. Because it runs on-prem, facilities never have to worry about a vendor hiking prices, going dark, or walking away with their data. The platform is an AFDD stack designed to run inside the building, behind the firewall, under the owner’s control. It transforms operational data into actionable, cost-saving insights and provides a secure integration layer that any cloud platform can use without vendor lock-in. U.S. Department of Energy research reports median energy savings of roughly 8–9% from FDD programs-meaningful annual savings depending on facility size and energy spend.
 
 The content that used to live here is now **`afdd_stack/`** in **[bbartling/open-fdd](https://github.com/bbartling/open-fdd)**. The README below is **legacy**; prefer the monorepo. The **rules engine** is still **[`open-fdd` on PyPI](https://pypi.org/project/open-fdd/)**.
 
@@ -25,11 +25,11 @@ The content that used to live here is now **`afdd_stack/`** in **[bbartling/open
 ## Documentation
 
 
-* 📖 **[Stack Docs](https://bbartling.github.io/open-fdd-afdd-stack/)** — bootstrap, Docker, API, drivers, React UI
-* 📘 **[Engine Docs](https://bbartling.github.io/open-fdd/)** — RuleRunner, YAML rules, pandas ([repo](https://github.com/bbartling/open-fdd), [`open-fdd` PyPI](https://pypi.org/project/open-fdd/))
-* 📕 **[PDF Docs](https://github.com/bbartling/open-fdd/blob/master/pdf/open-fdd-docs.pdf)** — offline build: `python3 scripts/build_docs_pdf.py`
-* ✨ **[LLM Workflow](https://bbartling.github.io/open-fdd-afdd-stack/modeling/llm_workflow#copy-paste-prompt-template-recommended)** — export → tag → import
-* 🤖 **[Open-Claw](https://bbartling.github.io/open-fdd-afdd-stack/openclaw_integration)** — model context, MCP, API workflows
+* 📖 **[Stack Docs](https://bbartling.github.io/open-fdd-afdd-stack/)** - bootstrap, Docker, API, drivers, React UI
+* 📘 **[Engine Docs](https://bbartling.github.io/open-fdd/)** - RuleRunner, YAML rules, pandas ([repo](https://github.com/bbartling/open-fdd), [`open-fdd` PyPI](https://pypi.org/project/open-fdd/))
+* 📕 **[PDF Docs](https://github.com/bbartling/open-fdd/blob/master/pdf/open-fdd-docs.pdf)** - offline build: `python3 scripts/build_docs_pdf.py`
+* ✨ **[LLM Workflow](https://bbartling.github.io/open-fdd-afdd-stack/modeling/llm_workflow#copy-paste-prompt-template-recommended)** - export → tag → import
+* 🤖 **[Open-Claw](https://bbartling.github.io/open-fdd-afdd-stack/openclaw_integration)** - model context, MCP, API workflows
 
 ---
 
@@ -92,7 +92,7 @@ printf '%s' 'YourSecurePassword' | ./scripts/bootstrap.sh \
 ```
 
 
-### Standard hardened stack — self-signed TLS (Caddy) and app login
+### Standard hardened stack - self-signed TLS (Caddy) and app login
 
 Open-FDD runs over TLS with self-signed certificates, and there is no access to the Open-FDD API or the DIY BACnet server Docker container APIs.
 
@@ -171,14 +171,14 @@ This section documents the **per-change deploy workflow** for the production Azu
 | `predmain-fdd-loop` | Docker image (`3msecontainers.azurecr.io/predmain-fdd-loop`) | `az acr build -f stack/Dockerfile.fdd_loop` | **Two** ACA Jobs sharing this image: `predmain-fdd-loop` (rule loop, cron `0 */3 * * *`) and `predmain-nightly-sync` (history sync, cron `0 3 * * *`). They differ only in the command override. |
 | `predmain-frontend` | Static React bundle | `npm run build:swa` (frontend/) | Azure Static Web Apps `predmain-frontend`, environment `production`. |
 
-`stack/rules/*.yaml` rule files are **baked into the `predmain-fdd-loop` image** via `COPY stack/rules ./stack/rules` in the Dockerfile. There is no Azure Files mount for rules — every rule change requires rebuilding that image and rolling both jobs.
+`stack/rules/*.yaml` rule files are **baked into the `predmain-fdd-loop` image** via `COPY stack/rules ./stack/rules` in the Dockerfile. There is no Azure Files mount for rules - every rule change requires rebuilding that image and rolling both jobs.
 
 ### Prerequisites
 
 - `az login` on the Pay-As-You-Go subscription (Entra tenant `fce6e120-a4ac-468f-bce8-0a9efa296639`).
 - **PowerShell 7+** on Windows for the build/roll commands.
 - **Node 18+** for the frontend build.
-- A clean working tree (image tags are short git SHAs — see *Pre-flight* below).
+- A clean working tree (image tags are short git SHAs - see *Pre-flight* below).
 - The `.dockerignore` at the repo root is **required**. Without it every `az acr build` uploads ~200 MB of `frontend/node_modules` and ~15 MB of `.git` as build context. Keep it committed.
 
 ### One-shot workflow
@@ -188,14 +188,14 @@ The full cycle is: **commit → build images → roll API → roll both jobs →
 #### 0. Pre-flight
 
 ```powershell
-git status                              # tree must be clean — image tags are SHAs
+git status                              # tree must be clean - image tags are SHAs
 $SHA = git rev-parse --short HEAD
 $env:PYTHONUTF8 = '1'
 $env:PYTHONIOENCODING = 'utf-8'
 $BASE = '3msecontainers.azurecr.io/python:3.14-slim'   # base image pulled from ACR, not Docker Hub
 ```
 
-Tags are pinned to short git SHAs (`predmain-api:c6d8dec`). Tagging an image with a SHA whose code isn't actually in the image is a footgun — rollbacks then lie. If you have to publish uncommitted work, tag with `dev-<UTC stamp>` instead and re-tag once you commit.
+Tags are pinned to short git SHAs (`predmain-api:c6d8dec`). Tagging an image with a SHA whose code isn't actually in the image is a footgun - rollbacks then lie. If you have to publish uncommitted work, tag with `dev-<UTC stamp>` instead and re-tag once you commit.
 
 > **One-time: mirror the base image into ACR.** ACR build agents pull the `FROM` base from Docker Hub **anonymously**, which hits Docker's pull rate limit (`toomanyrequests: You have reached your unauthenticated pull rate limit`) and fails the build. Both Dockerfiles take a `BASE_IMAGE` build-arg (default `python:3.14-slim` for local builds) so cloud builds can pull the base from ACR instead. Import it once (re-run only when bumping the Python version):
 > ```powershell
@@ -220,9 +220,9 @@ az acr build -r 3mseContainers `
   --no-logs -f stack/Dockerfile.fdd_loop .
 ```
 
-> **Why `--build-arg BASE_IMAGE=$BASE`?** It points `FROM` at the ACR-mirrored base (see the one-time import above) so the build agent pulls it from `3msecontainers.azurecr.io` — where it's already authenticated — instead of anonymously from Docker Hub. Omitting it falls back to the Docker Hub default and risks the `toomanyrequests` failure. Local `docker build` needs no arg; the Dockerfile default handles it.
+> **Why `--build-arg BASE_IMAGE=$BASE`?** It points `FROM` at the ACR-mirrored base (see the one-time import above) so the build agent pulls it from `3msecontainers.azurecr.io` - where it's already authenticated - instead of anonymously from Docker Hub. Omitting it falls back to the Docker Hub default and risks the `toomanyrequests` failure. Local `docker build` needs no arg; the Dockerfile default handles it.
 
-> **Why `--no-logs`?** On Windows the `az` CLI streams ACR build logs through `colorama`, which writes via `cp1252` and crashes on common build output even when `$env:PYTHONIOENCODING = 'utf-8'` is set. The remote ACR build still succeeds, but the local `az` process exits `1`, which is misleading. `--no-logs` skips the streaming path; `az` still waits for the build to finish and returns a real exit code. Inspect logs after the fact with `az acr task list-runs` + `az acr task logs --runner <runId>`, or via Log Analytics KQL on `ContainerAppConsoleLogs_CL`. **Don't rely on the older `PYTHONIOENCODING` workaround alone** — it's not enough when `az` runs with a captured pipe rather than a real console.
+> **Why `--no-logs`?** On Windows the `az` CLI streams ACR build logs through `colorama`, which writes via `cp1252` and crashes on common build output even when `$env:PYTHONIOENCODING = 'utf-8'` is set. The remote ACR build still succeeds, but the local `az` process exits `1`, which is misleading. `--no-logs` skips the streaming path; `az` still waits for the build to finish and returns a real exit code. Inspect logs after the fact with `az acr task list-runs` + `az acr task logs --runner <runId>`, or via Log Analytics KQL on `ContainerAppConsoleLogs_CL`. **Don't rely on the older `PYTHONIOENCODING` workaround alone** - it's not enough when `az` runs with a captured pipe rather than a real console.
 
 Confirm both tags landed:
 
@@ -244,7 +244,7 @@ az containerapp revision show -g Live_Services -n predmain-api `
   --query '{p:properties.provisioningState, h:properties.healthState, r:properties.runningState}' -o json
 ```
 
-Single-revision mode is the default — the new revision takes 100% of ingress automatically when it reports `Healthy`.
+Single-revision mode is the default - the new revision takes 100% of ingress automatically when it reports `Healthy`.
 
 #### 3. Roll **both** jobs in lockstep
 
@@ -285,7 +285,7 @@ npx -y '@azure/static-web-apps-cli@latest' deploy ./dist `
 Set-Location ..
 ```
 
-> Quote `'@azure/...@latest'` in PowerShell — a bare leading `@` is the splat operator otherwise.
+> Quote `'@azure/...@latest'` in PowerShell - a bare leading `@` is the splat operator otherwise.
 
 After deploy, **hard-refresh** (Ctrl+Shift+R) or test in incognito. SWA serves the JS bundle with cache headers; browsers keep the old bundle otherwise.
 
@@ -294,7 +294,7 @@ After deploy, **hard-refresh** (Ctrl+Shift+R) or test in incognito. SWA serves t
 - **API:** open a page that exercises a recently-changed endpoint and check the network tab.
 - **Rules / fdd-loop:** the smoke-start in step 3 should have written new rows to `fault_results`. Open the Faults page in the SPA.
 - **Nightly-sync:** confirm a new row in `point_readings` from each Niagara/IQVision-backed site, dated within the configured `--window` (default `yesterday`). For a longer catch-up, override args once: `az containerapp job start -g Live_Services -n predmain-nightly-sync --args="--window lastweek"`.
-- **Frontend:** hard-refresh and exercise the new feature. Screens behind a new role/permission require sign-out + sign-in (incognito) — Entra tokens are minted at sign-in and hold stale claims for up to 1h.
+- **Frontend:** hard-refresh and exercise the new feature. Screens behind a new role/permission require sign-out + sign-in (incognito) - Entra tokens are minted at sign-in and hold stale claims for up to 1h.
 
 ### Order matters
 
@@ -307,7 +307,7 @@ After deploy, **hard-refresh** (Ctrl+Shift+R) or test in incognito. SWA serves t
 
 ### DB schema migrations
 
-`stack/sql/0NN_*.sql` files auto-apply only on a **fresh** DB volume. For an existing deployment, apply via `psql` from the `ioProxyHandler` VM — the only host with a network path to the private Flex Server endpoint:
+`stack/sql/0NN_*.sql` files auto-apply only on a **fresh** DB volume. For an existing deployment, apply via `psql` from the `ioProxyHandler` VM - the only host with a network path to the private Flex Server endpoint:
 
 ```powershell
 # On your laptop (PowerShell)
@@ -333,14 +333,14 @@ az containerapp update -g Live_Services -n predmain-api `
   --image "3msecontainers.azurecr.io/predmain-api:$PRIOR" `
   --revision-suffix "rb$PRIOR"
 
-# Both jobs (lockstep — same as forward roll)
+# Both jobs (lockstep - same as forward roll)
 az containerapp job update -g Live_Services -n predmain-fdd-loop `
   --image "3msecontainers.azurecr.io/predmain-fdd-loop:$PRIOR"
 az containerapp job update -g Live_Services -n predmain-nightly-sync `
   --image "3msecontainers.azurecr.io/predmain-fdd-loop:$PRIOR"
 ```
 
-The frontend has no built-in rollback — rebuild from the prior commit:
+The frontend has no built-in rollback - rebuild from the prior commit:
 
 ```powershell
 git checkout <prior SHA> -- frontend
@@ -395,14 +395,14 @@ az rest --method post `
 Remove-Item .\.tmp_kql.json
 ```
 
-ACA Jobs do not populate `ContainerAppName_s` — for nightly-sync / fdd-loop logs, filter by content (`where Log_s has 'nightly-sync'`) or by the `Reason_s` system events (`SuccessfulCreate`, `PullingImage`, `ContainerTerminated`, `BackoffLimitExceeded`).
+ACA Jobs do not populate `ContainerAppName_s` - for nightly-sync / fdd-loop logs, filter by content (`where Log_s has 'nightly-sync'`) or by the `Reason_s` system events (`SuccessfulCreate`, `PullingImage`, `ContainerTerminated`, `BackoffLimitExceeded`).
 
 ### Common pitfalls
 
 - **`--no-logs` is essential on Windows `az acr build`.** The colorama→`cp1252` crash makes the local `az` exit `1` even when the remote build succeeded.
 - **Never deploy `:latest` to ACA.** `:latest` is fine for the local docker-compose path (below), but ACA can't tell when `:latest` moves, so rollbacks become ambiguous. Always pin SHA tags.
 - **Always roll both jobs in lockstep.** `predmain-fdd-loop` and `predmain-nightly-sync` share one image. Updating one and not the other has caused silent multi-week production failures.
-- **Hard-refresh the browser after `swa deploy`** — SWA serves bundles with cache headers.
+- **Hard-refresh the browser after `swa deploy`** - SWA serves bundles with cache headers.
 - **Sign out + back in (incognito) after Entra changes.** Tokens hold stale role claims for up to 1h.
 - **`.dockerignore` is load-bearing.** Don't remove it.
 - **Apply migrations before rolling code that depends on the new schema.** The reverse order produces 5xx until the migration lands.
@@ -431,7 +431,7 @@ api (rebuild image from Dockerfile.api, then recreate):
 
 docker compose -f stack/docker-compose.yml build api
 docker compose -f stack/docker-compose.yml up -d --force-recreate api
-frontend (no image build — recreating runs npm run build again, picking up frontend/ changes):
+frontend (no image build - recreating runs npm run build again, picking up frontend/ changes):
 
 
 docker compose -f stack/docker-compose.yml up -d --force-recreate frontend

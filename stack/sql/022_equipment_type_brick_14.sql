@@ -9,11 +9,11 @@
 --     reads keep their legacy strings forever.
 --   - The TTL writer's `coerce_to_brick_class` falls back to `brick:Equipment`
 --     for unknown values at serialization time, but the persisted DB column
---     still carries the legacy string — every downstream SPARQL/lookup that
+--     still carries the legacy string - every downstream SPARQL/lookup that
 --     reads `equipment.equipment_type` directly (not via TTL) sees the wrong
 --     thing.
 --
--- This migration is **idempotent** — running it twice is a no-op. The
+-- This migration is **idempotent** - running it twice is a no-op. The
 -- `IS DISTINCT FROM` guard skips rows already on the canonical form so the
 -- migration leaves canonical rows alone and only rewrites the legacy ones.
 --
@@ -106,7 +106,7 @@ BEGIN
             '022 migration: % equipment row(s) still carry a non-Brick-1.4 equipment_type. '
             'TTL writer will coerce these to brick:Equipment but you should fix them by hand. '
             'Run: SELECT id, name, equipment_type FROM equipment WHERE equipment_type NOT IN (...) '
-            '— see the allowlist in openfdd_stack/platform/brick_vocabulary.py.',
+            '- see the allowlist in openfdd_stack/platform/brick_vocabulary.py.',
             bad_count;
     ELSE
         RAISE NOTICE '022 migration: equipment.equipment_type is fully aligned to Brick 1.4.';

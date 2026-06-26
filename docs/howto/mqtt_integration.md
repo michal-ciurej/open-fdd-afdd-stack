@@ -4,7 +4,7 @@ parent: How-to Guides
 nav_order: 3
 ---
 
-# MQTT integration (optional) — Open-FDD + diy-bacnet-server
+# MQTT integration (optional) - Open-FDD + diy-bacnet-server
 
 Open-FDD does **not** require MQTT for core FDD, BACnet scraping, or the web UI. MQTT is **optional** and aimed at **future** edge/automation patterns and **generic** brokers (typically **Mosquitto**), not a specific cloud vendor.
 
@@ -27,6 +27,6 @@ Open-FDD does **not** require MQTT for core FDD, BACnet scraping, or the web UI.
 
 ## Related docs
 
-- [Getting started](../getting_started) — `--with-mqtt-bridge`
-- [Quick reference](quick_reference) — broker port and status checks
-- [BACnet overview](../bacnet/overview) — gateway and scraper roles
+- [Getting started](../getting_started) - `--with-mqtt-bridge`
+- [Quick reference](quick_reference) - broker port and status checks
+- [BACnet overview](../bacnet/overview) - gateway and scraper roles

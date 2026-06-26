@@ -5,7 +5,7 @@ Phase 3 wiring: turns ``fault_events`` and ``fault_results`` into the
 ``observed_hours`` and ``observed_evidence`` arguments that
 ``energy_calc_resolver.compute_opportunity_result`` already accepts.
 
-Two helpers, both pure (no caching) — call from the recompute path.
+Two helpers, both pure (no caching) - call from the recompute path.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ def trailing_fault_hours(
     the trailing window, converted to hours. Open-ended events (no ``end_ts``)
     count from their ``start_ts`` to ``now()``.
 
-    Returns 0.0 when no rows match — callers can treat that as "no observed
+    Returns 0.0 when no rows match - callers can treat that as "no observed
     fault hours yet, fall back to profile or spec default".
     """
     sql = """

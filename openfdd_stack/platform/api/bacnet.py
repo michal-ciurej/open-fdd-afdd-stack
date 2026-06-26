@@ -1,4 +1,4 @@
-"""BACnet proxy routes — Open-FDD backend calls diy-bacnet-server (local or OT LAN)."""
+"""BACnet proxy routes - Open-FDD backend calls diy-bacnet-server (local or OT LAN)."""
 
 import json
 import logging

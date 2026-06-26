@@ -33,7 +33,7 @@ python check_faults_ahu7_bounds.py
 
 ---
 
-## my_rules — Your fault rules
+## my_rules - Your fault rules
 
 The `examples/my_rules/` folder holds **your** YAML fault rules. Copy it, rename if you like, and customize for your own BAS data.
 
@@ -61,7 +61,7 @@ Rules with `equipment_type: [VAV_AHU]` (or `[AHU, VAV_AHU]`) only run when the B
 
 ## Cloud export example
 
-Pull fault and timeseries data from the Open-FDD API. Use as a **starting point** for cloud or MSI integration. See [Concepts — Cloud export](concepts/cloud_export.md).
+Pull fault and timeseries data from the Open-FDD API. Use as a **starting point** for cloud or MSI integration. See [Concepts - Cloud export](concepts/cloud_export.md).
 
 ### Run locally
 
@@ -83,11 +83,11 @@ On Linux use `http://172.17.0.1:8000` or your host IP if host.docker.internal is
 
 ### What it does
 
-1. **GET /download/faults?format=json** — fault results for MSI/cloud ingestion
-2. **GET /download/faults?format=csv** — fault CSV (Excel-friendly)
-3. **GET /analytics/motor-runtime** — motor runtime (data-model driven)
-4. **GET /download/csv** — timeseries wide-format CSV
-5. **GET /analytics/fault-summary** — fault counts by fault_id
+1. **GET /download/faults?format=json** - fault results for MSI/cloud ingestion
+2. **GET /download/faults?format=csv** - fault CSV (Excel-friendly)
+3. **GET /analytics/motor-runtime** - motor runtime (data-model driven)
+4. **GET /download/csv** - timeseries wide-format CSV
+5. **GET /analytics/fault-summary** - fault counts by fault_id
 
 Replace the `print()` calls with your cloud integration (Azure IoT Hub, AWS, SkySpark, custom REST, etc.).
 

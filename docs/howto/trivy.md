@@ -55,9 +55,9 @@ Open-FDD builds several images (API, BACnet scraper, weather scraper, FDD loop, 
    Replace with your actual image names if different (e.g. `openfdd-api` if your project name is `openfdd`).
 
 3. **Options useful in dev:**
-   - `trivy image --severity HIGH,CRITICAL <image>` — only high/critical findings.
-   - `trivy image --exit-code 1 <image>` — exit non-zero if there are vulnerabilities (for CI).
-   - `trivy image --ignorefile .trivyignore <image>` — ignore accepted risks (document in the file).
+   - `trivy image --severity HIGH,CRITICAL <image>` - only high/critical findings.
+   - `trivy image --exit-code 1 <image>` - exit non-zero if there are vulnerabilities (for CI).
+   - `trivy image --ignorefile .trivyignore <image>` - ignore accepted risks (document in the file).
 
 **Workflow:** Build → run Trivy → fix (update base image, bump packages) or add to `.trivyignore` with a comment → re-scan until you’re satisfied.
 

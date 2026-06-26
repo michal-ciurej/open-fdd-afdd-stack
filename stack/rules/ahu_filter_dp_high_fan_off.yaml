@@ -17,9 +17,9 @@ inputs:
     brick: Supply_Fan_Status
 
 params:
-  dp_low:  15.0    # Pa — lower bound; below this is likely sensor noise / zero drift
-  dp_high: 300.0   # Pa — upper bound; above this is likely a different fault (extreme blockage or sensor over-range)
-  rolling_window: 48  # 4 h at 5-min sampling — sustained condition required before flagging
+  dp_low:  15.0    # Pa - lower bound; below this is likely sensor noise / zero drift
+  dp_high: 300.0   # Pa - upper bound; above this is likely a different fault (extreme blockage or sensor over-range)
+  rolling_window: 48  # 4 h at 5-min sampling - sustained condition required before flagging
 
 expression: |
   (

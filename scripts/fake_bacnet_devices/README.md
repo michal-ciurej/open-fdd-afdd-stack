@@ -160,10 +160,10 @@ Both devices use the same time-based schedule (see `fault_schedule.py`), by **UT
 
 | Minute (UTC) | Mode      | Open FDD rule expected   |
 |--------------|-----------|----------------------------|
-| 0–9          | normal    | —                          |
+| 0–9          | normal    | -                          |
 | 10–49        | flatline  | `flatline_flag`            |
 | 50–54        | out-of-bounds | `bad_sensor_flag`   |
-| 55–59        | normal    | —                          |
+| 55–59        | normal    | -                          |
 
 If the Pis are not on UTC, set `TZ=UTC` in the systemd unit or adjust the schedule in `fault_schedule.py` to use local time.
 

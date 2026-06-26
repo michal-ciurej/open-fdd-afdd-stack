@@ -19,8 +19,8 @@ inputs:
     brick: Boiler_Status
 
 params:
-  delta_high: 2.0       # °C — upper bound for ΔT when boiler is idle/not heating
-  delta_low: -0.2       # °C — negative threshold flags likely sensor reversal
+  delta_high: 2.0       # °C - upper bound for ΔT when boiler is idle/not heating
+  delta_low: -0.2       # °C - negative threshold flags likely sensor reversal
   rolling_window: 12    # 12 consecutive 5-min samples = 1 h (matches trigger period)
 
 expression: |

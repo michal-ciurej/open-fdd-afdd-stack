@@ -13,7 +13,7 @@ import { Circle, CircleDot, ChevronRight, ChevronDown, Server, Box, CircleDotIco
 
 /** Format ts for display (API timestamps are UTC; we show relative time). */
 function formatLastUpdated(ts: string | null): string {
-  if (!ts) return "—";
+  if (!ts) return "-";
   const d = parseUtcTimestamp(ts) ?? new Date(ts);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
@@ -338,12 +338,12 @@ function TreeRows({
         </TableCell>
         {hasSites && (
           <TableCell className="text-muted-foreground text-xs">
-            {siteName ?? "—"}
+            {siteName ?? "-"}
           </TableCell>
         )}
-        <TableCell className="text-muted-foreground text-xs">{p.brick_type ?? "—"}</TableCell>
-        <TableCell className="text-muted-foreground text-xs">{p.fdd_input ?? "—"}</TableCell>
-        <TableCell className="text-muted-foreground text-xs">{p.unit ?? "—"}</TableCell>
+        <TableCell className="text-muted-foreground text-xs">{p.brick_type ?? "-"}</TableCell>
+        <TableCell className="text-muted-foreground text-xs">{p.fdd_input ?? "-"}</TableCell>
+        <TableCell className="text-muted-foreground text-xs">{p.unit ?? "-"}</TableCell>
         <TableCell>
           {p.polling ? (
             <span title="BACnet scraper polls this point">
@@ -362,11 +362,11 @@ function TreeRows({
               {p.unit ? ` ${p.unit}` : ""}
             </span>
           ) : (
-            "—"
+            "-"
           )}
         </TableCell>
         <TableCell className="text-muted-foreground text-xs">
-          {p.polling && latest != null && latest.ts ? formatLastUpdated(latest.ts) : "—"}
+          {p.polling && latest != null && latest.ts ? formatLastUpdated(latest.ts) : "-"}
         </TableCell>
       </TableRow>
     );

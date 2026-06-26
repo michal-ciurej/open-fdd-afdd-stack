@@ -9,7 +9,7 @@ import type {
   SystemDiskResponse,
 } from "@/types/api";
 
-/** GET /capabilities — version + feature flags (incl. ai_available for AI tagging). */
+/** GET /capabilities - version + feature flags (incl. ai_available for AI tagging). */
 export function useCapabilities() {
   return useQuery<Capabilities>({
     queryKey: ["capabilities"],

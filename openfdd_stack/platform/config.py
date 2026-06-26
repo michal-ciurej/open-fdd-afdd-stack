@@ -78,7 +78,7 @@ class PlatformSettings(BaseSettings):
     # Optional: multiple gateways (central aggregator). JSON array of {"url", "site_id", ...}; scrape uses KG points per site.
     bacnet_gateways: Optional[str] = None
 
-    # API key for REST/WebSocket auth (Bearer). Used by machine integrations (BACnet scraper, MCP) — separate from browser SSO.
+    # API key for REST/WebSocket auth (Bearer). Used by machine integrations (BACnet scraper, MCP) - separate from browser SSO.
     api_key: Optional[str] = None
     # When true, expose /docs, /redoc, /openapi.json (HTTP lab). False in cloud / production.
     enable_openapi_docs: bool = False

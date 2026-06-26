@@ -22,7 +22,7 @@ export function useTrendingData(
         const rows = parseLongCsv(csv);
         return pivotForChart(rows);
       } catch (e) {
-        // API returns 404 when there's no data — treat as empty, not error
+        // API returns 404 when there's no data - treat as empty, not error
         if (e instanceof Error && e.message.includes("404")) return [];
         throw e;
       }

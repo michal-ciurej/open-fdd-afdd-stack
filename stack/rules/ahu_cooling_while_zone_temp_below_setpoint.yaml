@@ -21,8 +21,8 @@ inputs:
     brick: Return_Air_Temperature_Setpoint
 
 params:
-  zt_below_sp_delta: 1.0      # °C — zone temp must be this far below setpoint to flag
-  cooling_active_delta: 0.0   # °C — cooling considered active when RAT < RAT_SP (delta >= 0)
+  zt_below_sp_delta: 1.0      # °C - zone temp must be this far below setpoint to flag
+  cooling_active_delta: 0.0   # °C - cooling considered active when RAT < RAT_SP (delta >= 0)
   rolling_window: 6           # 6 consecutive 5-min samples = 30 min trigger period
 
 expression: |

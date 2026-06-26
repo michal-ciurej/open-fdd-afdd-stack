@@ -15,7 +15,7 @@ inputs:
     brick: Boiler_Status
 
 params:
-  min_hw_dt: 3.0            # °F — below this, boiler is doing little useful work
+  min_hw_dt: 3.0            # °F - below this, boiler is doing little useful work
   rolling_window: 12        # ~1 h at 5-min sampling
 
 expression: |

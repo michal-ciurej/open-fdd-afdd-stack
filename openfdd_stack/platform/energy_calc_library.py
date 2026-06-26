@@ -2,7 +2,7 @@
 FDD-oriented energy / savings preview calculations (interval-style inputs annualized).
 
 Outputs align with common M&V-style summaries for dashboards and future fault-duration integration.
-Not a full 223P model — plain engineering formulas with explicit assumptions.
+Not a full 223P model - plain engineering formulas with explicit assumptions.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from typing import Any, Optional
 
 CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
     "runtime_electric_kw": {
-        "label": "Excess runtime — known kW",
+        "label": "Excess runtime - known kW",
         "summary": "kWh = kW × excess hours; for fans/pumps when measured or assumed load is constant.",
         "category": "electric_runtime",
         "fields": [
@@ -30,7 +30,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
         ],
     },
     "motor_hp_runtime": {
-        "label": "Motor HP — runtime savings",
+        "label": "Motor HP - runtime savings",
         "summary": "kW = (HP × 0.746 × load_factor) / η_motor; then kWh = kW × hours.",
         "category": "electric_runtime",
         "fields": [
@@ -66,7 +66,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
         ],
     },
     "oa_heating_sensible": {
-        "label": "Excess OA — heating (sensible)",
+        "label": "Excess OA - heating (sensible)",
         "summary": "BTU/h ≈ 1.08 × CFM × ΔT; therms ≈ BTU × hours / (100,000 × η).",
         "category": "airside_thermal",
         "fields": [
@@ -78,7 +78,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
         ],
     },
     "oa_cooling_sensible": {
-        "label": "Excess OA — cooling (sensible)",
+        "label": "Excess OA - cooling (sensible)",
         "summary": "BTU/h ≈ 1.08 × CFM × ΔT; kWh ≈ BTU × hours / (3412 × COP).",
         "category": "airside_thermal",
         "fields": [
@@ -96,7 +96,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
         ],
     },
     "simultaneous_hydronic_btu": {
-        "label": "Simultaneous heat + cool — hydronic waste",
+        "label": "Simultaneous heat + cool - hydronic waste",
         "summary": "BTU/h ≈ 500 × GPM × ΔT (water); useful for reheat / fighting coils.",
         "category": "hydronic_waste",
         "fields": [
@@ -117,7 +117,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
         ],
     },
     "lighting_watts": {
-        "label": "Lighting — runtime",
+        "label": "Lighting - runtime",
         "summary": "kWh = (W/1000) × hours saved.",
         "category": "lighting",
         "fields": [
@@ -153,7 +153,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
         ],
     },
     "pressure_ratio_motor_kw": {
-        "label": "Fan or pump — pressure ratio waste",
+        "label": "Fan or pump - pressure ratio waste",
         "summary": "ΔkW ≈ kW_act × (1 − (P_opt/P_act)^1.5).",
         "category": "vfd_affinity",
         "fields": [
@@ -171,7 +171,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
         ],
     },
     "sensible_coil_leak_kw": {
-        "label": "Coil leak — sensible BTU to compressor kW",
+        "label": "Coil leak - sensible BTU to compressor kW",
         "summary": "BTU/h ≈ 1.08 × CFM × ΔT_coil; kWh = BTU×h/(3412×COP).",
         "category": "airside_thermal",
         "fields": [
@@ -189,7 +189,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
         ],
     },
     "fan_filter_dp_kw": {
-        "label": "Filter/coil — extra fan kW (inWC)",
+        "label": "Filter/coil - extra fan kW (inWC)",
         "summary": "kW ≈ CFM × ΔP / (6356 η_fan η_motor) × 0.746.",
         "category": "electric_runtime",
         "fields": [
@@ -273,7 +273,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
         ],
     },
     "vav_min_flow_reheat": {
-        "label": "VAV min flow — reheat waste",
+        "label": "VAV min flow - reheat waste",
         "summary": "BTU/h ≈ 1.08 × ΔCFM × (T_zone − T_supply); therms at η.",
         "category": "airside_thermal",
         "fields": [
@@ -356,7 +356,7 @@ CALC_TYPE_SPECS: dict[str, dict[str, Any]] = {
         ],
     },
     "cop_gap_electric": {
-        "label": "COP gap — extra compressor kW",
+        "label": "COP gap - extra compressor kW",
         "summary": "kW_waste = Q × (1/(3.412×COP_a) − 1/(3.412×COP_d)).",
         "category": "electric_runtime",
         "fields": [
@@ -443,7 +443,7 @@ def preview_energy_calc(calc_type: str, parameters: dict[str, Any]) -> dict[str,
 
     assumptions: list[str] = [
         "Sensible air only unless noted; no demand-charge model.",
-        "Single operating point / annualized hours — not interval-integrated.",
+        "Single operating point / annualized hours - not interval-integrated.",
     ]
     out["assumptions_used"] = assumptions
 

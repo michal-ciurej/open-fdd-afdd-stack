@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# open-fdd-afdd-stack bootstrap: full Docker stack — DB, BACnet server, BACnet scraper,
+# open-fdd-afdd-stack bootstrap: full Docker stack - DB, BACnet server, BACnet scraper,
 # weather scraper, FDD loop, host-stats, API, Caddy.
 # ./scripts/bootstrap.sh --reset-data && ./scripts/bootstrap.sh --test
 # Default behavior (no args):
@@ -9,7 +9,7 @@
 #
 # Optional add-ons:
 #   --with-grafana       TimescaleDB charts at http://localhost:3000 (see docs)
-#   --with-mqtt-bridge   Mosquitto on :1883 + BACnet2MQTT env (experimental / future remote collection—not required for core Open-FDD)
+#   --with-mqtt-bridge   Mosquitto on :1883 + BACnet2MQTT env (experimental / future remote collection-not required for core Open-FDD)
 #   --with-mcp-rag       Optional MCP RAG service on :8090 (derived docs retrieval + optional guarded API tools)
 #
 # Optional (single-purpose):
@@ -216,7 +216,7 @@ Core:
   --minimal                 Start minimal stack (db, bacnet-server, bacnet-scraper; add --with-grafana for Grafana)
   --mode MODE              Partial deployment mode: full, collector, model, engine (default: full)
   --with-grafana            Include Grafana (http://localhost:3000; optional SQL dashboards)
-  --with-mqtt-bridge        Start Mosquitto + wire BACnet2MQTT env (experimental; future remote/MQTT use—not core product yet)
+  --with-mqtt-bridge        Start Mosquitto + wire BACnet2MQTT env (experimental; future remote/MQTT use-not core product yet)
   --with-mcp-rag            Include MCP RAG service (http://localhost:8090; retrieval over docs/text + optional guarded API tools)
   --doctor                  Read-only diagnostics: Docker, Compose, Python, argon2-cffi, paths (no stack changes). Exit 1 if critical checks fail.
   --verify                  Show running services + health checks (exits before starting stack)
@@ -261,7 +261,7 @@ Security:
   --password-stdin          Read Phase-1 app password from stdin.
                             (Alternative: set OFDD_APP_PASSWORD env var.)
 
-  BACnet gateway (diy-bacnet-server; host network — see https://github.com/bbartling/diy-bacnet-server ):
+  BACnet gateway (diy-bacnet-server; host network - see https://github.com/bbartling/diy-bacnet-server ):
                             Gateway BACnet name is fixed as open-fdd (not configurable).
   --bacnet-instance N       Writes OFDD_BACNET_DEVICE_INSTANCE → --instance (compose default 3456788 if omitted).
   --bacnet-address ADDR     Writes OFDD_BACNET_ADDRESS → --address (e.g. 192.168.204.11/24:47808) for BACnet/IP on the OT NIC.
@@ -428,12 +428,12 @@ check_prereqs() {
 check_prereqs_for_test_mode() {
   SKIP_DOCKER_FOR_TESTS=0
   if ! have_cmd docker; then
-    echo "=== Note: Docker not in PATH — skipping Caddyfile validation; frontend container path unavailable ==="
+    echo "=== Note: Docker not in PATH - skipping Caddyfile validation; frontend container path unavailable ==="
     SKIP_DOCKER_FOR_TESTS=1
     return 0
   fi
   if ! docker ps >/dev/null 2>&1; then
-    echo "=== Note: Docker daemon not usable — skipping Caddyfile validation; frontend container path unavailable ==="
+    echo "=== Note: Docker daemon not usable - skipping Caddyfile validation; frontend container path unavailable ==="
     echo "         Fix: sudo usermod -aG docker \$USER && newgrp docker   (or start Docker Desktop)"
     SKIP_DOCKER_FOR_TESTS=1
     return 0
@@ -539,9 +539,9 @@ run_bootstrap_doctor() {
         argon2_optional=1
       fi
       if [[ "$argon2_optional" -eq 1 ]]; then
-        echo "[WARN] argon2: cannot import in $py — doctor does not fail (MODE=$MODE, stack/env Phase-1 auth present, and/or --no-auth / --allow-no-ui-auth). Install before hashing a new --user password."
+        echo "[WARN] argon2: cannot import in $py - doctor does not fail (MODE=$MODE, stack/env Phase-1 auth present, and/or --no-auth / --allow-no-ui-auth). Install before hashing a new --user password."
       else
-        echo "[FAIL] argon2: cannot import in $py — install argon2-cffi for Phase-1 login hashing (--user, OFDD_APP_PASSWORD, etc.)"
+        echo "[FAIL] argon2: cannot import in $py - install argon2-cffi for Phase-1 login hashing (--user, OFDD_APP_PASSWORD, etc.)"
         fail=1
       fi
     fi
@@ -984,7 +984,7 @@ bootstrap_print_remote_access_hints() {
   if [[ "$caddyfile" == *Caddyfile.selfsigned ]]; then
     echo "  Edge mode:    self-signed TLS Caddy"
     if [[ -n "$ip" ]]; then
-      echo "  Remote (TLS): https://${ip}/  — API and UI through Caddy; raw :8000 is loopback-only on the server."
+      echo "  Remote (TLS): https://${ip}/  - API and UI through Caddy; raw :8000 is loopback-only on the server."
     else
       echo "  Remote (TLS): https://THIS_HOST/  through Caddy; raw :8000 is loopback-only on the server."
     fi
@@ -994,9 +994,9 @@ bootstrap_print_remote_access_hints() {
   echo "  Edge mode:    standard HTTP Caddy"
   if [[ "$bind" == "0.0.0.0" ]]; then
     if [[ -n "$ip" ]]; then
-      echo "  Remote / LAN: http://${ip}:8000/docs  (API Swagger)   http://${ip}/  and  http://${ip}:8880/  (UI via Caddy — same app; use :8880 if :80 is firewall-blocked)   http://${ip}:8080/  (BACnet gateway)"
+      echo "  Remote / LAN: http://${ip}:8000/docs  (API Swagger)   http://${ip}/  and  http://${ip}:8880/  (UI via Caddy - same app; use :8880 if :80 is firewall-blocked)   http://${ip}:8080/  (BACnet gateway)"
     else
-      echo "  Remote / LAN: use this machine's IP — :8000 API, :80 or :8880 Caddy UI, :8080 BACnet. OFDD_API_HOST_BIND=0.0.0.0."
+      echo "  Remote / LAN: use this machine's IP - :8000 API, :80 or :8880 Caddy UI, :8080 BACnet. OFDD_API_HOST_BIND=0.0.0.0."
     fi
     echo "  HTTPS is not expected in this mode unless you ran --caddy-self-signed."
     echo "  If :80 never loads from other PCs but :8000 works, allow inbound 80 (e.g. sudo ufw allow 80/tcp) or use :8880 only."
@@ -1153,7 +1153,7 @@ verify_tls_caddy_smoke() {
   local tmp h code
   tmp="$(mktemp)" || return 0
   echo "=== TLS / Caddy edge smoke (curl -k) ==="
-  echo "UI must load via https://THIS_HOST/ so /api and /auth go through Caddy. http://HOST:5173 alone has no API proxy — login will fail."
+  echo "UI must load via https://THIS_HOST/ so /api and /auth go through Caddy. http://HOST:5173 alone has no API proxy - login will fail."
   echo ""
 
   if curl -sk -o "$tmp" -w "%{http_code}" "$base/api/health" | grep -qx 200; then
@@ -1181,7 +1181,7 @@ verify_tls_caddy_smoke() {
     if grep -q '"result"' "$tmp" 2>/dev/null; then
       echo "OK   $base/bacnet/server_hello (diy-bacnet over TLS path /bacnet)"
     else
-      echo "WARN $base/bacnet/server_hello — 200 but unexpected body"
+      echo "WARN $base/bacnet/server_hello - 200 but unexpected body"
     fi
   else
     code="$(curl -sk -o "$tmp" -w "%{http_code}" \
@@ -1199,7 +1199,7 @@ verify_tls_caddy_smoke() {
   elif [[ "$code" == "503" ]]; then
     echo "WARN $base/api/auth/login → 503 (app user auth not configured? use --user / --password-stdin)"
   else
-    echo "FAIL $base/api/auth/login (HTTP $code; expected 401 JSON for bad password — if HTML, you are not hitting the API via Caddy)"
+    echo "FAIL $base/api/auth/login (HTTP $code; expected 401 JSON for bad password - if HTML, you are not hitting the API via Caddy)"
   fi
 
   local api_key bacnet_key
@@ -1270,26 +1270,26 @@ verify() {
   fi
 
   if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx openfdd_grafana; then
-    echo "Grafana: running — http://localhost:3000 (optional; started with --with-grafana)"
+    echo "Grafana: running - http://localhost:3000 (optional; started with --with-grafana)"
   else
-    echo "Grafana: not running — optional: ./scripts/bootstrap.sh --with-grafana"
+    echo "Grafana: not running - optional: ./scripts/bootstrap.sh --with-grafana"
   fi
 
   if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx openfdd_mosquitto; then
     echo "MQTT broker: localhost:1883 (optional; experimental BACnet2MQTT path)"
   elif grep -qE '^BACNET2MQTT_ENABLED=true' "$STACK_DIR/.env" 2>/dev/null; then
-    echo "MQTT: BACnet2MQTT enabled in .env but broker not running — start with: ./scripts/bootstrap.sh --with-mqtt-bridge"
+    echo "MQTT: BACnet2MQTT enabled in .env but broker not running - start with: ./scripts/bootstrap.sh --with-mqtt-bridge"
   fi
 
   if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx openfdd_mcp_rag; then
-    echo "MCP RAG: running — http://localhost:8090 (manifest: /manifest)"
+    echo "MCP RAG: running - http://localhost:8090 (manifest: /manifest)"
   fi
 
   echo ""
   echo "=== Feature checks (BACnet + API, up to 5 tries / 10s apart) ==="
   if curl_retry 5 10 -X POST http://localhost:8080/server_hello -H "Content-Type: application/json" \
       -d '{"jsonrpc":"2.0","id":"0","method":"server_hello","params":{}}'; then
-    echo "BACnet: http://localhost:8080 (OK — server_hello responded)"
+    echo "BACnet: http://localhost:8080 (OK - server_hello responded)"
     hello="$(curl -sf -X POST http://localhost:8080/server_hello -H "Content-Type: application/json" \
       -d '{"jsonrpc":"2.0","id":"0","method":"server_hello","params":{}}' 2>/dev/null)" || true
     if echo "$hello" | grep -q '"mqtt_bridge"'; then
@@ -1304,7 +1304,7 @@ verify() {
   fi
 
   if curl_retry 5 10 http://127.0.0.1:8000/health; then
-    echo "API:    http://127.0.0.1:8000 (OK — /health responded)"
+    echo "API:    http://127.0.0.1:8000 (OK - /health responded)"
   else
     echo "API:    http://127.0.0.1:8000 (not reachable after 5 tries; run full stack without --minimal)"
   fi
@@ -1324,7 +1324,7 @@ verify() {
   if grep -qE '^OPENFDD_CADDYFILE=.*Caddyfile\.selfsigned' "$STACK_DIR/.env" 2>/dev/null; then
     echo "=== Caddy (self-signed HTTPS) ==="
     if curl_retry 3 5 -k -sf "https://localhost/" >/dev/null 2>&1; then
-      echo "Caddy: https://localhost/ (OK — use -k with curl; browser will show cert warning)"
+      echo "Caddy: https://localhost/ (OK - use -k with curl; browser will show cert warning)"
     else
       echo "Caddy: https://localhost/ not responding yet (stack still starting or port 443 blocked)"
     fi
@@ -1337,7 +1337,7 @@ verify() {
       echo "Caddy: http://127.0.0.1:80/ not responding on this host"
     fi
     if curl_retry 2 3 -sf "http://127.0.0.1:8880/" >/dev/null 2>&1; then
-      echo "Caddy: http://127.0.0.1:8880/ (same UI as :80 — use from LAN if inbound :80 is firewall-blocked)"
+      echo "Caddy: http://127.0.0.1:8880/ (same UI as :80 - use from LAN if inbound :80 is firewall-blocked)"
     else
       echo "Caddy: http://127.0.0.1:8880/ not responding"
     fi
@@ -1433,7 +1433,7 @@ verify_code() {
     if [[ ! -d "$REPO_ROOT/frontend" ]]; then
       echo "--- Frontend: skip (no frontend/ in repo) ---"
     else
-      echo "--- Frontend: skip (mode $MODE — frontend checks run for full and model only) ---"
+      echo "--- Frontend: skip (mode $MODE - frontend checks run for full and model only) ---"
     fi
     echo ""
   fi
@@ -1471,7 +1471,7 @@ verify_code() {
   # Caddy is validated only when interface layer is expected.
   if [[ "$MODE" != "collector" && "$MODE" != "engine" ]]; then
     if [[ "$SKIP_DOCKER_FOR_TESTS" -eq 1 ]]; then
-      echo "--- Caddy: skip (Docker not available — run with Docker to validate Caddyfiles) ---"
+      echo "--- Caddy: skip (Docker not available - run with Docker to validate Caddyfiles) ---"
       echo ""
     else
       echo "--- Caddy (validate Caddyfile) ---"
@@ -1531,11 +1531,11 @@ run_diy_bacnet_tests() {
     return 0
   fi
   if ! docker exec openfdd_bacnet_server sh -lc 'test -d /app/tests'; then
-    echo "DIY BACnet tests: FAIL — /app/tests not found in openfdd_bacnet_server (rebuild bacnet-server from diy-bacnet-server context)."
+    echo "DIY BACnet tests: FAIL - /app/tests not found in openfdd_bacnet_server (rebuild bacnet-server from diy-bacnet-server context)."
     return 1
   fi
   if ! docker exec openfdd_bacnet_server sh -lc 'python3 -c "import pytest" 2>/dev/null'; then
-    echo "DIY BACnet tests: FAIL — pytest not importable in openfdd_bacnet_server (pip install dev/test deps in the DIY image)."
+    echo "DIY BACnet tests: FAIL - pytest not importable in openfdd_bacnet_server (pip install dev/test deps in the DIY image)."
     return 1
   fi
   if docker exec openfdd_bacnet_server sh -lc "cd /app && python3 -m pytest tests/ -q --tb=short"; then
@@ -1573,11 +1573,11 @@ run_verify_code_matrix_or_single() {
 wait_for_api() {
   API_BASE="$(bootstrap_api_base_for_host_curl)"
 
-  echo "=== Waiting for API at $API_BASE (~90s) — probe from this host only ==="
+  echo "=== Waiting for API at $API_BASE (~90s) - probe from this host only ==="
   local try=1
   while [[ $try -le 45 ]]; do
     if curl -sf --connect-timeout 3 "$API_BASE/health" >/dev/null 2>&1; then
-      echo "API ready (loopback probe OK; remote clients use your server LAN IP when OFDD_API_HOST_BIND=0.0.0.0 — see summary below)."
+      echo "API ready (loopback probe OK; remote clients use your server LAN IP when OFDD_API_HOST_BIND=0.0.0.0 - see summary below)."
       return 0
     fi
     sleep 2
@@ -1801,7 +1801,7 @@ if $CADDY_HTTP_ONLY; then
 elif $CADDY_SELF_SIGNED; then
   ensure_caddy_self_signed_tls
 elif [[ -n "${BACNET_ADDRESS_CLI:-}" ]]; then
-  # HTTP lab: OT bind without TLS — do not leave a previous --caddy-self-signed config in stack/.env.
+  # HTTP lab: OT bind without TLS - do not leave a previous --caddy-self-signed config in stack/.env.
   disable_caddy_self_signed_config
 fi
 
@@ -2053,7 +2053,7 @@ if $WITH_GRAFANA; then
   echo '  Grafana:  http://localhost:3000   (admin/admin) or via Caddy /grafana'
 fi
 if $WITH_MQTT_BRIDGE || grep -qE '^BACNET2MQTT_ENABLED=true' "$STACK_DIR/.env" 2>/dev/null; then
-  echo "  MQTT:     localhost:1883 (experimental; BACnet2MQTT for future remote collection—not core Open-FDD yet)"
+  echo "  MQTT:     localhost:1883 (experimental; BACnet2MQTT for future remote collection-not core Open-FDD yet)"
 fi
 if $WITH_MCP_RAG; then
   echo "  MCP RAG:  http://localhost:8090 (manifest: /manifest; health: /health)"
@@ -2063,9 +2063,9 @@ if [[ "$MODE" == "collector" ]]; then
   echo "  (Collector mode: raw BACnet data path. No API/FDD unless explicitly started.)"
 elif [[ "$MODE" == "model" ]]; then
   if grep -qE '^OFDD_ENABLE_OPENAPI_DOCS=true' "$STACK_DIR/.env" 2>/dev/null; then
-    echo "  API:      http://127.0.0.1:8000   (Swagger/OpenAPI: /docs — on this host only)"
+    echo "  API:      http://127.0.0.1:8000   (Swagger/OpenAPI: /docs - on this host only)"
   else
-    echo "  API:      http://127.0.0.1:8000   (Swagger/OpenAPI: off — self-signed TLS mode)"
+    echo "  API:      http://127.0.0.1:8000   (Swagger/OpenAPI: off - self-signed TLS mode)"
   fi
   echo "  Frontend: http://127.0.0.1:5173   (or via Caddy http://127.0.0.1)"
   bootstrap_print_remote_access_hints
@@ -2074,9 +2074,9 @@ elif [[ "$MODE" == "engine" ]]; then
   echo "  (Engine mode: FDD and weather loops with DB. No API/frontend by default.)"
 else
   if grep -qE '^OFDD_ENABLE_OPENAPI_DOCS=true' "$STACK_DIR/.env" 2>/dev/null; then
-    echo "  API:      http://127.0.0.1:8000   (Swagger/OpenAPI: /docs — on this host only)"
+    echo "  API:      http://127.0.0.1:8000   (Swagger/OpenAPI: /docs - on this host only)"
   else
-    echo "  API:      http://127.0.0.1:8000   (Swagger/OpenAPI: off — self-signed TLS mode)"
+    echo "  API:      http://127.0.0.1:8000   (Swagger/OpenAPI: off - self-signed TLS mode)"
   fi
   echo "  Frontend: http://127.0.0.1:5173   (or via Caddy http://127.0.0.1)"
   echo "  BACnet:   http://127.0.0.1:8080   (gateway; operators use web UI → BACnet tools)"
@@ -2094,13 +2094,13 @@ else
   bootstrap_print_remote_access_hints
   if grep -qE '^OPENFDD_CADDYFILE=.*Caddyfile\.selfsigned' "$STACK_DIR/.env" 2>/dev/null; then
     echo ""
-    echo "  Self-signed TLS: open the app at https://localhost/ (or https://THIS_HOST/) — not :5173 alone."
+    echo "  Self-signed TLS: open the app at https://localhost/ (or https://THIS_HOST/) - not :5173 alone."
     echo "  OpenAPI/Swagger on :8000 and :8080 stay off; use the web app via Caddy HTTPS."
     echo "  Direct ports (HTTP, automation): :8000 API, :8080 gateway, :5173 static (no /api proxy)."
     if [[ -n "$_boot_ofdd_key" ]]; then
-      echo "  With docs enabled: OpenAPI at https://localhost/api/docs — Authorization: Bearer <OFDD_API_KEY from stack/.env>."
+      echo "  With docs enabled: OpenAPI at https://localhost/api/docs - Authorization: Bearer <OFDD_API_KEY from stack/.env>."
     else
-      echo "  With docs enabled: OpenAPI at https://localhost/api/docs (no OFDD_API_KEY in stack/.env — API may allow unauthenticated access)."
+      echo "  With docs enabled: OpenAPI at https://localhost/api/docs (no OFDD_API_KEY in stack/.env - API may allow unauthenticated access)."
     fi
   fi
   echo "  (Grafana not started by default. Use --with-grafana to include it.)"

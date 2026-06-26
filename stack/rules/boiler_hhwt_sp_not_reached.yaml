@@ -19,7 +19,7 @@ inputs:
     brick: Boiler_Status
 
 params:
-  temp_delta: 4.0        # °C — fault threshold: leaving temp more than 4°C below setpoint
+  temp_delta: 4.0        # °C - fault threshold: leaving temp more than 4°C below setpoint
   rolling_window: 24     # 24 consecutive 5-min samples ≈ 2 h trigger period
 
 expression: |

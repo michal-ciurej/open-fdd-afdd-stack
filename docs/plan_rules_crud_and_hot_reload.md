@@ -2,9 +2,9 @@
 
 ## Goals
 
-1. **Fix phantom "AHU Short Cycling"** — Definitions table and Faults matrix show only what exists in `rules_dir`; remove stale rows when a rule file is gone.
-2. **Default rules** — Ship with only `sensor_bounds.yaml` and `sensor_flatline.yaml` in `stack/rules`; no extra files that create phantom definitions.
-3. **Rules CRUD + frontend** — Users can upload, download, and delete rule YAML files via the UI; changes hot-reload (next FDD run picks them up).
+1. **Fix phantom "AHU Short Cycling"** - Definitions table and Faults matrix show only what exists in `rules_dir`; remove stale rows when a rule file is gone.
+2. **Default rules** - Ship with only `sensor_bounds.yaml` and `sensor_flatline.yaml` in `stack/rules`; no extra files that create phantom definitions.
+3. **Rules CRUD + frontend** - Users can upload, download, and delete rule YAML files via the UI; changes hot-reload (next FDD run picks them up).
 
 ---
 
@@ -35,9 +35,9 @@
 
 **Existing:**
 
-- `GET /rules` — list `.yaml` filenames and `rules_dir` (from config).
-- `GET /rules/{filename}` — return file content (plain text). Use for **download**.
-- `POST /rules/test-inject`, `DELETE /rules/test-inject/{filename}` — test-only (gated by `OFDD_ALLOW_TEST_RULES`); keep for automation.
+- `GET /rules` - list `.yaml` filenames and `rules_dir` (from config).
+- `GET /rules/{filename}` - return file content (plain text). Use for **download**.
+- `POST /rules/test-inject`, `DELETE /rules/test-inject/{filename}` - test-only (gated by `OFDD_ALLOW_TEST_RULES`); keep for automation.
 
 **Add (production, no env gate):**
 

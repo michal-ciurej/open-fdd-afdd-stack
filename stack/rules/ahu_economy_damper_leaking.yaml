@@ -3,7 +3,7 @@
 # Catches stuck-open or leaking OA dampers, failed actuators, damper blade damage.
 # Tuning: 90-min trigger period → 18 consecutive 5-min samples; MAT-RAT delta threshold tunable.
 name: ahu_economy_damper_leaking
-description: OA damper commanded closed but MAT diverges from RAT — damper may be leaking
+description: OA damper commanded closed but MAT diverges from RAT - damper may be leaking
 type: expression
 flag: ahu_economy_damper_leaking_flag
 category: general
@@ -24,9 +24,9 @@ inputs:
     brick: Supply_Fan_Status
 
 params:
-  damper_closed_threshold: 0.05   # fraction — damper treated as closed below 5% open
-  mat_rat_delta: 2.0              # °C — MAT vs RAT divergence indicating OA leakage
-  oat_rat_delta_min: 1.0          # °C — minimum OAT-RAT difference for OAT to have cooling/heating effect
+  damper_closed_threshold: 0.05   # fraction - damper treated as closed below 5% open
+  mat_rat_delta: 2.0              # °C - MAT vs RAT divergence indicating OA leakage
+  oat_rat_delta_min: 1.0          # °C - minimum OAT-RAT difference for OAT to have cooling/heating effect
   rolling_window: 18              # ~90 min at 5-min sampling (debounce)
 
 expression: |

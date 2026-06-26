@@ -7,7 +7,7 @@ nav_order: 2
 
 **This repository** ships the **`open-fdd`** Python package on **PyPI**: YAML-defined **FDD rules on pandas** (`open_fdd.engine`), plus schema and reporting helpers. That engine can run **inside your own application** or inside the **AFDD Docker stack** (separate repo), which installs `open-fdd` from PyPI and adds TimescaleDB, scrapers, FastAPI, and a React UI.
 
-The text below describes the **full edge platform** as deployed from **[open-fdd-afdd-stack](https://github.com/bbartling/open-fdd-afdd-stack)**—knowledge graph, services, and data flow. For engine-only usage, see **[Engine-only / IoT](howto/engine_only_iot)** and **[Getting started](getting_started)**.
+The text below describes the **full edge platform** as deployed from **[open-fdd-afdd-stack](https://github.com/bbartling/open-fdd-afdd-stack)**-knowledge graph, services, and data flow. For engine-only usage, see **[Engine-only / IoT](howto/engine_only_iot)** and **[Getting started](getting_started)**.
 
 ---
 
@@ -38,16 +38,16 @@ This project is an open-source stack; a cloud or MSI vendor can develop their ow
 
 ![Open-FDD Edge Platform Architecture Campus](https://raw.githubusercontent.com/bbartling/open-fdd/master/open-fdd-schematic-bacnet-gateway.png)
 
-Remote Open-FDD BACnet gateways (e.g. diy-bacnet-server plus scraper) can be deployed **across each subnet** on the internal campus IT network. Typically each building has its own BACnet network on a unique subnet; a gateway per building or per subnet keeps BACnet traffic local while forwarding data to a **centralized** Open-FDD instance (API, Grafana, FDD loop, database). That gives the campus a single integration point for the cloud-based vendor of choice—one API and one data model for the whole portfolio, without the vendor touching each building’s BACnet network directly.
+Remote Open-FDD BACnet gateways (e.g. diy-bacnet-server plus scraper) can be deployed **across each subnet** on the internal campus IT network. Typically each building has its own BACnet network on a unique subnet; a gateway per building or per subnet keeps BACnet traffic local while forwarding data to a **centralized** Open-FDD instance (API, Grafana, FDD loop, database). That gives the campus a single integration point for the cloud-based vendor of choice-one API and one data model for the whole portfolio, without the vendor touching each building’s BACnet network directly.
 
-**How to set it up:** (1) **Remote gateway per building (recommended pattern):** On each subnet run diy-bacnet-server + scraper pointed at the **central Open-FDD API**—create each building’s **site** on the central API first and set **`OFDD_BACNET_SITE_ID`** (and related env) so readings and metadata align with the central data model. Prefer **API-mediated** configuration and ingestion over giving every gateway direct **database** credentials. (2) **Central aggregator:** On the central host run DB, API, Grafana, FDD loop (no local BACnet); set **`OFDD_BACNET_GATEWAYS`** to a JSON array of `{url, site_id}` so one scraper polls remote gateways (see [Configuration — BACnet](configuration#bacnet-single-gateway-remote-gateways-central-aggregator)). (3) **Advanced / internal-network only:** Pointing **`OFDD_DB_DSN`** at the central Postgres from remote scrapers avoids the API path but **widens exposure** of the database—use only on a trusted LAN with locked-down firewall and ops approval; not the default recommendation. **`run_bacnet_scrape.py`** and per-gateway CSV/env options remain available for special deployments; they are **not** the default product path.
+**How to set it up:** (1) **Remote gateway per building (recommended pattern):** On each subnet run diy-bacnet-server + scraper pointed at the **central Open-FDD API**-create each building’s **site** on the central API first and set **`OFDD_BACNET_SITE_ID`** (and related env) so readings and metadata align with the central data model. Prefer **API-mediated** configuration and ingestion over giving every gateway direct **database** credentials. (2) **Central aggregator:** On the central host run DB, API, Grafana, FDD loop (no local BACnet); set **`OFDD_BACNET_GATEWAYS`** to a JSON array of `{url, site_id}` so one scraper polls remote gateways (see [Configuration - BACnet](configuration#bacnet-single-gateway-remote-gateways-central-aggregator)). (3) **Advanced / internal-network only:** Pointing **`OFDD_DB_DSN`** at the central Postgres from remote scrapers avoids the API path but **widens exposure** of the database-use only on a trusted LAN with locked-down firewall and ops approval; not the default recommendation. **`run_bacnet_scrape.py`** and per-gateway CSV/env options remain available for special deployments; they are **not** the default product path.
 
 ---
 
 ## Data flow
 
 1. **Ingestion:** BACnet scraper and weather scraper write to `timeseries_readings` (point_id, ts, value).
-2. **Data model (unified graph):** The building is represented as a **unified graph**—one semantic model combining Brick (sites, equipment, points from the DB), BACnet RDF (from point discovery via diy-bacnet-server), platform config, and room for future ontologies (e.g. ASHRAE 223P). CRUD and **POST /bacnet/point_discovery_to_graph** update this model; SPARQL queries it. One TTL file `config/data_model.ttl` holds the graph; a background thread serializes it to disk every 5 minutes (configurable via `OFDD_GRAPH_SYNC_INTERVAL_MIN`); **POST /data-model/serialize** runs the same write on demand.
+2. **Data model (unified graph):** The building is represented as a **unified graph**-one semantic model combining Brick (sites, equipment, points from the DB), BACnet RDF (from point discovery via diy-bacnet-server), platform config, and room for future ontologies (e.g. ASHRAE 223P). CRUD and **POST /bacnet/point_discovery_to_graph** update this model; SPARQL queries it. One TTL file `config/data_model.ttl` holds the graph; a background thread serializes it to disk every 5 minutes (configurable via `OFDD_GRAPH_SYNC_INTERVAL_MIN`); **POST /data-model/serialize** runs the same write on demand.
 3. **FDD (Python/pandas):** The FDD loop pulls data into a pandas DataFrame, runs YAML rules, writes `fault_results` to the database. Fault logic lives in the rule runner; the database is read/write storage.
 4. **Visualization:** Grafana queries TimescaleDB for timeseries and fault results.
 
@@ -56,7 +56,7 @@ Remote Open-FDD BACnet gateways (e.g. diy-bacnet-server plus scraper) can be dep
 ## Ways to deploy
 
 - **Docker Compose (AFDD stack):** In **[open-fdd-afdd-stack](https://github.com/bbartling/open-fdd-afdd-stack)**, run `./scripts/bootstrap.sh` (see **[stack docs](https://bbartling.github.io/open-fdd-afdd-stack/)**).
-- **Minimal stack (BACnet-focused):** `./scripts/bootstrap.sh --minimal` in that repo — DB + BACnet server + scraper; no full API/FDD/weather unless you add services.
+- **Minimal stack (BACnet-focused):** `./scripts/bootstrap.sh --minimal` in that repo - DB + BACnet server + scraper; no full API/FDD/weather unless you add services.
 - **Engine only:** `pip install open-fdd` and run `RuleRunner` on pandas DataFrames (no Compose); see **[Engine-only / IoT](howto/engine_only_iot)**.
 - **Manual / custom:** Start your own processes; reuse the same rule YAML and `open_fdd.engine` APIs.
 
@@ -64,8 +64,8 @@ Remote Open-FDD BACnet gateways (e.g. diy-bacnet-server plus scraper) can be dep
 
 ## Key concepts
 
-- **Sites** — Buildings or facilities.
-- **Equipment** — Devices (AHUs, VAVs, heat pumps). Belong to a site.
-- **Points** — Time-series references. Have `external_id` (raw name), `rule_input` (FDD column ref), optional `brick_type` (Brick class).
-- **Fault rules** — YAML files (bounds, flatline, hunting, expression). Run against DataFrame; produce boolean fault flags. See [Fault rules for HVAC](rules/overview).
-- **Unified graph** — One semantic model (Brick + BACnet + platform config; future 223P or other ontologies). Stored in `config/data_model.ttl`; maps Brick classes → `external_id` for rule resolution; queryable via SPARQL.
+- **Sites** - Buildings or facilities.
+- **Equipment** - Devices (AHUs, VAVs, heat pumps). Belong to a site.
+- **Points** - Time-series references. Have `external_id` (raw name), `rule_input` (FDD column ref), optional `brick_type` (Brick class).
+- **Fault rules** - YAML files (bounds, flatline, hunting, expression). Run against DataFrame; produce boolean fault flags. See [Fault rules for HVAC](rules/overview).
+- **Unified graph** - One semantic model (Brick + BACnet + platform config; future 223P or other ontologies). Stored in `config/data_model.ttl`; maps Brick classes → `external_id` for rule resolution; queryable via SPARQL.

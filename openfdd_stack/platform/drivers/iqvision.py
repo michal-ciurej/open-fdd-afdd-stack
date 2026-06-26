@@ -1,5 +1,5 @@
 """
-IQVision driver: almost identical to the Niagara driver — same ORD-embedded BQL
+IQVision driver: almost identical to the Niagara driver - same ORD-embedded BQL
 scan + history shapes, same HTTP + HTML parsing. The one material difference:
 
   Equipment grouping:
@@ -153,7 +153,7 @@ def test_iqvision_connection(
 
 
 # ---------------------------------------------------------------------------
-# Station scan — equipment grouping differs from Niagara
+# Station scan - equipment grouping differs from Niagara
 # ---------------------------------------------------------------------------
 
 def scan_iqvision_station(endpoint_id: str) -> dict:
@@ -163,7 +163,7 @@ def scan_iqvision_station(endpoint_id: str) -> dict:
 
     Grouping:
       equipment = the BQL `Device` column (proxyExt.device.displayName) as-is.
-      Points that scan with an empty Device column are skipped — without that
+      Points that scan with an empty Device column are skipped - without that
       tag we have no unique equipment key.
 
     Returns a summary dict for UI / job results.
@@ -287,7 +287,7 @@ def run_iqvision_sync(
     Sync historical data from one IQVision endpoint for every point it
     discovered that carries a niagara_history_path.
 
-    Uses a bqltime window (default 'lastweek') — same shape as Niagara.
+    Uses a bqltime window (default 'lastweek') - same shape as Niagara.
     """
     logger.info(
         "[iqvision.sync] invoked endpoint=%s window=%s", endpoint_id, time_window,

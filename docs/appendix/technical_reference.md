@@ -27,13 +27,13 @@ open-fdd/
 │   │   ├── bacnet_brick.py # BACnet object_type → BRICK class mapping
 │   │   ├── config.py, database.py, data_model_ttl.py, graph_model.py, site_resolver.py
 │   │   ├── loop.py, rules_loader.py
-│   │   └── static/        # Config UI — index.html, app.js, styles.css (served at /app; see Developer guide)
+│   │   └── static/        # Config UI - index.html, app.js, styles.css (served at /app; see Developer guide)
 │   └── tests/             # engine/, platform/, test_schema.py
 ├── stack/rules/           # Default FDD rule YAML (sensor_bounds, sensor_flatline); upload more via Faults UI
 ├── stack/                 # docker-compose, Dockerfiles, SQL, grafana, caddy
-│   ├── sql/               # 001_init … 015_fault_state_and_audit (migrations; see Developer guide — Database schema)
+│   ├── sql/               # 001_init … 015_fault_state_and_audit (migrations; see Developer guide - Database schema)
 │   ├── grafana/           # provisioning/datasources, optional dashboards
-│   └── caddy/             # Caddy only: [`stack/caddy/Caddyfile`](../../stack/caddy/Caddyfile) (minimal rev proxy; hardening TBD — [Security](../security))
+│   └── caddy/             # Caddy only: [`stack/caddy/Caddyfile`](../../stack/caddy/Caddyfile) (minimal rev proxy; hardening TBD - [Security](../security))
 ├── config/                # data_model.ttl (Brick + BACnet + platform config)
 ├── scripts/               # bootstrap.sh, fake_*_faults.py
 ├── tools/
@@ -85,9 +85,9 @@ Used to build the PUT /config body at bootstrap; thereafter config is in the gra
 | `OFDD_LOOKBACK_DAYS` | 3 | Lookback window for timeseries. |
 | `OFDD_RULES_DIR` | stack/rules | YAML rules directory (hot reload). |
 | `OFDD_BRICK_TTL_DIR` | config | Brick TTL directory. |
-| `OFDD_BACNET_SERVER_URL` | — | diy-bacnet-server URL (e.g. http://localhost:8080). |
+| `OFDD_BACNET_SERVER_URL` | - | diy-bacnet-server URL (e.g. http://localhost:8080). |
 | `OFDD_BACNET_SITE_ID` | default | Site to tag when scraping. |
-| `OFDD_BACNET_GATEWAYS` | — | JSON array for central aggregator. |
+| `OFDD_BACNET_GATEWAYS` | - | JSON array for central aggregator. |
 | `OFDD_BACNET_SCRAPE_ENABLED` | true | Enable BACnet scraper. |
 | `OFDD_BACNET_SCRAPE_INTERVAL_MIN` | 5 | Scrape interval (minutes). |
 | `OFDD_OPEN_METEO_*` | (see Configuration) | enabled, interval_hours, latitude, longitude, timezone, days_back, site_id. |
@@ -101,9 +101,9 @@ Used to build the PUT /config body at bootstrap; thereafter config is in the gra
 
 Tests live under `open_fdd/tests/`. Run: `pytest open_fdd/tests/ -v`. All use in-process mocks; no shared DB or live API. For end-to-end (real API, optional BACnet): `python tools/graph_and_crud_test.py` (see [SPARQL cookbook](../modeling/sparql_cookbook)).
 
-- **engine/** (PyPI `open-fdd`) — runner, checks; Brick TTL map: **platform/brick_ttl_resolver**
-- **platform/** — bacnet_api, bacnet_brick, bacnet_driver, config, crud_api, data_model_api, data_model_ttl, download_api, graph_model, rules_loader, site_resolver
-- **test_schema.py** — FDD result/event to row
+- **engine/** (PyPI `open-fdd`) - runner, checks; Brick TTL map: **platform/brick_ttl_resolver**
+- **platform/** - bacnet_api, bacnet_brick, bacnet_driver, config, crud_api, data_model_api, data_model_ttl, download_api, graph_model, rules_loader, site_resolver
+- **test_schema.py** - FDD result/event to row
 
 ---
 
@@ -120,9 +120,9 @@ With DB and diy-bacnet-server reachable:
 
 ## Data model API and discovery flow
 
-**GET /data-model/export** — BACnet discovery + DB points (optional `?bacnet_only=true`, `?site_id=...`). Use for [AI-assisted tagging](../modeling/ai_assisted_tagging); then **PUT /data-model/import**.
+**GET /data-model/export** - BACnet discovery + DB points (optional `?bacnet_only=true`, `?site_id=...`). Use for [AI-assisted tagging](../modeling/ai_assisted_tagging); then **PUT /data-model/import**.
 
-**PUT /data-model/import** — Points (required) and optional equipment (feeds/fed_by). Creates/updates points; backend rebuilds RDF and serializes TTL.
+**PUT /data-model/import** - Points (required) and optional equipment (feeds/fed_by). Creates/updates points; backend rebuilds RDF and serializes TTL.
 
 **Flow:** Discover (POST /bacnet/whois_range, POST /bacnet/point_discovery_to_graph) → Sites/equipment (CRUD) → GET /data-model/export → Tag (LLM or manual) → PUT /data-model/import → Scraping → GET /data-model/check, POST /data-model/sparql for integrity.
 
@@ -146,7 +146,7 @@ Live store: **in-memory RDF graph** (`platform/graph_model.py`). Brick triples f
 
 ## Database schema (TimescaleDB)
 
-Schema is defined in **`stack/sql/`** (migrations **001–016**). Idempotent; bootstrap runs them in order. **Cascade deletes:** Site → equipment, points, timeseries; equipment → points; point → timeseries. Full migration list and table details: [Developer guide — Database schema](developer_guide#database-schema-timescaledb). See [Danger zone](../howto/danger_zone).
+Schema is defined in **`stack/sql/`** (migrations **001–016**). Idempotent; bootstrap runs them in order. **Cascade deletes:** Site → equipment, points, timeseries; equipment → points; point → timeseries. Full migration list and table details: [Developer guide - Database schema](developer_guide#database-schema-timescaledb). See [Danger zone](../howto/danger_zone).
 
 | Table | Purpose |
 |-------|---------|
@@ -170,21 +170,21 @@ Schema is defined in **`stack/sql/`** (migrations **001–016**). Idempotent; bo
 
 ## PyPI and this repo
 
-**Current `open-fdd` on PyPI (2.x):** [open-fdd](https://pypi.org/project/open-fdd/) publishes the **`open_fdd` Python package**, including **`open_fdd.engine`** — the same **YAML + pandas** `RuleRunner` as the platform. Base install depends on **pandas** and **PyYAML**; optional extras (`[dev]`, `[platform]`, …) add FastAPI, tests, Brick, etc. **IoT / notebook use:** `pip install open-fdd` and point `RuleRunner` at rule YAML; see [Engine-only deployment and external IoT pipelines](../howto/engine_only_iot).
+**Current `open-fdd` on PyPI (2.x):** [open-fdd](https://pypi.org/project/open-fdd/) publishes the **`open_fdd` Python package**, including **`open_fdd.engine`** - the same **YAML + pandas** `RuleRunner` as the platform. Base install depends on **pandas** and **PyYAML**; optional extras (`[dev]`, `[platform]`, …) add FastAPI, tests, Brick, etc. **IoT / notebook use:** `pip install open-fdd` and point `RuleRunner` at rule YAML; see [Engine-only deployment and external IoT pipelines](../howto/engine_only_iot).
 
 **Very old PyPI releases (0.x / pre–2.x):** Historical “equations only” artifacts may still appear in version history. Prefer **2.x** or **`pip install -e .`** from this repo.
 
 **Edge platform:** BACnet, Docker Compose, and day-two operations are **repo-first** (`./scripts/bootstrap.sh`, stack images). The stack typically uses **`pip install -e ".[platform,brick]"`** inside build contexts; PyPI is not required to run the full edge deployment.
 
-**Publishing:** Maintainer checklist: [PyPI releases (open-fdd)](../howto/openfdd_engine_pypi). Optional in-repo **`openfdd-engine`** package (**`openfdd_engine`** import) is a shim over **`open_fdd.engine`** — see [The optional openfdd-engine package](../howto/openfdd_engine); **public engine installs use `pip install open-fdd`**.
+**Publishing:** Maintainer checklist: [PyPI releases (open-fdd)](../howto/openfdd_engine_pypi). Optional in-repo **`openfdd-engine`** package (**`openfdd_engine`** import) is a shim over **`open_fdd.engine`** - see [The optional openfdd-engine package](../howto/openfdd_engine); **public engine installs use `pip install open-fdd`**.
 
 ---
 
 ## LLM tagging workflow
 
-1. **Export** — GET `/data-model/export`.
-2. **Clean** — Keep only points to tag and poll.
-3. **Tag with LLM** — Full canonical prompt: [LLM workflow — copy/paste template](../modeling/llm_workflow#copy-paste-prompt-template-recommended); overview in [AI-assisted tagging](../modeling/ai_assisted_tagging). The prompt is **fault-first**: gather which faults/rules will run (prefer **YAML**) before final **polling** decisions, or stay conservative. It also requires **equipment_type** (Brick **1.4** equipment class local names) aligned with **Data Model Testing** SPARQL presets — see `frontend/src/data/brick-1.4-query-class-allowlist.ts` and `data-model-testing-queries.brick.test.ts`.
-4. **Import** — PUT /data-model/import with `points` and optional `equipment`. Set `polling` false on points that should not be scraped.
+1. **Export** - GET `/data-model/export`.
+2. **Clean** - Keep only points to tag and poll.
+3. **Tag with LLM** - Full canonical prompt: [LLM workflow - copy/paste template](../modeling/llm_workflow#copy-paste-prompt-template-recommended); overview in [AI-assisted tagging](../modeling/ai_assisted_tagging). The prompt is **fault-first**: gather which faults/rules will run (prefer **YAML**) before final **polling** decisions, or stay conservative. It also requires **equipment_type** (Brick **1.4** equipment class local names) aligned with **Data Model Testing** SPARQL presets - see `frontend/src/data/brick-1.4-query-class-allowlist.ts` and `data-model-testing-queries.brick.test.ts`.
+4. **Import** - PUT /data-model/import with `points` and optional `equipment`. Set `polling` false on points that should not be scraped.
 
-Prompt summary: Set `site_id`, `external_id`, `brick_type`, `rule_input`; optionally `equipment_id`, **`unit`** (e.g. degF, %, cfm, 0/1 — stored in DB and TTL; frontend uses it for Plots axis labels and grouping), and equipment `feeds_equipment_id`/`fed_by_equipment_id`. Output is the completed JSON for PUT /data-model/import.
+Prompt summary: Set `site_id`, `external_id`, `brick_type`, `rule_input`; optionally `equipment_id`, **`unit`** (e.g. degF, %, cfm, 0/1 - stored in DB and TTL; frontend uses it for Plots axis labels and grouping), and equipment `feeds_equipment_id`/`fed_by_equipment_id`. Output is the completed JSON for PUT /data-model/import.

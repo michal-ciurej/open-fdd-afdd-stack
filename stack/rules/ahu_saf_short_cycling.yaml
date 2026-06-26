@@ -2,7 +2,7 @@
 # Catches failed contactors, VFD faults, control loop instability, or nuisance tripping of safeties.
 # Tuning: 8 state changes in 60 min (12 samples at 5-min data) is the trigger threshold.
 name: ahu_saf_short_cycling
-description: Supply air fan short cycling — excessive state changes within 60 min
+description: Supply air fan short cycling - excessive state changes within 60 min
 type: expression
 flag: ahu_saf_short_cycling_flag
 category: general
@@ -17,7 +17,7 @@ inputs:
     brick: Supply_Fan_Command
 
 params:
-  max_state_changes: 8      # count — max allowable SAF status transitions in the window
+  max_state_changes: 8      # count - max allowable SAF status transitions in the window
   rolling_window: 12        # 60 min at 5-min sampling (debounce / counting window)
 
 expression: |

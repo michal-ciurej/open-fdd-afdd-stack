@@ -3,7 +3,7 @@
  *
  * Single source of truth: `openfdd_stack/platform/brick_vocabulary.py`. This file mirrors the
  * Python `BRICK_14_QUERY_CLASS_ALLOWLIST` constant so the UI can render selects without a
- * round-trip — keep them in sync when adding a class. The API exposes the same list at
+ * round-trip - keep them in sync when adding a class. The API exposes the same list at
  * `GET /data-model/vocabulary` for clients that prefer to fetch it.
  *
  * Brick 1.4 long-form is canonical: `Fan_Coil_Unit` (not `FCU`), `Variable_Air_Volume_Box`

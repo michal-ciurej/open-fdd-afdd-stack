@@ -1,4 +1,4 @@
-"""Fault analytics API — data-model driven, motor runtime, fault summary.
+"""Fault analytics API - data-model driven, motor runtime, fault summary.
 
 If the data model has no fan/VFD point for motor runtime, returns NO DATA.
 For MSI/cloud integrators and Grafana (via JSON datasource or downstream ETL).
@@ -483,7 +483,7 @@ def fetch_faults_by_equipment_data(
             {
                 "site_id": r["site_id"],
                 "equipment_id": r["equipment_uuid"] if r["equipment_uuid"] else r["equipment_id_text"],
-                "equipment_name": r["equipment_name"] or r["equipment_id_text"] or "—",
+                "equipment_name": r["equipment_name"] or r["equipment_id_text"] or "-",
                 "bacnet_device_id": r["bacnet_device_id"],
                 "active_fault_count": int(r["active_fault_count"]),
             }
@@ -572,7 +572,7 @@ def get_fault_counts_by_equipment(
             {
                 "site_id": r["site_id"],
                 "equipment_id": r["equipment_id"],
-                "equipment_name": r.get("equipment_name") or r["equipment_id"] or "—",
+                "equipment_name": r.get("equipment_name") or r["equipment_id"] or "-",
                 "equipment_type": r.get("equipment_type"),
                 "fault_id": r["fault_id"],
                 "fault_name": r.get("fault_name") or r["fault_id"],
@@ -773,14 +773,14 @@ def get_fault_results_series(
                 )
                 eq = cur.fetchone()
                 equipment_name = (
-                    (eq and eq["equipment_name"]) or r["equipment_id"] or "—"
+                    (eq and eq["equipment_name"]) or r["equipment_id"] or "-"
                 )
                 out.append(
                     {
                         "fault_id": r["fault_id"],
                         "site_id": r["site_id"],
                         "equipment_id": r["equipment_id"],
-                        "label": f"{r['fault_id']} — {equipment_name}",
+                        "label": f"{r['fault_id']} - {equipment_name}",
                     }
                 )
     return {"series": out, "period": {"start": str(start), "end": str(end)}}

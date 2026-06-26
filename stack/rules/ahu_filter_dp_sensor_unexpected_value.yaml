@@ -15,8 +15,8 @@ inputs:
     brick: Filter_Differential_Pressure_Sensor
 
 params:
-  dp_max: 300.0       # Pa — upper plausible limit; values at or above indicate sensor fault or extreme blockage
-  dp_min: -15.0       # Pa — lower plausible limit; negative readings indicate inverted or failed sensor
+  dp_max: 300.0       # Pa - upper plausible limit; values at or above indicate sensor fault or extreme blockage
+  dp_min: -15.0       # Pa - lower plausible limit; negative readings indicate inverted or failed sensor
   rolling_window: 48  # 4 h at 5-min sampling (debounce to avoid transient spikes)
 
 expression: |

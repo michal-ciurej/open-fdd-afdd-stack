@@ -1,4 +1,4 @@
-/** GET /config and PUT /config — platform config (RDF-backed). */
+/** GET /config and PUT /config - platform config (RDF-backed). */
 export interface PlatformConfig {
   rule_interval_hours?: number;
   lookback_days?: number;
@@ -28,14 +28,14 @@ export interface Site {
   created_at: string;
 }
 
-/** GET /admin/users — login-derived roster with per-site grants (admin only). */
+/** GET /admin/users - login-derived roster with per-site grants (admin only). */
 export interface AdminUser {
   oid: string;
   email: string | null;
   roles: string[];
   first_seen: string;
   last_seen: string;
-  /** site ids this user is granted access to (empty for admins — they're unrestricted). */
+  /** site ids this user is granted access to (empty for admins - they're unrestricted). */
   site_ids: string[];
 }
 
@@ -70,7 +70,7 @@ export interface Point {
   created_at: string;
 }
 
-/** PATCH /points/{id} — mirrors backend PointUpdate (all fields optional). */
+/** PATCH /points/{id} - mirrors backend PointUpdate (all fields optional). */
 export type PointPatchBody = Partial<{
   brick_type: string | null;
   fdd_input: string | null;
@@ -84,7 +84,7 @@ export type PointPatchBody = Partial<{
   modbus_config: Record<string, unknown> | null;
 }>;
 
-/** GET /timeseries/latest — latest reading per point (BACnet scraper / weather). */
+/** GET /timeseries/latest - latest reading per point (BACnet scraper / weather). */
 export interface TimeseriesLatestItem {
   point_id: string;
   external_id: string;
@@ -115,7 +115,7 @@ export interface FaultDefinition {
   equipment_types: string[] | null;
 }
 
-/** GET /faults/bacnet-devices — from data model (points + equipment). */
+/** GET /faults/bacnet-devices - from data model (points + equipment). */
 export interface BacnetDevice {
   site_id: string;
   site_name: string;
@@ -189,12 +189,12 @@ export interface EquipmentExportRow {
   equipment_metadata?: Record<string, unknown> | null;
   engineering?: Record<string, unknown> | null;
   point_count?: number;
-  /** Distinct brick_type values across this equipment's points — pick equipment_type from these. */
+  /** Distinct brick_type values across this equipment's points - pick equipment_type from these. */
   member_brick_types?: string[];
   [key: string]: unknown;
 }
 
-/** GET /data-model/export?shape=structured — { equipment, points }, symmetric with the import body. */
+/** GET /data-model/export?shape=structured - { equipment, points }, symmetric with the import body. */
 export interface StructuredDataModelExport {
   equipment: EquipmentExportRow[];
   points: DataModelExportRow[];
@@ -222,7 +222,7 @@ export interface SparqlResponse {
 }
 
 /**
- * POST /data-model/ai-tag request — Stage 1 (structure only).
+ * POST /data-model/ai-tag request - Stage 1 (structure only).
  * Stage 1 organises points into equipment + Brick types; units are metric and
  * all points stay unpolled, so the only steering input is a free-text brief.
  */
@@ -250,7 +250,7 @@ export interface TaggingProposalEquipment {
   equipment_name?: string | null;
   equipment_type?: string | null;
   site_id?: string | null;
-  /** Stable source key (Niagara device path) — identity decoupled from the editable name. */
+  /** Stable source key (Niagara device path) - identity decoupled from the editable name. */
   source_ref?: string | null;
   feeds?: string[] | null;
   fed_by?: string[] | null;
@@ -275,7 +275,7 @@ export interface TaggingProposal {
   usage: AiTagTokenUsage;
 }
 
-/** POST /data-model/ai-tag — starts a background run, returns immediately. */
+/** POST /data-model/ai-tag - starts a background run, returns immediately. */
 export interface AiTagRunStart {
   run_id: string;
   status: "running";
@@ -289,7 +289,7 @@ export interface AiTagRunProgress {
   chunks?: number | null;
 }
 
-/** GET /data-model/ai-tag/runs/{run_id} — poll until status is done|error. */
+/** GET /data-model/ai-tag/runs/{run_id} - poll until status is done|error. */
 export interface AiTagRunState {
   run_id: string;
   status: "running" | "done" | "error";
@@ -422,13 +422,13 @@ export interface FaultTimeseriesResponse {
   equipment_ids?: string[];
 }
 
-/** GET /analytics/fault-results-series — distinct fault × site × equipment for data preview selector */
+/** GET /analytics/fault-results-series - distinct fault × site × equipment for data preview selector */
 export interface FaultResultsSeriesResponse {
   series: { fault_id: string; site_id: string; equipment_id: string; label: string }[];
   period: { start: string; end: string };
 }
 
-/** GET /analytics/fault-results-raw — last N rows for Excel-style data preview */
+/** GET /analytics/fault-results-raw - last N rows for Excel-style data preview */
 export interface FaultResultsRawResponse {
   rows: {
     ts: string;
@@ -511,7 +511,7 @@ export interface FaultResultsSampleResponse {
   count: number;
 }
 
-/** GET /energy-calculations/calc-types — field metadata for the Energy Engineering UI. */
+/** GET /energy-calculations/calc-types - field metadata for the Energy Engineering UI. */
 export interface EnergyCalcFieldSpec {
   key: string;
   label: string;
@@ -571,7 +571,7 @@ export interface EnergyCalculationCreateBody {
   enabled?: boolean;
 }
 
-/** GET /energy-calculations/export — LLM bundle (includes embedded calc_types). */
+/** GET /energy-calculations/export - LLM bundle (includes embedded calc_types). */
 export interface EnergyCalculationsExportPayload {
   format: string;
   site_id: string;
@@ -620,7 +620,7 @@ export type EnergyCalculationPatchBody = Partial<{
   enabled: boolean;
 }>;
 
-/** GET /sites/{site_id}/energy-rates — utility rates per site. */
+/** GET /sites/{site_id}/energy-rates - utility rates per site. */
 export interface SiteEnergyRates {
   site_id: string;
   electric_rate_per_kwh: number;
@@ -630,7 +630,7 @@ export interface SiteEnergyRates {
   updated_at: string;
 }
 
-/** PUT /sites/{site_id}/energy-rates — partial upsert. */
+/** PUT /sites/{site_id}/energy-rates - partial upsert. */
 export type SiteEnergyRatesUpdateBody = Partial<{
   electric_rate_per_kwh: number;
   demand_charge_per_kw: number;
@@ -638,7 +638,7 @@ export type SiteEnergyRatesUpdateBody = Partial<{
   currency: string;
 }>;
 
-/** GET /equipment/{equipment_id}/energy-profile — typed sizing for cost calcs. */
+/** GET /equipment/{equipment_id}/energy-profile - typed sizing for cost calcs. */
 export interface EquipmentEnergyProfile {
   equipment_id: string;
   nameplate_kw: number | null;
@@ -653,7 +653,7 @@ export interface EquipmentEnergyProfile {
   updated_at: string;
 }
 
-/** PUT /equipment/{equipment_id}/energy-profile — partial upsert. */
+/** PUT /equipment/{equipment_id}/energy-profile - partial upsert. */
 export type EquipmentEnergyProfileUpdateBody = Partial<{
   nameplate_kw: number | null;
   motor_hp: number | null;
@@ -732,7 +732,7 @@ export type EnergyOpportunityPatchBody = Partial<{
   enabled: boolean;
 }>;
 
-/** POST /energy-opportunities/preview body — for the AddMeasureDialog wizard. */
+/** POST /energy-opportunities/preview body - for the AddMeasureDialog wizard. */
 export interface EnergyOpportunityPreviewBody {
   equipment_id: string;
   calc_type: string;
@@ -740,7 +740,7 @@ export interface EnergyOpportunityPreviewBody {
   capex_usd?: number;
 }
 
-/** GET /maintenance/equipment — observed equipment + maintenance state + sparkline. */
+/** GET /maintenance/equipment - observed equipment + maintenance state + sparkline. */
 export type MaintenanceEventType = "scheduled" | "maintained" | "cancelled";
 
 export interface MaintenanceEquipmentRow {

@@ -38,7 +38,7 @@ This page covers **prerequisites** and the **bootstrap script**: how to get the 
 
    - **API:** http://localhost:8000 (interactive OpenAPI/Swagger at `/docs` is **disabled** in the shipped API; use the React app and [API reference](appendix/api_reference)).  
    - **Frontend:** http://localhost:5173 (or via Caddy http://localhost:80). See [Using the React dashboard](frontend) for what each page does.  
-   - **DB:** `127.0.0.1:5432`/openfdd (postgres/postgres) — bound to loopback only; not exposed on the LAN.  
+   - **DB:** `127.0.0.1:5432`/openfdd (postgres/postgres) - bound to loopback only; not exposed on the LAN.  
 
 ---
 
@@ -71,14 +71,14 @@ This starts an MCP-style retrieval sidecar at `http://localhost:8090` using deri
   sudo apt update && sudo apt upgrade -y
   ```
 - **Docker and Docker Compose:** Required. Install Docker Engine and Docker Compose (or `docker-compose`). See [Docker install](https://docs.docker.com/engine/install/) for your distro. Your user must be able to run **`docker ps`** (typically: member of the **`docker`** group, then `newgrp docker` or log out/in).
-- **Python + argon2-cffi (host):** Whenever you configure **`--user`**, bootstrap hashes the Phase-1 app password with **Argon2** using **host** Python (`./.venv/bin/python` if present, else **`python3`**) — that includes **interactive prompt**, **`--password-stdin`**, **`--password-file`**, and **`OFDD_APP_PASSWORD`** (see `verify_argon2_for_login_bootstrap` in `scripts/bootstrap.sh`). Install **`argon2-cffi`** in that environment. On Ubuntu 24.04+, system pip may refuse installs (**PEP 668**); use a venv, e.g. `python3 -m venv .venv && .venv/bin/pip install argon2-cffi`. Read-only check: `./scripts/bootstrap.sh --doctor` — missing argon2 is a **failure** there unless you passed **`--mode collector`**, **`--no-auth`**, or **`--allow-no-ui-auth`** (then it is a **warning** only).
+- **Python + argon2-cffi (host):** Whenever you configure **`--user`**, bootstrap hashes the Phase-1 app password with **Argon2** using **host** Python (`./.venv/bin/python` if present, else **`python3`**) - that includes **interactive prompt**, **`--password-stdin`**, **`--password-file`**, and **`OFDD_APP_PASSWORD`** (see `verify_argon2_for_login_bootstrap` in `scripts/bootstrap.sh`). Install **`argon2-cffi`** in that environment. On Ubuntu 24.04+, system pip may refuse installs (**PEP 668**); use a venv, e.g. `python3 -m venv .venv && .venv/bin/pip install argon2-cffi`. Read-only check: `./scripts/bootstrap.sh --doctor` - missing argon2 is a **failure** there unless you passed **`--mode collector`**, **`--no-auth`**, or **`--allow-no-ui-auth`** (then it is a **warning** only).
 - **Troubleshooting:** See the root [README](../README.md) section *Ubuntu prerequisites* and *Common bootstrap failures* (Docker permissions, missing argon2, PEP 668, venv).
 - **Git:** To clone the project:
   ```bash
   git clone https://github.com/bbartling/open-fdd-afdd-stack.git
   cd open-fdd-afdd-stack
   ```
-- **BACnet (default data driver):** The default data driver is BACnet. Bootstrap **automatically** builds and starts [diy-bacnet-server](https://github.com/bbartling/diy-bacnet-server) as its own Docker container (plus the BACnet scraper). Run **BACnet discovery** from the UI or API, then add points to the **data model** (with `bacnet_device_id` / `object_identifier`)—the scraper reads **only the database + graph**, not a CSV file. See [BACnet → Setup](bacnet/index#setup) and [BACnet overview](bacnet/overview). To run without BACnet (e.g. central-only with remote gateways), start only the services you need (e.g. `docker compose --profile grafana up -d db api fdd-loop weather-scraper grafana` from `stack/` if you want optional Grafana).
+- **BACnet (default data driver):** The default data driver is BACnet. Bootstrap **automatically** builds and starts [diy-bacnet-server](https://github.com/bbartling/diy-bacnet-server) as its own Docker container (plus the BACnet scraper). Run **BACnet discovery** from the UI or API, then add points to the **data model** (with `bacnet_device_id` / `object_identifier`)-the scraper reads **only the database + graph**, not a CSV file. See [BACnet → Setup](bacnet/index#setup) and [BACnet overview](bacnet/overview). To run without BACnet (e.g. central-only with remote gateways), start only the services you need (e.g. `docker compose --profile grafana up -d db api fdd-loop weather-scraper grafana` from `stack/` if you want optional Grafana).
 
 ---
 
@@ -96,7 +96,7 @@ This starts an MCP-style retrieval sidecar at `http://localhost:8090` using deri
 
 **Default full stack:** `./scripts/bootstrap.sh` (no flags) starts TimescaleDB, API, **diy-bacnet-server** (BACnet/IP bridge), **BACnet scraper**, weather scraper, FDD loop, and **Caddy** reverse proxy (HTTP on `:80` unless you add TLS flags below). Same service set as the optional one-liner in [Do this to bootstrap](#do-this-to-bootstrap).
 
-**Standard full-stack bootstrap with self-signed TLS (Caddy) and app login:** uses **JWT** and **`Authorization: Bearer`**, not HTTP Basic Auth ([Security — authentication](security#frontend-and-api-authentication)).
+**Standard full-stack bootstrap with self-signed TLS (Caddy) and app login:** uses **JWT** and **`Authorization: Bearer`**, not HTTP Basic Auth ([Security - authentication](security#frontend-and-api-authentication)).
 
 ```bash
 printf '%s' 'YOUR_PASSWORD' | ./scripts/bootstrap.sh --user YOURNAME --password-stdin --caddy-self-signed
@@ -130,22 +130,22 @@ printf '%s' 'YOUR_PASSWORD' | ./scripts/bootstrap.sh --user YOURNAME --password-
 | `--caddy-tls-cn HOST` | With `--caddy-self-signed`: certificate CN/SAN (default `openfdd.local`). |
 | `--caddy-http-only` | Revert to the default HTTP-only Caddyfile on `:80`; removes `OPENFDD_CADDYFILE` from `stack/.env` and sets `OFDD_TRUST_FORWARDED_PROTO=false`. |
 | `--no-auth` | Removes auth-related keys from `stack/.env`: **`OFDD_API_KEY`**, app-user keys (**`OFDD_APP_USER`**, **`OFDD_APP_USER_HASH`**, **`OFDD_JWT_SECRET`**, token TTLs), and **`OFDD_BACNET_SERVER_API_KEY`**. Open-FDD API then skips Bearer/JWT enforcement; diy-bacnet-server gets an empty **`BACNET_RPC_API_KEY`** so RPC Bearer middleware is off. |
-| `--user NAME` | Dashboard user: writes `OFDD_APP_USER`, Argon2 hash, `OFDD_JWT_SECRET`, and token TTLs into `stack/.env` (requires a password — next rows). |
+| `--user NAME` | Dashboard user: writes `OFDD_APP_USER`, Argon2 hash, `OFDD_JWT_SECRET`, and token TTLs into `stack/.env` (requires a password - next rows). |
 | `--password-file PATH` | Read the dashboard password from a file (first line); avoids putting the password on the command line. |
-| `--password-stdin` | Read the dashboard password from stdin (pipe or redirect into bootstrap; see [Security — authentication](security#frontend-and-api-authentication) and `bootstrap.sh` header comments). |
+| `--password-stdin` | Read the dashboard password from stdin (pipe or redirect into bootstrap; see [Security - authentication](security#frontend-and-api-authentication) and `bootstrap.sh` header comments). |
 | *(env)* | Alternative: set **`OFDD_APP_PASSWORD`** for the dashboard password when using `--user`, or use the interactive prompt if neither file nor stdin is used. |
 
-**Bearer tokens and API keys (`stack/.env`):** With a normal bootstrap (no `--no-auth`), secrets live in **`stack/.env`** (gitignored). They are **not** the same token—each service uses the one that matches its role:
+**Bearer tokens and API keys (`stack/.env`):** With a normal bootstrap (no `--no-auth`), secrets live in **`stack/.env`** (gitignored). They are **not** the same token-each service uses the one that matches its role:
 
 | Variable | Consumed by | Role |
 |----------|-------------|------|
 | **`OFDD_API_KEY`** | **Open-FDD API** | Machine **`Authorization: Bearer`** for REST (Swagger **Authorize**, BACnet scraper → `GET /config`, scripts, agents). |
-| **`OFDD_APP_USER`**, **`OFDD_APP_USER_HASH`**, **`OFDD_JWT_SECRET`** (+ TTL keys) | **Open-FDD API** (`/auth/login`, JWT validation) | Dashboard login; the browser keeps a **short-lived JWT** and sends **`Authorization: Bearer`** with that token on API calls—not the dashboard password. |
+| **`OFDD_APP_USER`**, **`OFDD_APP_USER_HASH`**, **`OFDD_JWT_SECRET`** (+ TTL keys) | **Open-FDD API** (`/auth/login`, JWT validation) | Dashboard login; the browser keeps a **short-lived JWT** and sends **`Authorization: Bearer`** with that token on API calls-not the dashboard password. |
 | **`OFDD_BACNET_SERVER_API_KEY`** | **Open-FDD API** and **bacnet-scraper** (outbound to the gateway) | **`Authorization: Bearer`** on JSON-RPC to **diy-bacnet-server**. Docker Compose passes the **same value** into the gateway container as **`BACNET_RPC_API_KEY`**. When that env is non-empty, the gateway enforces Bearer on RPC routes except **`POST /server_hello`**; when empty, RPC auth is disabled. |
 
-You normally only edit **`stack/.env`**; do not set **`BACNET_RPC_API_KEY`** separately unless you override compose env. Standalone diy-bacnet-server (outside this stack) uses **`BACNET_RPC_API_KEY`** in **its** environment only—see the [diy-bacnet-server README](https://github.com/bbartling/diy-bacnet-server/blob/master/README.md).
+You normally only edit **`stack/.env`**; do not set **`BACNET_RPC_API_KEY`** separately unless you override compose env. Standalone diy-bacnet-server (outside this stack) uses **`BACNET_RPC_API_KEY`** in **its** environment only-see the [diy-bacnet-server README](https://github.com/bbartling/diy-bacnet-server/blob/master/README.md).
 
-Dashboard login and piping passwords into `--user` are covered in more detail (including maintenance one-liners) under **[Security — authentication](security#frontend-and-api-authentication)**.
+Dashboard login and piping passwords into `--user` are covered in more detail (including maintenance one-liners) under **[Security - authentication](security#frontend-and-api-authentication)**.
 
 To **update** an existing clone: `git pull` then `./scripts/bootstrap.sh`, or `./scripts/bootstrap.sh --update`. Rebuild single services: `./scripts/bootstrap.sh --build api`.
 
@@ -191,9 +191,9 @@ When **ufw** is **active** and the stack is in **HTTP lab** mode with **`OFDD_AP
 
 ## Next steps
 
-- **[How-to Guides](howto/index)** — Grafana dashboards (optional) and SQL cookbook.
-- **[Configuration](configuration)** — Platform config, rule YAML, services that read config from the API.
-- **[Security & Caddy](security)** — Basic auth, throttling, TLS.
-- **[Appendix: API Reference](appendix/api_reference)** — REST endpoints at a glance. Interactive Swagger/OpenAPI (`/docs`) is **disabled** in the default API build; use the React app, this appendix, or export OpenAPI from a dev configuration if you need a schema browser.
+- **[How-to Guides](howto/index)** - Grafana dashboards (optional) and SQL cookbook.
+- **[Configuration](configuration)** - Platform config, rule YAML, services that read config from the API.
+- **[Security & Caddy](security)** - Basic auth, throttling, TLS.
+- **[Appendix: API Reference](appendix/api_reference)** - REST endpoints at a glance. Interactive Swagger/OpenAPI (`/docs`) is **disabled** in the default API build; use the React app, this appendix, or export OpenAPI from a dev configuration if you need a schema browser.
 
-For **BACnet** (discovery and data model): [BACnet](bacnet/index) and [BACnet overview](bacnet/overview). For data modeling and fault rules: [Data modeling](modeling/overview), [Fault rules for HVAC](rules/overview). **Data model export/import (JSON)** works without any AI—you can always export, tag manually or with an external LLM, and import.
+For **BACnet** (discovery and data model): [BACnet](bacnet/index) and [BACnet overview](bacnet/overview). For data modeling and fault rules: [Data modeling](modeling/overview), [Fault rules for HVAC](rules/overview). **Data model export/import (JSON)** works without any AI-you can always export, tag manually or with an external LLM, and import.

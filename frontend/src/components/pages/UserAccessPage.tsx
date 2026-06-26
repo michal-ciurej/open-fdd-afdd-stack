@@ -140,7 +140,7 @@ export function UserAccessPage() {
             Everyone who has signed in at least once. The role tier
             (admin/engineer/user) is managed in Entra; here you control which
             sites each engineer/user can see. Expand a row to grant or revoke
-            sites — changes apply immediately.
+            sites - changes apply immediately.
           </p>
         </CardHeader>
         <CardContent className="p-0">

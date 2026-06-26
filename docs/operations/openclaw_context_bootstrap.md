@@ -28,13 +28,13 @@ Same tools, any building: repo stores reusable process, while site-specific trut
 
 ## Minimal bootstrap read list for fresh clones
 
-**OpenClaw + lab (files in repo — read in order on first session):**
+**OpenClaw + lab (files in repo - read in order on first session):**
 
-1. `openclaw/HANDOFF_PROTOCOL.md` — mailbox handoff with `issues_log.md` and log files.
-2. `openclaw/SKILL.md` — agent behavior, bootstrap modes, MCP, security scope.
-3. `openclaw/references/testing_layers.md` — where pytest vs bench vs `bootstrap.sh` live.
-4. `openclaw/references/legacy_automated_testing.md` — redirect from deprecated **open-fdd-automated-testing** if anything still points there.
-5. `openclaw/references/session_status_summary.md` — **5-bullet** lab snapshot format when agents must not dump logs into provider chat.
+1. `openclaw/HANDOFF_PROTOCOL.md` - mailbox handoff with `issues_log.md` and log files.
+2. `openclaw/SKILL.md` - agent behavior, bootstrap modes, MCP, security scope.
+3. `openclaw/references/testing_layers.md` - where pytest vs bench vs `bootstrap.sh` live.
+4. `openclaw/references/legacy_automated_testing.md` - redirect from deprecated **open-fdd-automated-testing** if anything still points there.
+5. `openclaw/references/session_status_summary.md` - **5-bullet** lab snapshot format when agents must not dump logs into provider chat.
 
 **Product and operations (published docs paths):**
 

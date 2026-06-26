@@ -1,5 +1,5 @@
 # Cooling tower: condenser water supply temperature above setpoint while tower fan is at max.
-# Tower is capacity-limited — ambient wet-bulb too high, dirty fill, scaled sump,
+# Tower is capacity-limited - ambient wet-bulb too high, dirty fill, scaled sump,
 # fan belt slipping, or setpoint reset too aggressive.
 name: cooling_tower_cws_high_at_max_fan
 description: CWS temp above setpoint with cooling tower fan at full speed

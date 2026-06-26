@@ -17,7 +17,7 @@ inputs:
     brick: Hot_Water_Return_Temperature_Sensor
 
 params:
-  supply_temp_min: 44.0   # °C — minimum acceptable boiler supply temperature
+  supply_temp_min: 44.0   # °C - minimum acceptable boiler supply temperature
   rolling_window: 24      # 24 consecutive 5-min samples = 2 h (matches trigger period)
 
 expression: |

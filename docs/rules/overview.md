@@ -12,7 +12,7 @@ Fault rules are YAML-defined checks run against time-series DataFrames. Each rul
 
 ## Where rules live: config path and how to manage them
 
-**Single directory:** All FDD rule YAML files live in one directory configured as **`rules_dir`** in platform config (RDF: `ofdd:rulesDir`, e.g. `"stack/rules"`). The FDD loop loads from this path every run; the rules API (list, upload, download, delete) uses the same path. **You still need `rules_dir` in config** — it defines where files are stored. The frontend does not replace it; it lets you manage the files *in* that directory.
+**Single directory:** All FDD rule YAML files live in one directory configured as **`rules_dir`** in platform config (RDF: `ofdd:rulesDir`, e.g. `"stack/rules"`). The FDD loop loads from this path every run; the rules API (list, upload, download, delete) uses the same path. **You still need `rules_dir` in config** - it defines where files are stored. The frontend does not replace it; it lets you manage the files *in* that directory.
 
 **Two ways to manage rules:**
 
@@ -29,13 +29,13 @@ Config: `rules_dir: "stack/rules"` (GET/PUT `/config` or `OFDD_RULES_DIR` at boo
 
 ## Hot reload (edit → run → view)
 
-Open-FDD is **AFDD** (Automated Fault Detection and Diagnostics). The project **supports hot reloading of YAML rule files** so the AFDD maintainer can tune faults without restarting. Rule YAML contains fault logic and **params** (thresholds, tolerances, windows); the FDD loop loads from `rules_dir` every run — no restart.
+Open-FDD is **AFDD** (Automated Fault Detection and Diagnostics). The project **supports hot reloading of YAML rule files** so the AFDD maintainer can tune faults without restarting. Rule YAML contains fault logic and **params** (thresholds, tolerances, windows); the FDD loop loads from `rules_dir` every run - no restart.
 
 **Fault definitions:** Each FDD run syncs the loaded rules into the `fault_definitions` table (fault_id, name, category, equipment_types). When you add or edit a rule (via frontend upload or by editing a file in `rules_dir`), the next run updates the DB and the Faults UI reflects the change. From the frontend you can also click **Sync definitions** to update the definitions table immediately.
 
 1. **Add or edit** rules: use the Faults page (upload/paste YAML, or choose file) or edit files in `stack/rules/*.yaml`. Change `params` (e.g. `tolerance`, `rolling_window`) to tune sensitivity.
 2. **Run** FDD: wait for the next scheduled run (per `rule_interval_hours` and `lookback_days` in [platform config](../configuration)), or trigger with `touch config/.run_fdd_now` or `POST /run-fdd` (see [Appendix: API Reference](../appendix/api_reference)). Or use **Sync definitions** in the UI to only refresh the definitions table.
-3. **View** fault results in the React Faults/Plots views or in Grafana (see [Grafana SQL cookbook](../howto/grafana_cookbook)). Every run reloads all rules from disk — hot reload.
+3. **View** fault results in the React Faults/Plots views or in Grafana (see [Grafana SQL cookbook](../howto/grafana_cookbook)). Every run reloads all rules from disk - hot reload.
 
 ---
 

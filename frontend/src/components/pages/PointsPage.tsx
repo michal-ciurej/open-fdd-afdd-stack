@@ -86,7 +86,7 @@ function useTreeMutations(points: Point[]) {
       if (
         window.confirm(
           `Dissolve "${name}"? Its ${pointIds.length} point(s) return to Unassigned and the empty ` +
-            `equipment is removed. Points and their history are kept — use this to re-tag.`,
+            `equipment is removed. Points and their history are kept - use this to re-tag.`,
         )
       ) {
         dissolveEquipmentMutation.mutate({ equipmentId: id, pointIds });

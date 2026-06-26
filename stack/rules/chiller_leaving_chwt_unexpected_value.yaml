@@ -20,8 +20,8 @@ inputs:
     brick: Chilled_Water_Pump_Status
 
 params:
-  chwt_low:  5.0   # °C — at or below this value is implausibly cold (near freezing)
-  chwt_high: 16.0  # °C — above this value is implausibly warm for active chilled water
+  chwt_low:  5.0   # °C - at or below this value is implausibly cold (near freezing)
+  chwt_high: 16.0  # °C - above this value is implausibly warm for active chilled water
   rolling_window: 12  # 12 × 5-min samples = 1 h sustained fault (debounce)
 
 expression: |

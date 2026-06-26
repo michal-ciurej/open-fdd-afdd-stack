@@ -8,13 +8,13 @@ nav_order: 2
 
 A reference for building fault detection rules in open-fdd. Rules use **YAML** with **expression** type: when the expression evaluates to **True**, a fault is flagged. open-fdd injects **NumPy** as `np` into expression evaluation, so you can use `np.maximum`, `np.abs`, `np.sqrt`, etc. for vectorized math. **Tuning:** Change `params` in YAML and trigger an FDD run (or wait for the schedule); the platform hot-reloads rules each run, so no restart is needed. See [Fault rules overview](rules/overview#hot-reload-edit--run--view-in-grafana) and [Configuration](configuration) (`rules_dir` is RDF-driven via GET `/config`).
 
-> **`column_map` — platform vs library:** On the **full AFDD stack**, **`fdd-loop`** runs **`run_fdd_loop`**, which builds **`column_map`** from **`config/data_model.ttl`** using **`BrickTtlColumnMapResolver`** in **`openfdd_stack.platform.brick_ttl_resolver`** (**rdflib** is a stack dependency, not an **`open-fdd`** dependency). Recipes below stay **Brick-oriented** and assume that path. When you run **`RuleRunner`** yourself (**`pip install open-fdd`**, notebooks, external IoT pipelines), **you** supply **`column_map`** as a **dict** (logical / Brick-class keys → your DataFrame column names), or plug a custom **`ColumnMapResolver`** if you extend the platform loop. The rule YAML shape does not change; only **who** builds the map changes. See [Engine-only deployment and external IoT pipelines](howto/engine_only_iot) and [The optional openfdd-engine package](howto/openfdd_engine).
+> **`column_map` - platform vs library:** On the **full AFDD stack**, **`fdd-loop`** runs **`run_fdd_loop`**, which builds **`column_map`** from **`config/data_model.ttl`** using **`BrickTtlColumnMapResolver`** in **`openfdd_stack.platform.brick_ttl_resolver`** (**rdflib** is a stack dependency, not an **`open-fdd`** dependency). Recipes below stay **Brick-oriented** and assume that path. When you run **`RuleRunner`** yourself (**`pip install open-fdd`**, notebooks, external IoT pipelines), **you** supply **`column_map`** as a **dict** (logical / Brick-class keys → your DataFrame column names), or plug a custom **`ColumnMapResolver`** if you extend the platform loop. The rule YAML shape does not change; only **who** builds the map changes. See [Engine-only deployment and external IoT pipelines](howto/engine_only_iot) and [The optional openfdd-engine package](howto/openfdd_engine).
 
 ---
 
 ## 100% Brick-model driven (no column in rules)
 
-Rule inputs use **Brick class names** only (e.g. `Supply_Air_Temperature_Sensor`). The **Brick TTL** is the source of truth: SPARQL resolves each Brick point to its [external timeseries reference](https://docs.brickschema.org/metadata/external-representations.html#timeseries) (`ref:TimeseriesReference` / `ref:hasTimeseriesId`), which yields the DataFrame column. Open-FDD embraces [Brick timeseries storage](https://docs.brickschema.org/metadata/timeseries-storage.html) at the heart of FDD — **rules never reference `column`**; the data model provides the mapping. See the [SPARQL cookbook](modeling/sparql_cookbook#recipe-5-fdd--points-and-rule-mapping) (Recipe 5) and run similar queries via Data Model Testing or `scripts/automated_testing/sparql/`.
+Rule inputs use **Brick class names** only (e.g. `Supply_Air_Temperature_Sensor`). The **Brick TTL** is the source of truth: SPARQL resolves each Brick point to its [external timeseries reference](https://docs.brickschema.org/metadata/external-representations.html#timeseries) (`ref:TimeseriesReference` / `ref:hasTimeseriesId`), which yields the DataFrame column. Open-FDD embraces [Brick timeseries storage](https://docs.brickschema.org/metadata/timeseries-storage.html) at the heart of FDD - **rules never reference `column`**; the data model provides the mapping. See the [SPARQL cookbook](modeling/sparql_cookbook#recipe-5-fdd--points-and-rule-mapping) (Recipe 5) and run similar queries via Data Model Testing or `scripts/automated_testing/sparql/`.
 
 - **Platform (DB):** Points have `brick_type` and `external_id`; TTL is built from DB. PATCH points or use data-model import to set `brick_type` (e.g. `Supply_Air_Temperature_Sensor` for SA-T).
 - **Disambiguation:** When multiple points share a Brick class, use `ofdd:mapsToRuleInput` in TTL; the runner resolves `BrickClass|rule_input`.
@@ -23,9 +23,9 @@ Rule inputs use **Brick class names** only (e.g. `Supply_Air_Temperature_Sensor`
 
 ## How to define expressions
 
-1. **Inputs** — Declare Brick classes only (`brick: Supply_Air_Temperature_Sensor`). The runner resolves these via the Brick TTL (SPARQL) and Brick external timeseries references to DataFrame columns. Do not add `column` in YAML.
-2. **Params** — Thresholds and constants go in `params`. Reference by name (e.g. `err_thresh`, `vfd_max`).
-3. **Expression** — Must evaluate to a boolean Series (True = fault). Use `&` (AND), `|` (OR), `~` (NOT). Use `.diff()`, `.rolling()`, `.notna()` for time-series logic.
+1. **Inputs** - Declare Brick classes only (`brick: Supply_Air_Temperature_Sensor`). The runner resolves these via the Brick TTL (SPARQL) and Brick external timeseries references to DataFrame columns. Do not add `column` in YAML.
+2. **Params** - Thresholds and constants go in `params`. Reference by name (e.g. `err_thresh`, `vfd_max`).
+3. **Expression** - Must evaluate to a boolean Series (True = fault). Use `&` (AND), `|` (OR), `~` (NOT). Use `.diff()`, `.rolling()`, `.notna()` for time-series logic.
 
 **Minimal example (TTL-driven; no column):**
 
@@ -58,7 +58,7 @@ Many cookbook thresholds (e.g. `drv_hi_frac: 0.93`, comparisons to `0.01`) assum
 
 **Recommended patterns in expressions**
 
-1. **`normalize_cmd(series)`** (open-fdd **2.3+**) — Injected next to `np`. Same heuristic as `hunting`/`oa_fraction`: if any finite value is `> 1`, the whole series is divided by 100; otherwise left as-is. Non-numeric cells become NaN.
+1. **`normalize_cmd(series)`** (open-fdd **2.3+**) - Injected next to `np`. Same heuristic as `hunting`/`oa_fraction`: if any finite value is `> 1`, the whole series is divided by 100; otherwise left as-is. Non-numeric cells become NaN.
 
    ```text
    (normalize_cmd(Supply_Fan_Speed_Command) >= drv_hi_frac - drv_near_hi)
@@ -70,7 +70,7 @@ Many cookbook thresholds (e.g. `drv_hi_frac: 0.93`, comparisons to `0.01`) assum
    (np.where(Supply_Fan_Speed_Command > 1, Supply_Fan_Speed_Command / 100.0, Supply_Fan_Speed_Command) >= 0.93)
    ```
 
-Mixed 0–1 and 0–100 in one series is ambiguous—prefer consistent scaling per point in the **data model** or **trend export**.
+Mixed 0–1 and 0–100 in one series is ambiguous-prefer consistent scaling per point in the **data model** or **trend export**.
 
 **Engine validation (open-fdd 2.3+)**
 
@@ -86,7 +86,7 @@ When **`skip_missing_columns=True`** (production default), rules that hit missin
 
 The following rules follow common industry practice for air-handling fault detection. Rules A through M are adapted from ASHRAE Guideline 36 (GL36) AFDD guidance. Thresholds and logic are tunable; adjust params for your site.
 
-### Rule A — Duct static below setpoint at full fan speed
+### Rule A - Duct static below setpoint at full fan speed
 
 Static pressure under setpoint while supply fan runs near maximum. May indicate duct leakage, undersized fan, or terminal damper issues. *Adapted from GL36 AFDD guidance.*
 
@@ -114,7 +114,7 @@ expression: |
   (Supply_Air_Static_Pressure_Sensor < Supply_Air_Static_Pressure_Setpoint - sp_margin) & (Supply_Fan_Speed_Command >= drv_hi_frac - drv_near_hi)
 ```
 
-### Rule B — Blended air temp below expected band
+### Rule B - Blended air temp below expected band
 
 Blended air temp should lie between outdoor and return. If below both (minus tolerance), suspect sensor or mixing fault. *Adapted from GL36 AFDD guidance.*
 
@@ -144,7 +144,7 @@ expression: |
   (Mixed_Air_Temperature_Sensor - blend_tol < np.minimum(Return_Air_Temperature_Sensor - rat_tol, Outside_Air_Temperature_Sensor - oat_tol)) & (Supply_Fan_Speed_Command > 0.01)
 ```
 
-### Rule C — Blended air temp above expected band
+### Rule C - Blended air temp above expected band
 
 Blended air temp above the higher of OAT and RAT (plus tolerance) indicates mixing or sensor fault. *Adapted from GL36 AFDD guidance.*
 
@@ -174,9 +174,9 @@ expression: |
   (Mixed_Air_Temperature_Sensor - blend_tol > np.maximum(Return_Air_Temperature_Sensor + rat_tol, Outside_Air_Temperature_Sensor + oat_tol)) & (Supply_Fan_Speed_Command > 0.01)
 ```
 
-*Hunting/oscillation — see [rule types (hunting)](rules/overview#rule-types).*
+*Hunting/oscillation - see [rule types (hunting)](rules/overview#rule-types).*
 
-### Rule D — Discharge air cold when heating commanded
+### Rule D - Discharge air cold when heating commanded
 
 Discharge air temp below blended air when heating valve is open. Indicates heating coil or valve failure. *Adapted from GL36 AFDD guidance.*
 
@@ -206,9 +206,9 @@ expression: |
   (Supply_Air_Temperature_Sensor + sat_tol <= Mixed_Air_Temperature_Sensor - blend_tol + fan_delta_t) & (Valve_Command > 0.01) & (Supply_Fan_Speed_Command > 0.01)
 ```
 
-*OA fraction — see [rule types (oa_fraction)](rules/overview#rule-types).*
+*OA fraction - see [rule types (oa_fraction)](rules/overview#rule-types).*
 
-### Rule E — SAT too low with full heating
+### Rule E - SAT too low with full heating
 
 Heating valve fully open but SAT remains below setpoint. Indicates undersized coil or valve failure. *Adapted from GL36 AFDD guidance.*
 
@@ -236,7 +236,7 @@ expression: |
   (Supply_Air_Temperature_Sensor < Supply_Air_Temperature_Setpoint - supply_err_thres) & (Valve_Command > 0.9) & (Supply_Fan_Speed_Command > 0)
 ```
 
-### Rule F — SAT/MAT mismatch in economizer mode
+### Rule F - SAT/MAT mismatch in economizer mode
 
 In economizer mode (min mechanical cooling), SAT should approximate MAT. Large deviation suggests coil bypass or sensor error. *Adapted from GL36 AFDD guidance.*
 
@@ -267,7 +267,7 @@ expression: |
   (np.abs(Supply_Air_Temperature_Sensor - fan_delta_t - Mixed_Air_Temperature_Sensor) > np.sqrt(sat_tol**2 + blend_tol**2)) & (Damper_Position_Command > econ_min_open) & (Valve_Command < 0.1)
 ```
 
-### Rule G — Ambient too warm for free cooling
+### Rule G - Ambient too warm for free cooling
 
 Outside air temperature exceeds SAT setpoint while economizer is active and mechanical cooling is off. Economizer should not be providing “free” cooling under these conditions. *Adapted from GL36 AFDD guidance.*
 
@@ -298,7 +298,7 @@ expression: |
   (Outside_Air_Temperature_Sensor - oat_tol > Supply_Air_Temperature_Setpoint - fan_delta_t + sat_tol) & (Damper_Position_Command > econ_min_open) & (Valve_Command < 0.1)
 ```
 
-### Rule H — Ambient vs blended mismatch (econ + mech cooling)
+### Rule H - Ambient vs blended mismatch (econ + mech cooling)
 
 When both economizer and mechanical cooling are active, MAT should approach OAT. Large deviation suggests inadequate mixing or damper fault. *Adapted from GL36 AFDD guidance.*
 
@@ -327,7 +327,7 @@ expression: |
   (np.abs(Mixed_Air_Temperature_Sensor - Outside_Air_Temperature_Sensor) > np.sqrt(blend_tol**2 + oat_tol**2)) & (Valve_Command > 0.01) & (Damper_Position_Command > 0.9)
 ```
 
-### Rule I — Ambient vs blended mismatch (econ-only)
+### Rule I - Ambient vs blended mismatch (econ-only)
 
 In economizer-only mode, MAT should match OAT. Deviation indicates damper or mixing fault. *Adapted from GL36 AFDD guidance.*
 
@@ -354,7 +354,7 @@ expression: |
   (np.abs(Mixed_Air_Temperature_Sensor - Outside_Air_Temperature_Sensor) > np.sqrt(blend_tol**2 + oat_tol**2)) & (Damper_Position_Command > 0.9)
 ```
 
-### Rule J — Discharge above blended in cooling
+### Rule J - Discharge above blended in cooling
 
 SAT exceeds MAT when cooling (econ+mech or mech-only) is active. Indicates underperforming cooling coil or valve. *Adapted from GL36 AFDD guidance.*
 
@@ -385,7 +385,7 @@ expression: |
   (Supply_Air_Temperature_Sensor > Mixed_Air_Temperature_Sensor + np.sqrt(sat_tol**2 + blend_tol**2) + fan_delta_t) & (((Damper_Position_Command > 0.9) & (Valve_Command > 0)) | ((Damper_Position_Command <= econ_min_open) & (Valve_Command > 0.9)))
 ```
 
-### Rule K — Discharge above setpoint in full cooling
+### Rule K - Discharge above setpoint in full cooling
 
 SAT above setpoint with cooling at full capacity. Suggests undersized coil or plant limits. *Adapted from GL36 AFDD guidance.*
 
@@ -414,7 +414,7 @@ expression: |
   (Supply_Air_Temperature_Sensor > Supply_Air_Temperature_Setpoint + sat_tol) & (((Damper_Position_Command > 0.9) & (Valve_Command > 0.9)) | ((Damper_Position_Command <= econ_min_open) & (Valve_Command > 0.9)))
 ```
 
-### Rule L — Cooling coil delta-T when inactive
+### Rule L - Cooling coil delta-T when inactive
 
 Temperature drop across cooling coil when it should be off. Indicates leaking CHW valve or coil bypass. *Adapted from GL36 AFDD guidance.*
 
@@ -446,7 +446,7 @@ expression: |
   ((Cooling_Coil_Entering_Air_Temperature_Sensor - Cooling_Coil_Leaving_Air_Temperature_Sensor) > np.sqrt(enter_tol**2 + leave_tol**2)) & (((Heating_Valve_Command > 0) & (Cooling_Valve_Command == 0) & (Damper_Position_Command <= econ_min_open)) | ((Heating_Valve_Command == 0) & (Cooling_Valve_Command == 0) & (Damper_Position_Command > econ_min_open)))
 ```
 
-### Rule M — Heating coil delta-T when inactive
+### Rule M - Heating coil delta-T when inactive
 
 Temperature rise across heating coil when it should be off. Indicates leaking HW valve. *Adapted from GL36 AFDD guidance.*
 
@@ -479,7 +479,7 @@ expression: |
   ((Heating_Coil_Leaving_Air_Temperature_Sensor - Heating_Coil_Entering_Air_Temperature_Sensor) > np.sqrt(enter_tol**2 + leave_tol**2) + fan_delta_t) & (((Heating_Valve_Command == 0) & (Cooling_Valve_Command == 0) & (Damper_Position_Command > econ_min_open)) | ((Heating_Valve_Command == 0) & (Cooling_Valve_Command > 0) & (Damper_Position_Command > 0.9)) | ((Heating_Valve_Command == 0) & (Cooling_Valve_Command > 0) & (Damper_Position_Command <= econ_min_open)))
 ```
 
-*Heat exchanger effectiveness — see [rule types (erv_efficiency)](rules/overview#rule-types).*
+*Heat exchanger effectiveness - see [rule types (erv_efficiency)](rules/overview#rule-types).*
 
 
 ---
@@ -594,7 +594,7 @@ expression: |
 
 ### Discharge cold when heating
 
-Flags when discharge air temperature is below a minimum (e.g. 80°F) while the supply fan is running. Indicates the heat pump is not heating effectively—possible issues with compressor, refrigerant, or reversing valve. Tunable via `min_discharge_temp`. Logic: if zone temp < 69°F (heating mode), the discharge should be warm; a cold discharge with the fan on and a cold zone indicates the heat pump is failing to heat.
+Flags when discharge air temperature is below a minimum (e.g. 80°F) while the supply fan is running. Indicates the heat pump is not heating effectively-possible issues with compressor, refrigerant, or reversing valve. Tunable via `min_discharge_temp`. Logic: if zone temp < 69°F (heating mode), the discharge should be warm; a cold discharge with the fan on and a cold zone indicates the heat pump is failing to heat.
 
 ```yaml
 
@@ -676,7 +676,7 @@ expression: |
 
 ### Zone and IAQ bounds
 
-For CO2 and zone temperature out-of-range checks, use the [bounds rule type](rules/overview#rule-types) — `co2_bounds` and `zone_temp_bounds` examples.
+For CO2 and zone temperature out-of-range checks, use the [bounds rule type](rules/overview#rule-types) - `co2_bounds` and `zone_temp_bounds` examples.
 
 ---
 
@@ -803,7 +803,7 @@ Expected MAT (from OAT, RAT, damper positions) differs from measured MAT. Indica
 
 ## Weather station
 
-*weather_temp_stuck (flatline) — see [flatline rule type](rules/overview#rule-types).*
+*weather_temp_stuck (flatline) - see [flatline rule type](rules/overview#rule-types).*
 
 ### Unrealistic temperature spike
 
@@ -828,7 +828,7 @@ expression: |
 
 ### RH bounds
 
-For relative humidity out-of-range, use the [bounds rule type](rules/overview#rule-types) — `rh_bounds` example.
+For relative humidity out-of-range, use the [bounds rule type](rules/overview#rule-types) - `rh_bounds` example.
 
 ### Wind gust vs sustained
 
@@ -869,7 +869,7 @@ Use the [bounds](rules/overview#rule-types) and [flatline](rules/overview#rule-t
 
 ## Follow-up (RFCs): multi-ontology selectors & cookbook matrix
 
-**Multi-ontology rule YAML** (e.g. optional `selectors.brick` / `.haystack` / `.dbo` / `.s223` under each input) is a **separate RFC** — it would feed the same **`column_map`** / resolver layer while the **full AFDD stack stays Brick-only by default** for v1. Track design discussion on GitHub **#122** and follow-on issues.
+**Multi-ontology rule YAML** (e.g. optional `selectors.brick` / `.haystack` / `.dbo` / `.s223` under each input) is a **separate RFC** - it would feed the same **`column_map`** / resolver layer while the **full AFDD stack stays Brick-only by default** for v1. Track design discussion on GitHub **#122** and follow-on issues.
 
 **Cookbook matrix / generator:** When a selector schema is stable, we can add a **generated appendix** (logical input × Brick × Haystack × DBO × 223P notes) from a single CSV/YAML source so the long cookbook does not drift. Until then, see the **open-fdd** repo’s **`examples/column_map_resolver_workshop/simple_ontology_demo.py`** (with **`simple_ontology_rule.yaml`**).
 

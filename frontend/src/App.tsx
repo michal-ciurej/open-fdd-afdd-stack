@@ -105,7 +105,7 @@ function AuthGate() {
       </div>
     );
   }
-  // No session — show the landing/login screen. The user must click "Sign on"
+  // No session - show the landing/login screen. The user must click "Sign on"
   // to start the SWA → Entra redirect (no automatic bounce).
   if (!user) return <LoginPage />;
   return <AppRoutes />;

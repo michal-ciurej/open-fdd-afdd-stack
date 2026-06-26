@@ -11,7 +11,7 @@ This middleware decodes that header into an `AuthUser` and stashes it on
 The principal header is forgeable on a public ACA URL, so deployment MUST do
 ONE of:
   1. Restrict ACA ingress IPs to the SWA region's outbound IP set, or
-  2. Set OFDD_SWA_INGRESS_SECRET on both sides — the middleware refuses the
+  2. Set OFDD_SWA_INGRESS_SECRET on both sides - the middleware refuses the
      principal unless the matching header is present.
 
 Machine callers (BACnet scraper, MCP) keep the legacy OFDD_API_KEY Bearer path.
@@ -50,7 +50,7 @@ class Role(str, Enum):
 
 @dataclass(frozen=True)
 class AuthUser:
-    oid: str                          # Entra object ID — stable user key
+    oid: str                          # Entra object ID - stable user key
     email: str                        # preferred_username / userDetails
     roles: frozenset[Role]            # tier(s) granted via App Roles
     is_machine: bool = False          # True for OFDD_API_KEY callers
@@ -116,7 +116,7 @@ def _path_exempt(path: str) -> bool:
     if path.startswith("/app") or path.startswith("/.auth/"):
         return True
     # SWA invokes the rolesSource endpoint server-side during login,
-    # before the user has a session — no principal header yet.
+    # before the user has a session - no principal header yet.
     # SWA preserves the /api prefix when forwarding to a linked container app,
     # so the path the API sees is /api/auth/roles.
     # Path is hardened via the ACA ingress IP allowlist.
@@ -149,7 +149,7 @@ class EntraPrincipalMiddleware(BaseHTTPMiddleware):
       4. Otherwise → 401
 
     On success, sets `request.state.user`. Endpoints enforce role/site rules
-    via the Depends helpers below — this middleware only attests identity.
+    via the Depends helpers below - this middleware only attests identity.
     """
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
@@ -158,7 +158,7 @@ class EntraPrincipalMiddleware(BaseHTTPMiddleware):
 
         settings = get_platform_settings()
 
-        # 1. Machine path — service integrations (scraper, MCP, automations).
+        # 1. Machine path - service integrations (scraper, MCP, automations).
         api_key = (getattr(settings, "api_key", None) or "").strip()
         token = _bearer_token(request)
         if api_key and token and secrets.compare_digest(token, api_key):
@@ -170,7 +170,7 @@ class EntraPrincipalMiddleware(BaseHTTPMiddleware):
             )
             return await call_next(request)
 
-        # 2. Browser path — SWA-forwarded Entra principal.
+        # 2. Browser path - SWA-forwarded Entra principal.
         principal_b64 = request.headers.get(PRINCIPAL_HEADER)
         if principal_b64:
             ingress_secret = (getattr(settings, "swa_ingress_secret", None) or "").strip()
@@ -337,8 +337,8 @@ def accessible_site_ids(user: AuthUser) -> list[str] | None:
 def record_user_login(user: AuthUser) -> None:
     """Upsert the user into app_users so the admin User-access page has a roster.
 
-    The SWA principal is our only signal about who exists — there is no Graph
-    integration — so we capture identity on each /auth/me call. Machine callers
+    The SWA principal is our only signal about who exists - there is no Graph
+    integration - so we capture identity on each /auth/me call. Machine callers
     are skipped (they aren't real directory users). Best-effort: a failure here
     must never break the caller's /auth/me, so swallow and log.
     """
@@ -359,5 +359,5 @@ def record_user_login(user: AuthUser) -> None:
                 (user.oid, user.email or None, roles),
             )
             conn.commit()
-    except Exception:  # noqa: BLE001 — roster capture is best-effort
+    except Exception:  # noqa: BLE001 - roster capture is best-effort
         logger.warning("record_user_login failed for oid=%s", user.oid, exc_info=True)

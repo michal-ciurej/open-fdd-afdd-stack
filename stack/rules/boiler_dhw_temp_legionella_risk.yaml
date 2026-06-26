@@ -15,7 +15,7 @@ inputs:
     brick: Hot_Water_Supply_Temperature_Sensor
 
 params:
-  dhw_min_temp: 55.0      # °C — minimum safe temperature to prevent Legionella growth
+  dhw_min_temp: 55.0      # °C - minimum safe temperature to prevent Legionella growth
   rolling_window: 288     # 288 samples = 24 h at 5-min data (debounce: all samples must be below threshold)
 
 expression: |

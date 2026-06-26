@@ -19,8 +19,8 @@ inputs:
     brick: Chiller_Status
 
 params:
-  delta_high: 2.0       # °C — upper bound; delta above this on an idle chiller is unexpected
-  delta_low: -0.2       # °C — negative delta indicates possible sensor reversal
+  delta_high: 2.0       # °C - upper bound; delta above this on an idle chiller is unexpected
+  delta_low: -0.2       # °C - negative delta indicates possible sensor reversal
   rolling_window: 12    # 12 consecutive 5-min samples = 60 min trigger period
 
 expression: |

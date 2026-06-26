@@ -9,7 +9,7 @@ import { SERVER_HELLO_REQUEST_INIT } from "./use-bacnet-status";
  * Content-Type: application/json. If the frontend omits this header, the API returns
  * 422 Unprocessable Entity, the useQuery fails, and the StackStatusStrip shows the
  * BACnet status dot as red (offline) even when the gateway is reachable. These tests
- * exist to prevent that regression — do not remove Content-Type or change the method/body
+ * exist to prevent that regression - do not remove Content-Type or change the method/body
  * without updating the backend to accept the new shape and then updating these tests.
  */
 describe("useBacnetStatus / SERVER_HELLO_REQUEST_INIT", () => {

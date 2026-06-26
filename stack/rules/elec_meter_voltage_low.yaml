@@ -15,7 +15,7 @@ inputs:
     brick: Electric_Voltage_Sensor
 
 params:
-  voltage_min: 220.0      # V — minimum acceptable voltage level
+  voltage_min: 220.0      # V - minimum acceptable voltage level
   rolling_window: 6       # 30 min at 5-min sampling (debounce)
 
 expression: |

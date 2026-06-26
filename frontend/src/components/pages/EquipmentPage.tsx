@@ -259,7 +259,7 @@ export function EquipmentPage() {
                     <TableRow key={r.id}>
                       <TableCell className="font-medium">{r.name}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
-                        {r.equipment_type ?? "—"}
+                        {r.equipment_type ?? "-"}
                       </TableCell>
                       {!selectedSiteId && (
                         <TableCell className="text-sm text-muted-foreground">

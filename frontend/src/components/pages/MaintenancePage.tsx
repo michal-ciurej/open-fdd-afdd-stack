@@ -273,7 +273,7 @@ export function MaintenancePage() {
                         <CheckCircle2 className="h-3 w-3" /> Maintained
                       </Badge>
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-xs text-muted-foreground">-</span>
                     )}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">

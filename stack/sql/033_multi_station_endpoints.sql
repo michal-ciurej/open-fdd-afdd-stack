@@ -113,7 +113,7 @@ WHERE e.site_id = p.site_id
 -- ---------------------------------------------------------------------------
 
 -- Drop ANY unique constraint on exactly (site_id, external_id), regardless of
--- the auto-generated name — leaving the old 2-column constraint in place would
+-- the auto-generated name - leaving the old 2-column constraint in place would
 -- silently defeat multi-endpoint support.
 DO $$
 DECLARE

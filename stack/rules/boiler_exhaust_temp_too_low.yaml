@@ -1,6 +1,6 @@
 # Boiler exhaust (flue gas) temperature is below the expected minimum while the boiler is enabled for heating.
 # Catches incomplete combustion, burner fault, heat exchanger fouling, or flue gas recirculation issues.
-# Tuning: threshold is 65°C for HHW boilers (57°C for DHW boilers — adjust exhaust_temp_min accordingly).
+# Tuning: threshold is 65°C for HHW boilers (57°C for DHW boilers - adjust exhaust_temp_min accordingly).
 # 1-hour trigger period → 12 consecutive samples at 5-min data.
 name: boiler_exhaust_temp_too_low
 description: Exhaust gas temp below minimum threshold while boiler is enabled
@@ -18,7 +18,7 @@ inputs:
     brick: Enable_Command
 
 params:
-  exhaust_temp_min: 65.0   # °C — minimum expected flue gas temp for HHW boilers (use 57°C for DHW)
+  exhaust_temp_min: 65.0   # °C - minimum expected flue gas temp for HHW boilers (use 57°C for DHW)
   rolling_window: 12        # 12 consecutive samples = 1 h at 5-min data (matches 1-hour trigger period)
 
 expression: |

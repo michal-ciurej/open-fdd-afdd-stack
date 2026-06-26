@@ -1,10 +1,10 @@
-"""AI-assisted Brick tagging — the ENTIRE auto-tagger lives in this one module.
+"""AI-assisted Brick tagging - the ENTIRE auto-tagger lives in this one module.
 
 This file is intentionally self-contained so the whole flow can be audited in a
 single read: every prompt, every byte that leaves the platform for Anthropic,
 and every transformation on the way back is defined here and only here. The HTTP
 endpoint in ``api/data_model.py`` does nothing but build the export and call
-:func:`run_tagging` — it holds no tagging logic, no prompts, and never talks to
+:func:`run_tagging` - it holds no tagging logic, no prompts, and never talks to
 Anthropic directly.
 
 Flow (top to bottom in this file):
@@ -29,7 +29,7 @@ for the human review UI. Those two fields are NEVER part of the import contract
 (``DataModelImportBody`` is ``extra="forbid"``); :meth:`TaggingProposal.to_import_body`
 strips them, so what the operator approves round-trips cleanly through the
 existing ``PUT /data-model/import`` write path. This module never writes to the
-database — it only proposes.
+database - it only proposes.
 """
 
 from __future__ import annotations
@@ -59,16 +59,16 @@ TOPIC_AI_TAG = "ai.tag"
 class AiTaggingError(RuntimeError):
     """Raised for any auto-tagger failure (no key, SDK missing, model error,
     or output that never validated after all retries). The endpoint maps this
-    to a clean HTTP error — callers never see a half-written data model because
+    to a clean HTTP error - callers never see a half-written data model because
     this module does not write to the database."""
 
 
 # ---------------------------------------------------------------------------
-# 1. System prompt — STAGE 1 of the data-modeling flow: structure only.
+# 1. System prompt - STAGE 1 of the data-modeling flow: structure only.
 #
 # Stage 1 organises scanned points into structured equipment and assigns Brick
 # types to both. It deliberately does NOT decide polling (everything stays
-# unpolled), does NOT set rule_input, and does NOT assign feeds/fed_by — those
+# unpolled), does NOT set rule_input, and does NOT assign feeds/fed_by - those
 # belong to later stages (rules/polling and topology). The prompt is embedded
 # verbatim here so an auditor sees the exact instructions the model is given;
 # the model returns its result by calling the emit_tagging_proposal tool, which
@@ -78,7 +78,7 @@ SYSTEM_PROMPT = """\
 You are STAGE 1 of the Open-FDD data-modeling flow. Your only job is to organise
 scanned points into structured equipment and assign Brick types. You do NOT
 decide polling, you do NOT set rule_input, and you do NOT assign feeds/fed-by
-relationships — those are later stages.
+relationships - those are later stages.
 
 You receive JSON shaped like GET /data-model/export?shape=structured:
 { "equipment": [...], "points": [...] }
@@ -97,10 +97,10 @@ POINT RULES (for each row in points)
    Mixed_Air_Temperature_Sensor, Zone_Air_Temperature_Sensor,
    Damper_Position_Command, Supply_Air_Flow_Sensor, Static_Pressure_Sensor,
    Occupancy_Command. No "brick:" prefix. null if genuinely unclear.
-3. equipment_name: PRE-ASSIGNED from the point's source (Niagara station) path —
+3. equipment_name: PRE-ASSIGNED from the point's source (Niagara station) path -
    keep it EXACTLY as given. Do not change, merge, split, or invent
    equipment_name; the grouping is authoritative and decided before you see the
-   data. If a point has no equipment_name, leave it null (Unassigned) — never
+   data. If a point has no equipment_name, leave it null (Unassigned) - never
    guess one.
 4. unit: units are METRIC. Use degC for temperature, percent (or %) for
    percentage, the metric airflow convention, "0/1" for binary, W for power,
@@ -108,18 +108,18 @@ POINT RULES (for each row in points)
    power/flow/energy units.
 
 --------------------------------------------------
-EQUIPMENT RULES (the equipment array — one entry per equipment you reference)
+EQUIPMENT RULES (the equipment array - one entry per equipment you reference)
 --------------------------------------------------
 For each equipment_name you assign to points, return an equipment row:
   { "equipment_name": "AHU-1", "equipment_type": "Air_Handling_Unit",
     "site_id": "<same site_id as its points>" }
 - equipment_type: the most specific defensible Brick 1.4 EQUIPMENT class as a
   bare local name, chosen ONLY from the allowlist in the system context. Use the
-  generic fallback "Equipment" when unclear — never mis-type a VAV as a Chiller.
+  generic fallback "Equipment" when unclear - never mis-type a VAV as a Chiller.
 - Names only, never UUIDs. Preserve the exact site_id from the points.
 
 --------------------------------------------------
-CONFIDENCE & RATIONALE (proposal only — for human review)
+CONFIDENCE & RATIONALE (proposal only - for human review)
 --------------------------------------------------
 On every point and equipment row, also set:
 - confidence: a number from 0.0 to 1.0 for how sure you are of this row's
@@ -132,7 +132,7 @@ On every point and equipment row, also set:
 --------------------------------------------------
 HARD CONSTRAINTS
 --------------------------------------------------
-- Do NOT emit polling, rule_input, feeds, or fed_by — they are not part of
+- Do NOT emit polling, rule_input, feeds, or fed_by - they are not part of
   stage 1 (the platform keeps every point unpolled until a later stage).
 - Do NOT invent equipment, devices, points, or engineering values that are not
   present in the export. When unsure, prefer null / Unassigned over fabrication.
@@ -246,7 +246,7 @@ class TaggingProposal(BaseModel):
     def to_import_body(self) -> dict[str, Any]:
         """Strip the review-only fields and return a payload validated against
         the real import contract. Raises :class:`AiTaggingError` if it does not
-        validate (should not happen — every chunk is validated before merge)."""
+        validate (should not happen - every chunk is validated before merge)."""
         body = {
             "points": [_strip_review_fields(p) for p in self.points],
             "equipment": [_strip_review_fields(e) for e in self.equipment],
@@ -258,7 +258,7 @@ class TaggingProposal(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# 4. Prompt assembly — everything the model sees, built here so it is auditable.
+# 4. Prompt assembly - everything the model sees, built here so it is auditable.
 # ---------------------------------------------------------------------------
 def _vocabulary_block() -> str:
     """The Brick 1.4 equipment allowlist + aliases, in-process from the single
@@ -286,7 +286,7 @@ def _job_context_block(ctx: JobContext | None) -> str:
             f"{notes}"
         )
     return (
-        "No operator brief provided — group strictly from BACnet device grouping "
+        "No operator brief provided - group strictly from BACnet device grouping "
         "and object_name / external_id patterns; leave unclear points Unassigned."
     )
 
@@ -363,7 +363,7 @@ def _apply_path_grouping(export: dict[str, Any]) -> dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# 5. Chunking — keep payloads small enough to tag reliably. Points are grouped
+# 5. Chunking - keep payloads small enough to tag reliably. Points are grouped
 #    by equipment (device) so an equipment's points stay together in one chunk;
 #    the full (small) equipment array rides along with every chunk for context.
 # ---------------------------------------------------------------------------
@@ -498,7 +498,7 @@ def _tag_chunk(
             usage.cache_read_input_tokens += getattr(u, "cache_read_input_tokens", 0) or 0
             usage.cache_creation_input_tokens += getattr(u, "cache_creation_input_tokens", 0) or 0
 
-        # Truncation is deterministic — the tool-call JSON was cut off mid-array,
+        # Truncation is deterministic - the tool-call JSON was cut off mid-array,
         # so the result is unusable and retrying the same chunk won't help. Fail
         # fast with an actionable message instead of bouncing through retries and
         # surfacing a misleading "missing 'points' array".
@@ -589,7 +589,7 @@ def _merge_chunks(chunk_outputs: list[dict[str, Any]]) -> tuple[list[dict[str, A
 
 
 # ---------------------------------------------------------------------------
-# 9. Public entrypoint — the ONLY thing the endpoint calls.
+# 9. Public entrypoint - the ONLY thing the endpoint calls.
 # ---------------------------------------------------------------------------
 def ai_tagging_available() -> bool:
     """True when an Anthropic key is configured (OFDD_ANTHROPIC_API_KEY)."""
@@ -608,7 +608,7 @@ def run_tagging(
 
     ``structured_export`` may be a ``StructuredExport`` pydantic model or a plain
     ``{"equipment": [...], "points": [...]}`` dict. This function performs NO
-    database writes — it only proposes. Chunks are tagged concurrently (up to
+    database writes - it only proposes. Chunks are tagged concurrently (up to
     ``OFDD_AI_TAG_CONCURRENCY`` at a time) so a 500-point site finishes in a few
     waves rather than dozens of serial calls. Progress is reported via
     ``progress_cb`` (for the run store) and emitted on TOPIC_AI_TAG.
@@ -709,7 +709,7 @@ def run_tagging(
     model_tags = {str(mp.get("point_id")): mp for mp in model_points if mp.get("point_id")}
 
     # Build the proposal from the ORIGINAL export rows so identity (external_id,
-    # site_id, the Niagara path) is always preserved — the model need not echo it
+    # site_id, the Niagara path) is always preserved - the model need not echo it
     # back (and shouldn't, for token reasons). We graft only the tag fields, force
     # the Stage-1 invariants, set equipment_name from the device path, and OMIT
     # equipment_id (so the importer links by the path-derived name) and
@@ -743,7 +743,7 @@ def run_tagging(
                 "equipment_source_ref": eq_source_ref,
                 "brick_type": tag.get("brick_type"),
                 "unit": tag.get("unit"),
-                "polling": False,  # Stage 1 is structure-only — every point unpolled
+                "polling": False,  # Stage 1 is structure-only - every point unpolled
                 "confidence": tag.get("confidence"),
                 "rationale": tag.get("rationale"),
             }
@@ -787,7 +787,7 @@ def run_tagging(
     )
 
     # Final guard: confirm the whole merged proposal still satisfies the import
-    # contract (raises AiTaggingError if not — the endpoint surfaces it).
+    # contract (raises AiTaggingError if not - the endpoint surfaces it).
     proposal.to_import_body()
 
     _progress(correlation_id, progress_cb, {
@@ -806,7 +806,7 @@ def _progress(
     data: dict[str, Any],
 ) -> None:
     """Report progress to the run store (cb) and the realtime WS (emit). Both are
-    best-effort — telemetry must never break a run."""
+    best-effort - telemetry must never break a run."""
     if cb is not None:
         try:
             cb(data)
@@ -826,7 +826,7 @@ def _emit(correlation_id: str | None, data: dict[str, Any]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 10. Background run store — so the HTTP request returns immediately and the UI
+# 10. Background run store - so the HTTP request returns immediately and the UI
 #     polls for progress/result. A multi-minute synchronous request cannot
 #     survive the SWA→ACA gateway timeout, so POST /ai-tag starts a run here and
 #     GET /ai-tag/runs/{id} reads it. Runs are held in memory: this assumes the

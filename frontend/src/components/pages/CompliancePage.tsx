@@ -120,7 +120,7 @@ function DialCard({ dial }: { dial: ComplianceDial }) {
 }
 
 function formatNumber(v: number | null, digits = 1, unit = ""): string {
-  if (v == null || Number.isNaN(v)) return "—";
+  if (v == null || Number.isNaN(v)) return "-";
   return `${v.toFixed(digits)}${unit}`;
 }
 
@@ -189,7 +189,7 @@ export function CompliancePage() {
             Averages over the selected window. ΔT prefers air-side (return −
             supply) and falls back to water-side. In-hours compliance % is the
             fraction of in-hours seconds during which no compliance rule was
-            firing — 100 % if no schedule is configured yet.
+            firing - 100 % if no schedule is configured yet.
           </p>
         </CardHeader>
         <CardContent className="p-0">
@@ -225,7 +225,7 @@ export function CompliancePage() {
                     <TableRow key={r.equipment_id}>
                       <TableCell className="font-medium">{r.name}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
-                        {r.equipment_type ?? "—"}
+                        {r.equipment_type ?? "-"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {formatNumber(r.avg_delta_t, 1, " °")}

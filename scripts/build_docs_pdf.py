@@ -13,7 +13,7 @@ LLM context; formatting is plain (same Markdown source, no PDF styling).
 Requirements:
   - pandoc (https://pandoc.org/)
   - For PDF: either
-    - weasyprint (pip install weasyprint) — good quality, no LaTeX, or
+    - weasyprint (pip install weasyprint) - good quality, no LaTeX, or
     - LaTeX (e.g. texlive) for pandoc's default pdflatex
 
 Usage:

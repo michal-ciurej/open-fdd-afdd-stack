@@ -65,13 +65,13 @@ function FaultsTable({
   }
 
   function sensorFromContext(context: Record<string, unknown> | null | undefined): string {
-    if (!context || typeof context !== "object") return "—";
+    if (!context || typeof context !== "object") return "-";
     const c = context as Record<string, unknown>;
     if (typeof c.point_external_id === "string") return c.point_external_id;
     if (typeof c.external_id === "string") return c.external_id;
     if (typeof c.sensor === "string") return c.sensor;
     if (typeof c.column === "string") return c.column;
-    return "—";
+    return "-";
   }
 
   return (
@@ -123,7 +123,7 @@ function FaultsTable({
                     Trends
                   </Link>
                 ) : (
-                  <span className="text-xs text-muted-foreground">—</span>
+                  <span className="text-xs text-muted-foreground">-</span>
                 )}
               </TableCell>
               <TableCell className="text-right text-muted-foreground">
@@ -307,7 +307,7 @@ function FaultCountsByEquipmentSection({
         Fault counts by equipment
       </h2>
       <p className="mb-3 text-xs text-muted-foreground">
-        Ranked by total fault count — highest first. Mark equipment for
+        Ranked by total fault count - highest first. Mark equipment for
         observation to surface it on the overview page.
       </p>
       <Table data-testid="fault-counts-by-equipment-table">
@@ -339,7 +339,7 @@ function FaultCountsByEquipmentSection({
                     {row.equipment_name}
                   </Link>
                   <div className="text-xs text-muted-foreground">
-                    {row.equipment_type ?? "—"}
+                    {row.equipment_type ?? "-"}
                   </div>
                 </TableCell>
                 <TableCell>

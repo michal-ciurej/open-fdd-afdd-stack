@@ -24,7 +24,7 @@ def _validate_modbus_config_common(v: Any) -> Any:
     try:
         n = normalize_modbus_config(v)
     except ValueError as e:
-        # e.g. multiple registers[] — preserve the specific operator message
+        # e.g. multiple registers[] - preserve the specific operator message
         raise ValueError(str(e)) from e
     if n is None:
         raise ValueError(
@@ -156,7 +156,7 @@ def _validate_equipment_type_field(v: Any) -> Any:
 
     Aliases (FCU, brick:Cooling-Tower, "Fan Coil Unit", …) are silently rewritten
     so older clients keep working. Anything not in the allowlist after
-    normalization raises a 422 listing the accepted values — the message is
+    normalization raises a 422 listing the accepted values - the message is
     consumed by the LLM in the AI-assisted tagging workflow when it sends an
     unrecognized class.
     """

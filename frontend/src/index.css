@@ -87,7 +87,7 @@
   --shadow-elev-lg: 0 1px 0 0 hsl(0 0% 100% / 0.8) inset,
     0 4px 8px 0 hsl(158 22% 11% / 0.05),
     0 24px 48px -16px hsl(152 60% 36% / 0.18);
-  /** Page background gradient — soft green + slate wash, applied on body. */
+  /** Page background gradient - soft green + slate wash, applied on body. */
   --page-bg: radial-gradient(
       circle at 0% 0%,
       hsl(152 50% 88% / 0.55) 0%,
@@ -217,7 +217,7 @@ body {
   letter-spacing: -0.011em;
 }
 
-/** Premium gradient stroke — paints the gradient on the border via mask. Apply on
+/** Premium gradient stroke - paints the gradient on the border via mask. Apply on
    any element with rounded-* + relative positioning ancestor (or to the element itself). */
 .gradient-stroke {
   position: relative;
@@ -269,7 +269,7 @@ body {
   background-color: hsl(var(--primary) / 0.7);
 }
 
-/** Skeleton shimmer — used by ui/skeleton.tsx. */
+/** Skeleton shimmer - used by ui/skeleton.tsx. */
 @keyframes shimmer {
   0% {
     transform: translateX(-100%);

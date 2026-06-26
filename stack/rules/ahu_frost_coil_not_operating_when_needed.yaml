@@ -3,7 +3,7 @@
 # Catches failed valve actuator, incorrect control sequence, or misconfigured OAT lockout.
 # Tuning: 1-hour window (12 samples at 5-min) avoids nuisance trips during brief transitions.
 name: ahu_frost_coil_not_operating_when_needed
-description: Frost coil off while fan runs in freezing OAT — risk to equipment
+description: Frost coil off while fan runs in freezing OAT - risk to equipment
 type: expression
 flag: ahu_frost_coil_not_operating_flag
 category: general
@@ -24,8 +24,8 @@ inputs:
     brick: Preheat_Supply_Air_Temperature_Setpoint
 
 params:
-  oat_freeze_threshold: 5.0      # °C — frost protection required at or below this OAT
-  vlv_closed_threshold: 0.05     # fraction — below 5% considered commanded closed
+  oat_freeze_threshold: 5.0      # °C - frost protection required at or below this OAT
+  vlv_closed_threshold: 0.05     # fraction - below 5% considered commanded closed
   rolling_window: 12             # 12 consecutive samples = ~1 h at 5-min data (debounce)
 
 expression: |

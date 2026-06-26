@@ -1,5 +1,5 @@
 title: "Open-FDD AFDD stack"
-description: "Docker AFDD platform — BACnet, TimescaleDB, Grafana, FastAPI (engine: open-fdd on PyPI)"
+description: "Docker AFDD platform - BACnet, TimescaleDB, Grafana, FastAPI (engine: open-fdd on PyPI)"
 baseurl: "/open-fdd-afdd-stack"
 remote_theme: just-the-docs/just-the-docs
 color_scheme: "light"

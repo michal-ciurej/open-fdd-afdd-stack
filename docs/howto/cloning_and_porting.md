@@ -10,7 +10,7 @@ The **open-fdd** repo should be portable to another lab, another workstation, or
 
 ## Core portability idea
 
-Same tools, any building — only the knowledge graph changes.
+Same tools, any building - only the knowledge graph changes.
 
 That means the repo carries the reusable process, while the live Open-FDD model carries the site-specific truth.
 

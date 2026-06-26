@@ -19,7 +19,7 @@ inputs:
     brick: Boiler_Status
 
 params:
-  temp_delta: 4.0        # °C — fault threshold above setpoint per legacy rule
+  temp_delta: 4.0        # °C - fault threshold above setpoint per legacy rule
   rolling_window: 24     # 24 × 5-min samples = 2 h sustained fault (matches Trigger Period)
 
 expression: |

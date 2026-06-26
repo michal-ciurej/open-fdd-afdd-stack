@@ -15,9 +15,9 @@ inputs:
     brick: Outside_Air_Temperature_Sensor
 
 params:
-  oat_max: 40.0           # °C — upper plausible outdoor air temperature limit
-  oat_min: -10.0          # °C — lower plausible outdoor air temperature limit
-  flatline_tolerance: 0.05  # °C — rolling spread below this is considered flat-lined
+  oat_max: 40.0           # °C - upper plausible outdoor air temperature limit
+  oat_min: -10.0          # °C - lower plausible outdoor air temperature limit
+  flatline_tolerance: 0.05  # °C - rolling spread below this is considered flat-lined
   rolling_window: 24      # 24 samples = 2 h at 5-min data (debounce and flatline window)
 
 expression: |

@@ -44,12 +44,12 @@ const inputBase =
   "h-9 rounded-lg border border-border/60 bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring";
 
 function fmtCurrency(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "-";
   return `£${Math.round(value).toLocaleString()}`;
 }
 
 function fmtYears(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "-";
   if (value === 0) return "0 yr";
   if (value < 0.1) return "< 0.1 yr";
   return `${value.toFixed(1)} yr`;
@@ -314,7 +314,7 @@ export function EnergyOpportunitiesPage() {
               data-testid="opportunities-empty"
             >
               {opportunities.length === 0
-                ? "No opportunities yet. Click New opportunity to create one — or let the FDD loop auto-seed them when rules fire."
+                ? "No opportunities yet. Click New opportunity to create one - or let the FDD loop auto-seed them when rules fire."
                 : "No opportunities match the current filters."}
             </div>
           ) : (
@@ -386,7 +386,7 @@ export function EnergyOpportunitiesPage() {
                             {o.result.data_quality}
                           </Badge>
                         ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
+                          <span className="text-xs text-muted-foreground">-</span>
                         )}
                       </TableCell>
                     </TableRow>

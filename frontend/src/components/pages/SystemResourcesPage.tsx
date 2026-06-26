@@ -320,7 +320,7 @@ export function SystemResourcesPage() {
                         <TableCell className="text-right tabular-nums">{c.cpu_pct}</TableCell>
                         <TableCell className="text-right tabular-nums">{c.mem_mb}</TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {c.mem_pct != null ? `${c.mem_pct}%` : "—"}
+                          {c.mem_pct != null ? `${c.mem_pct}%` : "-"}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{c.pids}</TableCell>
                       </TableRow>
@@ -521,7 +521,7 @@ export function SystemResourcesPage() {
         </div>
       )}
 
-      {/* Host (hostname) + Memory/Load/Swap + Disk — same section at bottom */}
+      {/* Host (hostname) + Memory/Load/Swap + Disk - same section at bottom */}
       {(host || disk != null) && (
         <div className="space-y-4">
           <h2 className="text-sm font-medium text-muted-foreground">
@@ -689,14 +689,14 @@ export function SystemResourcesPage() {
         <Skeleton className="mb-8 h-48 w-full rounded-xl" />
       )}
 
-      {/* Docker container logs — API needs /var/run/docker.sock (see stack docker-compose api service) */}
+      {/* Docker container logs - API needs /var/run/docker.sock (see stack docker-compose api service) */}
       <div className="mt-10 border-t border-border/60 pt-8">
         <h2 className="mb-2 flex items-center gap-2 text-sm font-medium text-muted-foreground">
           <ScrollText className="h-4 w-4" />
           Container logs
         </h2>
         <p className="mb-4 text-xs text-muted-foreground">
-          Stream stdout/stderr from a container on the Docker host (same names as <code className="text-[11px]">docker ps</code> — from host-stats metrics: latest table and chart series). Containers must still exist when you stream.
+          Stream stdout/stderr from a container on the Docker host (same names as <code className="text-[11px]">docker ps</code> - from host-stats metrics: latest table and chart series). Containers must still exist when you stream.
         </p>
         <Card>
           <CardContent className="space-y-3 pt-4">

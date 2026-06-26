@@ -42,7 +42,7 @@ function extractRpcPayload(body: unknown): {
 }
 
 function formatCell(v: unknown): string {
-  if (v === null || v === undefined) return "—";
+  if (v === null || v === undefined) return "-";
   if (typeof v === "boolean") return v ? "true" : "false";
   if (typeof v === "number" || typeof v === "string") return String(v);
   try {
@@ -205,7 +205,7 @@ function PrettyResultCore({ result }: { result: unknown }) {
                   <TableCell className="font-mono text-xs text-muted-foreground">{row.type}</TableCell>
                   <TableCell className="font-mono text-sm">
                     {Array.isArray(row.value) && row.value.length === 0
-                      ? "—"
+                      ? "-"
                       : formatCell(row.value)}
                   </TableCell>
                 </TableRow>

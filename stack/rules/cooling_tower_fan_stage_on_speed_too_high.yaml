@@ -16,9 +16,9 @@ inputs:
     brick: Fan_Speed_Sensor
 
 params:
-  fan_stage_on_speed_max: 0.35  # fraction (35%) — design maximum stage-on speed per rule spec
-  fan_on_min: 0.01              # fraction — minimum speed to consider fan running
-  rolling_window: 3             # ~15 min at 5-min sampling — light debounce for transient spikes
+  fan_stage_on_speed_max: 0.35  # fraction (35%) - design maximum stage-on speed per rule spec
+  fan_on_min: 0.01              # fraction - minimum speed to consider fan running
+  rolling_window: 3             # ~15 min at 5-min sampling - light debounce for transient spikes
 
 expression: |
   (normalize_cmd(Fan_Speed_Sensor) > fan_on_min) & (normalize_cmd(Fan_Speed_Sensor) > fan_stage_on_speed_max)

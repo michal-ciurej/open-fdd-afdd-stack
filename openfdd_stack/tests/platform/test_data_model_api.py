@@ -1,4 +1,4 @@
-"""Unit tests for data-model API (export, import, TTL, SPARQL) — validates API/sql/data-model sync."""
+"""Unit tests for data-model API (export, import, TTL, SPARQL) - validates API/sql/data-model sync."""
 
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
@@ -320,7 +320,7 @@ def test_data_model_export_structured_returns_equipment_array_with_member_bricks
     ]
     # Connection sequence (?site_id=<uuid> short-circuits _resolve_site_filter,
     # and an empty BACnet TTL means parse_bacnet_ttl_to_discovery returns []):
-    #   1. _build_unified_export → default_site_name SELECT (uses fetchone — value ignored
+    #   1. _build_unified_export → default_site_name SELECT (uses fetchone - value ignored
     #      by assertions; the MagicMock default is harmless because the prefill is only
     #      used for BACnet-only rows, which we don't generate here).
     #   2. _build_unified_export → DB-only points SELECT (fetchall returns point_rows).
@@ -350,7 +350,7 @@ def test_data_model_export_structured_returns_equipment_array_with_member_bricks
     eq = body["equipment"][0]
     assert eq["equipment_id"] == str(equipment_id)
     assert eq["equipment_name"] == "(011) 3-FCU-01"
-    assert eq["equipment_type"] is None  # untagged — LLM fills this
+    assert eq["equipment_type"] is None  # untagged - LLM fills this
     assert eq["point_count"] == 3
     assert eq["member_brick_types"] == sorted(
         ["Cooling_Valve_Command", "Heating_Valve_Command", "Fan_Enable_Command"]
@@ -359,7 +359,7 @@ def test_data_model_export_structured_returns_equipment_array_with_member_bricks
 
 
 def test_data_model_export_default_shape_unchanged():
-    """Without ?shape=, the response stays a flat list — back-compat for older clients."""
+    """Without ?shape=, the response stays a flat list - back-compat for older clients."""
     with (
         patch(
             "openfdd_stack.platform.api.data_model.serialize_to_ttl",
@@ -395,7 +395,7 @@ def test_data_model_import_rejects_unknown_equipment_type_in_equipment_array():
 
 
 def test_data_model_import_normalizes_alias_in_equipment_array():
-    """An LLM that produces `FCU` (Brick 1.3 short-form) survives import — the
+    """An LLM that produces `FCU` (Brick 1.3 short-form) survives import - the
     server rewrites it to the Brick 1.4 long form silently."""
     eq_id = uuid4()
     site_id = uuid4()
@@ -567,7 +567,7 @@ def test_data_model_import_update_by_point_id_applies_equipment_name():
 
 
 def test_data_model_import_rejects_unknown_top_level_keys():
-    """DataModelImportBody uses extra=forbid — LLM payloads must not add sites/relationships/etc."""
+    """DataModelImportBody uses extra=forbid - LLM payloads must not add sites/relationships/etc."""
     body = {
         "points": [
             {

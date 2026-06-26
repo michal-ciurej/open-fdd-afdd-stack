@@ -57,7 +57,7 @@ export function EquipmentUnderObservationCard({
     [now, days],
   );
 
-  // Only query when there's something to observe — saves a round-trip on the
+  // Only query when there's something to observe - saves a round-trip on the
   // common empty case.
   const enabled = observedEquipment.length > 0;
   const { data: faultCounts, isLoading } = useFaultCountsByEquipment(
@@ -155,7 +155,7 @@ export function EquipmentUnderObservationCard({
                     </Link>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {row.equipment_type ?? "—"}
+                    {row.equipment_type ?? "-"}
                   </TableCell>
                   {showSiteColumn && (
                     <TableCell className="text-xs text-muted-foreground">
@@ -169,7 +169,7 @@ export function EquipmentUnderObservationCard({
                     {(row.total_count / days).toFixed(1)}
                   </TableCell>
                   <TableCell className="text-right text-xs text-muted-foreground">
-                    {row.last_ts ? timeAgo(row.last_ts) : "—"}
+                    {row.last_ts ? timeAgo(row.last_ts) : "-"}
                   </TableCell>
                 </TableRow>
               ))}

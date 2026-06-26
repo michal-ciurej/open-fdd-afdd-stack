@@ -29,12 +29,12 @@ export type ModbusDecodeValue = (typeof MODBUS_DECODE_VALUES)[number];
 
 const MODBUS_DECODE_LABELS: Record<ModbusDecodeValue, string> = {
   "": "Default (server decides)",
-  raw: "Raw — 16-bit words only",
-  uint16: "uint16 — 1 register",
-  int16: "int16 — 1 register",
-  uint32: "uint32 — 2 registers",
-  int32: "int32 — 2 registers",
-  float32: "float32 — 2 registers",
+  raw: "Raw - 16-bit words only",
+  uint16: "uint16 - 1 register",
+  int16: "int16 - 1 register",
+  uint32: "uint32 - 2 registers",
+  int32: "int32 - 2 registers",
+  float32: "float32 - 2 registers",
 };
 
 function decodeNeedsTwoRegisters(v: string): boolean {
@@ -227,7 +227,7 @@ export function ModbusClientPanel({ gateway }: ModbusClientPanelProps) {
             Calls the BACnet gateway container&apos;s <code className="rounded bg-muted px-1 text-xs">POST /modbus/read_registers</code>{" "}
             (proxied as <code className="rounded bg-muted px-1 text-xs">POST /bacnet/modbus_read_registers</code>) with a batch{" "}
             <code className="rounded bg-muted px-1 text-xs">registers[]</code> payload. <strong>Add to data model</strong> writes one point per
-            named row using flat <code className="rounded bg-muted px-1 text-xs">modbus_config</code> (host, address, count, function, …)—not the
+            named row using flat <code className="rounded bg-muted px-1 text-xs">modbus_config</code> (host, address, count, function, …)-not the
             whole batch object on a single point. Uses the same gateway selector as BACnet tools. Polling uses the same scrape interval as BACnet
             when <code className="rounded bg-muted px-1 text-xs">modbus_config</code> is set on points.
           </p>
@@ -246,7 +246,7 @@ export function ModbusClientPanel({ gateway }: ModbusClientPanelProps) {
                 data-testid="modbus-client-site-select"
               >
                 {sites.length === 0 ? (
-                  <option value="">No sites — use BACnet tab Step 1</option>
+                  <option value="">No sites - use BACnet tab Step 1</option>
                 ) : (
                   sites.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -420,7 +420,7 @@ export function ModbusClientPanel({ gateway }: ModbusClientPanelProps) {
                     {row.pointName.trim() ? (
                       <p className="mt-0.5 text-[10px] text-muted-foreground">
                         Timeseries / rule id:{" "}
-                        <code className="rounded bg-muted px-1">{toRuleExternalId(row.pointName) || "—"}</code>
+                        <code className="rounded bg-muted px-1">{toRuleExternalId(row.pointName) || "-"}</code>
                         {" · "}
                         BRICK class can be set later on the Data model page.
                       </p>

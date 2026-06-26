@@ -18,9 +18,9 @@ inputs:
     brick: Supply_Fan_Speed_Command
 
 params:
-  sp_spread_max: 5.0        # Pa — setpoint considered "fixed" if range stays within 5 Pa
+  sp_spread_max: 5.0        # Pa - setpoint considered "fixed" if range stays within 5 Pa
   rolling_window: 2016      # 1 week at 5-min sampling (7 days × 24 h × 12 samples/h)
-  fan_on_threshold: 0.05    # fraction — treat fan as running above 5% speed command
+  fan_on_threshold: 0.05    # fraction - treat fan as running above 5% speed command
 
 expression: |
   (

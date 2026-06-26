@@ -26,12 +26,12 @@ def _ws_auth_ok(token: str | None, headers: dict[str, str]) -> bool:
     """Validate WS auth: machine API key (token query) or SWA-injected Entra principal."""
     settings = get_platform_settings()
 
-    # Machine path — scraper, MCP, automations.
+    # Machine path - scraper, MCP, automations.
     api_key = (getattr(settings, "api_key", None) or "").strip()
     if token and api_key and secrets.compare_digest(token.strip(), api_key):
         return True
 
-    # Browser path — SWA forwards the Entra principal on the WS upgrade.
+    # Browser path - SWA forwards the Entra principal on the WS upgrade.
     ingress_secret = (getattr(settings, "swa_ingress_secret", None) or "").strip()
     if ingress_secret:
         if not secrets.compare_digest(headers.get(SWA_SECRET_HEADER, ""), ingress_secret):

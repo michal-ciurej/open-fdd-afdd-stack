@@ -9,11 +9,11 @@ description: "Docker AFDD platform: bootstrap.sh, Compose, BACnet, TimescaleDB, 
 > **Docs split:** This site (published from **open-fdd-afdd-stack**) is the **Docker platform**. The **`open-fdd`** engine (`RuleRunner`, rule YAML, column maps) is documented at **[bbartling.github.io/open-fdd](https://bbartling.github.io/open-fdd/)** ([repo](https://github.com/bbartling/open-fdd)).
 
 {: .fs-6 .fw-400 }
-**On-prem AFDD stack** — **`./scripts/bootstrap.sh`** brings up Compose services; the rules engine is **`open-fdd`** from **PyPI**. Brick/BACnet RDF, REST API, React dashboard, optional Grafana.
+**On-prem AFDD stack** - **`./scripts/bootstrap.sh`** brings up Compose services; the rules engine is **`open-fdd`** from **PyPI**. Brick/BACnet RDF, REST API, React dashboard, optional Grafana.
 
-Open-FDD is an open-source knowledge graph fault-detection platform for HVAC systems that helps facilities optimize their energy usage and cost-savings. Because it runs on-prem, facilities never have to worry about a vendor hiking prices, going dark, or walking away with their data. The platform is an AFDD stack designed to run inside the building, behind the firewall, under the owner’s control. It transforms operational data into actionable, cost-saving insights and provides a secure integration layer that any cloud platform can use without vendor lock-in. U.S. Department of Energy research reports median energy savings of roughly 8–9% from FDD programs—meaningful annual savings depending on facility size and energy spend.
+Open-FDD is an open-source knowledge graph fault-detection platform for HVAC systems that helps facilities optimize their energy usage and cost-savings. Because it runs on-prem, facilities never have to worry about a vendor hiking prices, going dark, or walking away with their data. The platform is an AFDD stack designed to run inside the building, behind the firewall, under the owner’s control. It transforms operational data into actionable, cost-saving insights and provides a secure integration layer that any cloud platform can use without vendor lock-in. U.S. Department of Energy research reports median energy savings of roughly 8–9% from FDD programs-meaningful annual savings depending on facility size and energy spend.
 
-The building is modeled in a **unified graph**: Brick (sites, equipment, points), BACnet discovery RDF, platform config, and—as the project evolves—other ontologies such as ASHRAE 223P, in one semantic model queried via SPARQL and serialized to `config/data_model.ttl`.
+The building is modeled in a **unified graph**: Brick (sites, equipment, points), BACnet discovery RDF, platform config, and-as the project evolves-other ontologies such as ASHRAE 223P, in one semantic model queried via SPARQL and serialized to `config/data_model.ttl`.
 
 ---
 
@@ -46,7 +46,7 @@ cd open-fdd-afdd-stack
 | **Frontend (React)** | http://localhost:5173 | Main UI: dashboard, sites, points, config, faults, plots. Use this for day-to-day workflows. |
 | **API (REST)** | http://localhost:8000/docs | Swagger UI for integration and scripts. High-level reference: [Appendix: API Reference](appendix/api_reference). |
 | **Caddy (reverse proxy)** | http://localhost:80 | Default `stack/caddy/Caddyfile` proxies **`/api*`**, **`/auth*`**, **`/ws*`**, **`/ai*`** to the API (with `/api` prefix stripped) and **`/*`** to the frontend. See [Security and Caddy](security). Optional hardening (basic auth, TLS) is covered below. |
-| **TimescaleDB** | 127.0.0.1:5432 | Database `openfdd` (user `postgres`); host port is loopback-only in compose ([Security — stack hardening](security#stack-hardening-db-caddy-secrets)). |
+| **TimescaleDB** | 127.0.0.1:5432 | Database `openfdd` (user `postgres`); host port is loopback-only in compose ([Security - stack hardening](security#stack-hardening-db-caddy-secrets)). |
 | **BACnet (diy-bacnet-server)** | http://localhost:8080/docs | JSON-RPC API; UDP 47808 for BACnet/IP. |
 | **Grafana** | http://localhost:3000 | **Optional:** `./scripts/bootstrap.sh --with-grafana` (admin/admin). React frontend provides equivalent views. |
 
@@ -66,9 +66,9 @@ The **committed** **`stack/caddy/Caddyfile`** already puts the **API and WebSock
    - Proxies **`/*`** to the **frontend** (e.g. `frontend:5173`).
    - When using Caddy basic auth, add **`header_up X-Caddy-Auth <secret>`** on API routes so the API accepts requests that passed Caddy (set **`OFDD_CADDY_INTERNAL_SECRET`** in the API container to the same value).
 
-2. **Full steps:** See [Security and Caddy](security) — Quick bootstrap, TLS / stack-hardening notes, default password change, and troubleshooting (401s, WebSocket behind Caddy).
+2. **Full steps:** See [Security and Caddy](security) - Quick bootstrap, TLS / stack-hardening notes, default password change, and troubleshooting (401s, WebSocket behind Caddy).
 
-3. **Caddyfile location:** `stack/caddy/Caddyfile`. An extended **example** (many paths + basic auth) is in [Security — Caddyfile for protecting the entire API](security#caddyfile-for-protecting-the-entire-api); **HTTPS** starter: [`stack/caddy/Caddyfile.https.example`](../stack/caddy/Caddyfile.https.example).
+3. **Caddyfile location:** `stack/caddy/Caddyfile`. An extended **example** (many paths + basic auth) is in [Security - Caddyfile for protecting the entire API](security#caddyfile-for-protecting-the-entire-api); **HTTPS** starter: [`stack/caddy/Caddyfile.https.example`](../stack/caddy/Caddyfile.https.example).
 
 ---
 
@@ -76,7 +76,7 @@ The **committed** **`stack/caddy/Caddyfile`** already puts the **API and WebSock
 
 | Section | Description |
 |---------|--------------|
-| **Engine (PyPI)** | Library-only install, `RuleRunner`, column-map resolvers, rule YAML — **[bbartling.github.io/open-fdd](https://bbartling.github.io/open-fdd/)** |
+| **Engine (PyPI)** | Library-only install, `RuleRunner`, column-map resolvers, rule YAML - **[bbartling.github.io/open-fdd](https://bbartling.github.io/open-fdd/)** |
 | [System Overview](overview) | Architecture, services, data flow |
 | [Modular Architecture](modular_architecture) | Collector/Model/Engine/Interface boundaries and mode-based bootstrap matrix. |
 | [Getting Started](getting_started) | Install, bootstrap, first run |
@@ -84,12 +84,12 @@ The **committed** **`stack/caddy/Caddyfile`** already puts the **API and WebSock
 | [BACnet](bacnet/overview) | Discovery, scraping, RPC, RDF/BRICK (knowledge graph, bacpypes3) |
 | [Data modeling](modeling/overview) | Sites, equipment, points (CRUD), Brick TTL, 223P-aligned engineering metadata, [SPARQL cookbook](modeling/sparql_cookbook), [AI-assisted tagging](modeling/ai_assisted_tagging) |
 | [Fault rules for HVAC](rules/overview) | Rule types, expression cookbook, [test bench rule catalog](rules/test_bench_rule_catalog) |
-| [Concepts](concepts/cloud_export) | [Cloud export example](concepts/cloud_export) — how vendors pull data from the API to their cloud |
+| [Concepts](concepts/cloud_export) | [Cloud export example](concepts/cloud_export) - how vendors pull data from the API to their cloud |
 | [Operations](operations/index) | [Integrity sweep](operations/openfdd_integrity_sweep), [Overnight review](operations/overnight_review), [MCP RAG service](operations/mcp_rag_service), [Testing plan](operations/testing_plan) |
 | [How-to Guides](howto/index) | [openfdd-engine vs `open_fdd.engine`](howto/openfdd_engine), [Engine-only / IoT](howto/engine_only_iot), [Data model engineering](howto/data_model_engineering), [Grafana dashboards (optional)](howto/grafana_dashboards), [Grafana SQL cookbook](howto/grafana_cookbook) |
 | [Security & Caddy](security) | Basic auth, bootstrap, hardening, optional TLS |
 | [Configuration](configuration) | Platform config, rule YAML |
-| [Appendix](appendix) | [API Reference](appendix/api_reference) — REST at a glance; [Technical reference](appendix/technical_reference), [Developer guide](appendix/developer_guide) |
+| [Appendix](appendix) | [API Reference](appendix/api_reference) - REST at a glance; [Technical reference](appendix/technical_reference), [Developer guide](appendix/developer_guide) |
 | [Contributing](contributing) | How to contribute; alpha/beta focus; bugs, rules, docs, drivers |
 
 **Use the React frontend** for config, sites, points, data model, faults, and plots. **API details** (CRUD, config, data-model, download, analytics, BACnet) are summarized in [Appendix: API Reference](appendix/api_reference); full OpenAPI at `/docs` and `/openapi.json`. **Grafana** is optional; the React UI provides equivalent timeseries and fault views.
@@ -107,7 +107,7 @@ The **committed** **`stack/caddy/Caddyfile`** already puts the **API and WebSock
 | **Grafana** | 3000 | **Optional** dashboards (`--with-grafana`); React frontend has equivalent views |
 | **diy-bacnet-server** | 8080 | JSON-RPC API (HTTP); optional BACnet2MQTT + experimental MQTT RPC gateway when env vars set ([MQTT how-to](howto/mqtt_integration)) |
 | **diy-bacnet-server** | 47808 | BACnet/IP (UDP) |
-| **Mosquitto (MQTT)** | 1883 | **Optional / experimental:** `./scripts/bootstrap.sh --with-mqtt-bridge` — generic broker for BACnet2MQTT and/or MQTT RPC cmd/ack ([MQTT how-to](howto/mqtt_integration)) |
+| **Mosquitto (MQTT)** | 1883 | **Optional / experimental:** `./scripts/bootstrap.sh --with-mqtt-bridge` - generic broker for BACnet2MQTT and/or MQTT RPC cmd/ack ([MQTT how-to](howto/mqtt_integration)) |
 
 ---
 

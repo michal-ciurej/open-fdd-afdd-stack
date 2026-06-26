@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { PREDEFINED_QUERIES } from "@/data/data-model-testing-queries";
 
-/** AVAILABLE_COMPONENTS from brick_model_summarizer — predefined tests should cover these. */
+/** AVAILABLE_COMPONENTS from brick_model_summarizer - predefined tests should cover these. */
 const AVAILABLE_COMPONENT_IDS = [
   "class_tag_summary",
   "ahu_information",

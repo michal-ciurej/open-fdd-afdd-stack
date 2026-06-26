@@ -8,7 +8,7 @@ interface EngineerReportModalProps {
   items: EngineerReportEquipmentItem[];
   windowDays: number;
   siteId?: string;
-  /** Shown in the report header — e.g. the site name. */
+  /** Shown in the report header - e.g. the site name. */
   subtitle?: string;
   onClose: () => void;
 }

@@ -31,7 +31,7 @@ interface EquipmentHealthMatrixProps {
 }
 
 /**
- * Viz 1 — Equipment Health Matrix. Rows = observed equipment (worst-faulting
+ * Viz 1 - Equipment Health Matrix. Rows = observed equipment (worst-faulting
  * first), columns = days. Cell intensity tracks daily fault count; a marker
  * frames the day each asset was last maintained so the before/after effect of
  * an intervention is visible at a glance.
@@ -54,7 +54,7 @@ export function EquipmentHealthMatrix({ rows, period }: EquipmentHealthMatrixPro
         <CardTitle className="text-base">Equipment health matrix ({period} d)</CardTitle>
         <p className="text-sm font-normal text-muted-foreground">
           Daily fault density per observed asset, worst first. The ringed cell marks when an
-          asset was last maintained — watch the band to its right cool down if the fix held.
+          asset was last maintained - watch the band to its right cool down if the fix held.
         </p>
       </CardHeader>
       <CardContent>

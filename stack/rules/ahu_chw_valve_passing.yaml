@@ -3,7 +3,7 @@
 # Tuning: 4°C delta and 120-min window avoid nuisance trips from sensor noise and short transients; 5-min samples assumed.
 
 name: ahu_chw_valve_passing
-description: SAT well below MAT while CHW valve closed — chilled water passing
+description: SAT well below MAT while CHW valve closed - chilled water passing
 type: expression
 flag: ahu_chw_valve_passing_flag
 category: general
@@ -22,9 +22,9 @@ inputs:
     brick: Cooling_Valve_Command
 
 params:
-  sat_mat_delta: 4.0        # °C — SAT must be this far below MAT to indicate valve passing
-  sat_rat_delta: 4.0        # °C — fallback: SAT vs RAT when MAT unavailable
-  vlv_closed_max: 0.05      # fraction — valve treated as closed below 5% command
+  sat_mat_delta: 4.0        # °C - SAT must be this far below MAT to indicate valve passing
+  sat_rat_delta: 4.0        # °C - fallback: SAT vs RAT when MAT unavailable
+  vlv_closed_max: 0.05      # fraction - valve treated as closed below 5% command
   rolling_window: 24        # ~120 min at 5-min sampling (debounce, matches trigger period)
 
 expression: |

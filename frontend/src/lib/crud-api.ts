@@ -183,7 +183,7 @@ export function createPoint(body: PointCreateBody): Promise<Point> {
   });
 }
 
-/** PATCH a point — any subset of PointPatchBody (matches backend PointUpdate). */
+/** PATCH a point - any subset of PointPatchBody (matches backend PointUpdate). */
 export function updatePoint(pointId: string, body: PointPatchBody): Promise<Point> {
   return apiFetch<Point>(`/points/${pointId}`, {
     method: "PATCH",
@@ -218,7 +218,7 @@ export function dataModelImport(body: DataModelImportBody) {
   });
 }
 
-/** POST /data-model/ai-tag — start a background tagging run (returns a run id). */
+/** POST /data-model/ai-tag - start a background tagging run (returns a run id). */
 export function dataModelAiTag(body: AiTagRequest) {
   return apiFetch<AiTagRunStart>("/data-model/ai-tag", {
     method: "POST",
@@ -227,7 +227,7 @@ export function dataModelAiTag(body: AiTagRequest) {
   });
 }
 
-/** GET /data-model/ai-tag/runs/{run_id} — poll a tagging run for progress/result. */
+/** GET /data-model/ai-tag/runs/{run_id} - poll a tagging run for progress/result. */
 export function dataModelAiTagRun(runId: string) {
   return apiFetch<AiTagRunState>(`/data-model/ai-tag/runs/${encodeURIComponent(runId)}`);
 }
@@ -256,7 +256,7 @@ export interface ResetFaultHistoryResponse {
 }
 
 /**
- * POST /faults/reset — delete all fault history (results, events, state) for ONE site.
+ * POST /faults/reset - delete all fault history (results, events, state) for ONE site.
  * site_id is required; the reset is strictly scoped to that site and never runs globally.
  */
 export function resetFaultHistory(siteId: string) {
@@ -488,7 +488,7 @@ export function syncRuleDefinitions() {
   });
 }
 
-/** POST /run-fdd — touch trigger file so fdd-loop runs immediately. */
+/** POST /run-fdd - touch trigger file so fdd-loop runs immediately. */
 export function triggerFddRun() {
   return apiFetch<{ status: string; path: string }>("/run-fdd", {
     method: "POST",
@@ -512,7 +512,7 @@ export interface NiagaraEndpoint {
   last_sync_ts?: string | null;
 }
 
-/** Body for POST (create) — name + password required. */
+/** Body for POST (create) - name + password required. */
 export interface NiagaraEndpointCreateBody {
   name: string;
   base_url: string;
@@ -522,7 +522,7 @@ export interface NiagaraEndpointCreateBody {
   enabled: boolean;
 }
 
-/** Body for PUT (update) — omitted fields and a blank password keep the current value. */
+/** Body for PUT (update) - omitted fields and a blank password keep the current value. */
 export interface NiagaraEndpointUpdateBody {
   name?: string;
   base_url?: string;
@@ -691,7 +691,7 @@ export function getSiteEnergyRates(siteId: string) {
   return apiFetch<SiteEnergyRates>(`/sites/${siteId}/energy-rates`);
 }
 
-/** PUT /sites/{site_id}/energy-rates — partial upsert. */
+/** PUT /sites/{site_id}/energy-rates - partial upsert. */
 export function updateSiteEnergyRates(
   siteId: string,
   body: SiteEnergyRatesUpdateBody,
@@ -703,12 +703,12 @@ export function updateSiteEnergyRates(
   });
 }
 
-/** GET /sites/{site_id}/schedule — the weekly core-occupancy windows. */
+/** GET /sites/{site_id}/schedule - the weekly core-occupancy windows. */
 export function getSiteSchedule(siteId: string) {
   return apiFetch<SiteScheduleBody>(`/sites/${siteId}/schedule`);
 }
 
-/** PUT /sites/{site_id}/schedule — replaces the full weekly schedule. */
+/** PUT /sites/{site_id}/schedule - replaces the full weekly schedule. */
 export function updateSiteSchedule(siteId: string, body: SiteScheduleBody) {
   return apiFetch<SiteScheduleBody>(`/sites/${siteId}/schedule`, {
     method: "PUT",
@@ -724,7 +724,7 @@ export function getEquipmentEnergyProfile(equipmentId: string) {
   );
 }
 
-/** PUT /equipment/{equipment_id}/energy-profile — partial upsert. */
+/** PUT /equipment/{equipment_id}/energy-profile - partial upsert. */
 export function updateEquipmentEnergyProfile(
   equipmentId: string,
   body: EquipmentEnergyProfileUpdateBody,

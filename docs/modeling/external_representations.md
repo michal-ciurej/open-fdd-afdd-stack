@@ -27,7 +27,7 @@ You will see `ref:` in TTL (or in **View full data model**) after any of these:
 - **GET /data-model/ttl** with `save=true` (default in many clients), **POST /data-model/serialize**, or **Data model → Serialize to TTL** in the UI.
 - The **background graph sync** on a timer: interval **`graph_sync_interval_min`** (platform config). In the React app this is edited on **OpenFDD Config**, not the Overview page. See [Configuration → Platform keys](../configuration#platform-keys-config).
 
-So if you only ran BACnet discovery and are watching **`config/data_model.ttl` on disk**, `ref:` may lag until the next serialize (timer or explicit action above). Discovery may also request a TTL write when **write to file** is enabled on that flow—otherwise rely on CRUD/import or an explicit serialize.
+So if you only ran BACnet discovery and are watching **`config/data_model.ttl` on disk**, `ref:` may lag until the next serialize (timer or explicit action above). Discovery may also request a TTL write when **write to file** is enabled on that flow-otherwise rely on CRUD/import or an explicit serialize.
 
 ---
 

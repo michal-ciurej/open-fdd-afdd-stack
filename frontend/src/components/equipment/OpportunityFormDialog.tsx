@@ -78,12 +78,12 @@ function slugify(s: string): string {
 }
 
 function fmtCurrency(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "-";
   return `£${Math.round(value).toLocaleString()}`;
 }
 
 function fmtYears(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "-";
   if (value === 0) return "0 yr";
   if (value < 0.1) return "< 0.1 yr";
   return `${value.toFixed(1)} yr`;
@@ -91,7 +91,7 @@ function fmtYears(value: number | null | undefined): string {
 
 type OpportunityFormDialogProps = {
   /** Pre-selected equipment when the dialog is opened from the equipment Energy
-   *  tab. Omit to let the operator pick from a dropdown — used by the
+   *  tab. Omit to let the operator pick from a dropdown - used by the
    *  /energy-engineering "+ New opportunity" entry. */
   equipmentId?: string;
   /** Required when equipmentId is omitted, so the equipment dropdown can list
@@ -295,7 +295,7 @@ export function OpportunityFormDialog({
                 {equipmentList.map((eq) => (
                   <option key={eq.id} value={eq.id}>
                     {eq.name}
-                    {eq.equipment_type ? ` — ${eq.equipment_type}` : ""}
+                    {eq.equipment_type ? ` - ${eq.equipment_type}` : ""}
                   </option>
                 ))}
               </select>
@@ -416,7 +416,7 @@ export function OpportunityFormDialog({
                         }
                         className={`${inputBase} w-full`}
                       >
-                        <option value="">—</option>
+                        <option value="">-</option>
                         {f.options.map((opt) => (
                           <option key={opt} value={opt}>
                             {opt}
@@ -476,7 +476,7 @@ export function OpportunityFormDialog({
                 <div>
                   {preview?.annual_kwh_saved != null
                     ? Math.round(preview.annual_kwh_saved).toLocaleString()
-                    : "—"}
+                    : "-"}
                 </div>
               </div>
               <div>
@@ -486,7 +486,7 @@ export function OpportunityFormDialog({
               <div>
                 <div className="text-xs text-muted-foreground">Data</div>
                 <div className="capitalize">
-                  {preview?.data_quality ?? "—"}
+                  {preview?.data_quality ?? "-"}
                 </div>
               </div>
             </div>

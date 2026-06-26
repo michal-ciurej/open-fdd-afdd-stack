@@ -23,9 +23,9 @@ inputs:
     brick: Heating_Valve_Command
 
 params:
-  damper_full_open_threshold: 0.99   # fraction — economy damper considered fully open above 99%
-  sat_oat_delta: 4.0                 # °C — minimum SAT-OAT difference to flag
-  htg_vlv_closed: 0.05               # fraction — heating valve treated as closed below 5%
+  damper_full_open_threshold: 0.99   # fraction - economy damper considered fully open above 99%
+  sat_oat_delta: 4.0                 # °C - minimum SAT-OAT difference to flag
+  htg_vlv_closed: 0.05               # fraction - heating valve treated as closed below 5%
   rolling_window: 18                 # ~90 min at 5-min sampling (debounce)
 
 expression: |

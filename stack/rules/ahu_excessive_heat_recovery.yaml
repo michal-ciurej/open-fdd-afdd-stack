@@ -18,8 +18,8 @@ inputs:
     brick: Outside_Air_Temperature_Sensor
 
 params:
-  delta_temp_min: 1.5   # °C — minimum RAT/OAT difference to confirm counterproductive recovery (avoids crossover noise)
-  rolling_window: 6     # 6 samples = 30 min at 5-min data — matches Trigger Period
+  delta_temp_min: 1.5   # °C - minimum RAT/OAT difference to confirm counterproductive recovery (avoids crossover noise)
+  rolling_window: 6     # 6 samples = 30 min at 5-min data - matches Trigger Period
 
 expression: |
   (

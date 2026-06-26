@@ -7,7 +7,7 @@
 # weather-scraper and fdd-loop use the same image but different commands; logs: docker logs -f openfdd_bacnet_scraper
 #
 # Prerequisite: diy-bacnet-server as sibling of open-fdd (or override build context).
-# Rules YAML and config are mounted from repo — edit on host, containers see changes.
+# Rules YAML and config are mounted from repo - edit on host, containers see changes.
 #
 # Edge limits: log rotation and data retention set at bootstrap or via stack/.env
 # (OFDD_LOG_MAX_SIZE, OFDD_LOG_MAX_FILES, OFDD_RETENTION_DAYS).
@@ -17,7 +17,7 @@ x-log-opts: &log-opts
   max-file: "${OFDD_LOG_MAX_FILES:-3}"
 
 services:
-  # BACnet/IP gateway — always-on server, JSON-RPC on 8080.
+  # BACnet/IP gateway - always-on server, JSON-RPC on 8080.
   # Optional BACnet2MQTT: set env in stack/.env or bootstrap with --with-mqtt-bridge (broker + bridge wiring).
   bacnet-server:
     build:
@@ -45,7 +45,7 @@ services:
       MQTT_POLL_INTERVAL_SEC: "${MQTT_POLL_INTERVAL_SEC:-30}"
       MQTT_USER: "${MQTT_USER:-}"
       MQTT_PASSWORD: "${MQTT_PASSWORD:-}"
-      # Optional MQTT RPC gateway (cmd/ack/telemetry) — generic broker; see diy-bacnet-server README.
+      # Optional MQTT RPC gateway (cmd/ack/telemetry) - generic broker; see diy-bacnet-server README.
       MQTT_RPC_GATEWAY_ENABLED: "${MQTT_RPC_GATEWAY_ENABLED:-}"
       MQTT_RPC_BROKER_URL: "${MQTT_RPC_BROKER_URL:-}"
       MQTT_RPC_TOPIC_PREFIX: "${MQTT_RPC_TOPIC_PREFIX:-diy-bacnet/gateway}"
@@ -77,7 +77,7 @@ services:
     restart: unless-stopped
     # BACnet/IP: UDP 47808. JSON-RPC HTTP :8080 (Swagger disabled; use Open-FDD /bacnet-tools).
 
-  # BACnet scraper — reads points via RPC, writes to TimescaleDB.
+  # BACnet scraper - reads points via RPC, writes to TimescaleDB.
   # Single gateway: OFDD_BACNET_SERVER_URL + OFDD_BACNET_SITE_ID (site tag for central DB).
   # Multi-gateway (central aggregator): set OFDD_BACNET_GATEWAYS to JSON array of {url, site_id} (KG drives object list).
   # Central-only (no local BACnet): omit bacnet-server and bacnet-scraper; remote gateways push via OFDD_DB_DSN + OFDD_BACNET_SITE_ID.
@@ -114,7 +114,7 @@ services:
       driver: json-file
       options: *log-opts
 
-  # Open-Meteo weather scraper — fetch once per interval (e.g. daily), write to TimescaleDB
+  # Open-Meteo weather scraper - fetch once per interval (e.g. daily), write to TimescaleDB
   weather-scraper:
     build:
       context: ..
@@ -152,7 +152,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
       POSTGRES_DB: openfdd
-    # Phase 2: bind to loopback only — not reachable from the LAN/internet; use docker exec or a temp publish for remote admin.
+    # Phase 2: bind to loopback only - not reachable from the LAN/internet; use docker exec or a temp publish for remote admin.
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
@@ -188,7 +188,7 @@ services:
       driver: json-file
       options: *log-opts
 
-  # FDD rule loop — every N hours, loads rules from YAML, pulls last N days, runs all rules, writes fault_results
+  # FDD rule loop - every N hours, loads rules from YAML, pulls last N days, runs all rules, writes fault_results
   # YAML edits on host picked up on next run (no restart)
   fdd-loop:
     build:
@@ -215,7 +215,7 @@ services:
       driver: json-file
       options: *log-opts
 
-  # Host/container resource stats — memory, load, docker stats → host_metrics, container_metrics
+  # Host/container resource stats - memory, load, docker stats → host_metrics, container_metrics
   host-stats:
     build:
       context: ..
@@ -235,7 +235,7 @@ services:
       driver: json-file
       options: *log-opts
 
-  # CRUD API — sites, points, equipment, timeseries (data model)
+  # CRUD API - sites, points, equipment, timeseries (data model)
   # config volume must be rw so data_model.ttl is written to the host (same path as mount).
   api:
     build:
@@ -321,7 +321,7 @@ services:
       driver: json-file
       options: *log-opts
 
-  # React dashboard — production build served as static assets (no Vite dev/HMR in stack mode)
+  # React dashboard - production build served as static assets (no Vite dev/HMR in stack mode)
   frontend:
     image: node:22-alpine
     container_name: openfdd_frontend
@@ -336,7 +336,7 @@ services:
           # Always rebuild: dist lives on the bind-mounted host ../frontend; an existing dist
           # would skip npm run build forever, so UI changes (and VITE_* env) never shipped.
           npm run build
-          # Production static server: use project Vite (package-lock) — do not use `npx serve` (recent 14.x/15.x broke `-l 0.0.0.0:5173`).
+          # Production static server: use project Vite (package-lock) - do not use `npx serve` (recent 14.x/15.x broke `-l 0.0.0.0:5173`).
           npx vite preview --host 0.0.0.0 --port 5173
     # Host bind: loopback with Caddy/TLS; 0.0.0.0 for standard HTTP lab (see OFDD_FRONTEND_HOST_BIND in stack/.env).
     ports:
@@ -386,7 +386,7 @@ services:
       driver: json-file
       options: *log-opts
 
-  # MQTT broker (profile mqtt). Optional: ./scripts/bootstrap.sh --with-mqtt-bridge — for future BACnet2MQTT / remote collection (not required for core Open-FDD).
+  # MQTT broker (profile mqtt). Optional: ./scripts/bootstrap.sh --with-mqtt-bridge - for future BACnet2MQTT / remote collection (not required for core Open-FDD).
   mosquitto:
     profiles:
       - mqtt

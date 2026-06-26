@@ -73,7 +73,7 @@ def list_bacnet_devices(
                 "equipment_id": (
                     str(r["equipment_uuid"]) if r["equipment_uuid"] else None
                 ),
-                "equipment_name": r["equipment_name"] or "—",
+                "equipment_name": r["equipment_name"] or "-",
                 "equipment_type": r["equipment_type"],
             }
             for r in rows
@@ -243,7 +243,7 @@ def list_fault_definitions():
 def reset_fault_history(
     site_id: str = Query(
         ...,
-        description="Site UUID or name. REQUIRED — the reset is strictly scoped to this site and never runs globally.",
+        description="Site UUID or name. REQUIRED - the reset is strictly scoped to this site and never runs globally.",
     ),
     user: AuthUser = Depends(get_current_user),
 ):

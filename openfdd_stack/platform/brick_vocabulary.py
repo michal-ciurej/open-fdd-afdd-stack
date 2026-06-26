@@ -1,11 +1,11 @@
 """
-Brick Schema 1.4 equipment-class vocabulary — single source of truth for the stack.
+Brick Schema 1.4 equipment-class vocabulary - single source of truth for the stack.
 
 Why this module exists:
   ``equipment.equipment_type`` flows into the TTL writer, the FDD rule selector
   (``rules_loader`` → ``brick_ttl_resolver``), the frontend allowlist, and the
   AI-assisted tagging workflow. Each consumer used to maintain its own copy of
-  the vocabulary — that drift is what produced ``Fan_Coil_Unit`` in the DB and
+  the vocabulary - that drift is what produced ``Fan_Coil_Unit`` in the DB and
   ``[FCU]`` in the rule YAMLs (different Brick versions, same intent).
 
 Single rule going forward:
@@ -109,7 +109,7 @@ _CLASS_LOWER: dict[str, str] = {
 def normalize_equipment_type(value: str | None) -> str | None:
     """Resolve aliases / case / ``brick:`` prefix / dashes to a canonical class.
 
-    Does **not** validate — unknown values pass through unchanged so callers
+    Does **not** validate - unknown values pass through unchanged so callers
     can choose between rejecting (API write paths) and falling back (TTL
     writer). Use :func:`is_valid_equipment_type` afterwards if you need to
     decide.

@@ -1,5 +1,5 @@
 # Weather: Gust less than wind (sensor inconsistency)
-# Fault when gust_mph < wind_mph — physically implausible
+# Fault when gust_mph < wind_mph - physically implausible
 name: weather_gust_lt_wind
 description: Wind gust reported lower than sustained wind (sensor error)
 type: expression

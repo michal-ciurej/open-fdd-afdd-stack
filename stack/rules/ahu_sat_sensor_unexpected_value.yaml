@@ -18,8 +18,8 @@ inputs:
     brick: Supply_Fan_Status
 
 params:
-  sat_max: 49.0         # °C — upper plausibility limit for supply air
-  sat_min: 7.0          # °C — lower plausibility limit (standard; use 5°C for tempering units)
+  sat_max: 49.0         # °C - upper plausibility limit for supply air
+  sat_min: 7.0          # °C - lower plausibility limit (standard; use 5°C for tempering units)
   rolling_window: 24    # 24 × 5-min samples = 2 h persistence check
 
 expression: |

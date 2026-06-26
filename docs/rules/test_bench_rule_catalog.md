@@ -43,8 +43,8 @@ Each file below links to the copy on **GitHub** (`master` branch) so the publish
 
 ## Related docs
 
-- [Fault rules overview](overview) — where live rules live (`stack/rules`) and how to upload or sync.
-- [Expression rule cookbook](../expression_rule_cookbook) — AHU, chiller, weather patterns that match many of these files.
-- [OpenClaw lab README](https://github.com/bbartling/open-fdd/blob/master/openclaw/README.md) — bench layout including `rules_reference/` and E2E automation.
+- [Fault rules overview](overview) - where live rules live (`stack/rules`) and how to upload or sync.
+- [Expression rule cookbook](../expression_rule_cookbook) - AHU, chiller, weather patterns that match many of these files.
+- [OpenClaw lab README](https://github.com/bbartling/open-fdd/blob/master/openclaw/README.md) - bench layout including `rules_reference/` and E2E automation.
 
 The former **open-fdd-automated-testing** repo is superseded by the **`openclaw/`** tree in this repository; do not link automation to a separate rules tree.

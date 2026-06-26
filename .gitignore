@@ -130,7 +130,7 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
-# Environments (includes stack/.env — bootstrap secrets; never commit)
+# Environments (includes stack/.env - bootstrap secrets; never commit)
 .env
 stack/.env
 .venv
@@ -178,7 +178,7 @@ config/.run_fdd_now
 # Brick + BACnet TTL generated at runtime (DB + in-memory graph); do not track
 config/data_model.ttl
 
-# Generated docs PDF (scripts/build_docs_pdf.py) — commit pdf/open-fdd-docs.pdf to allow download
+# Generated docs PDF (scripts/build_docs_pdf.py) - commit pdf/open-fdd-docs.pdf to allow download
 /pdf/*
 !/pdf/.gitkeep
 !/pdf/open-fdd-docs.pdf

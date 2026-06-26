@@ -22,8 +22,8 @@ inputs:
     brick: Return_Air_Temperature_Setpoint
 
 params:
-  zt_above_sp_threshold: 1.0   # °C — zone temp must exceed setpoint by this margin to flag
-  heating_active_margin: 0.0   # °C — return air temp above return air setpoint indicates heating active
+  zt_above_sp_threshold: 1.0   # °C - zone temp must exceed setpoint by this margin to flag
+  heating_active_margin: 0.0   # °C - return air temp above return air setpoint indicates heating active
   rolling_window: 6            # 30 min at 5-min sampling (debounce)
 
 expression: |

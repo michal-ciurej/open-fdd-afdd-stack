@@ -39,7 +39,7 @@ jobs:
           if "site-packages" not in s:
               raise SystemExit(
                   f"Expected open_fdd import from site-packages (PyPI wheel), got: {p}\n"
-                  "If you need an editable engine checkout, do that only locally — CI must match production."
+                  "If you need an editable engine checkout, do that only locally - CI must match production."
               )
           print("OK:", p)
           PY

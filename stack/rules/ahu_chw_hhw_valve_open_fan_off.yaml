@@ -19,12 +19,12 @@ inputs:
     brick: Supply_Fan_Status
 
 params:
-  vlv_open_threshold: 0.05      # fraction — treat anything above 5% as "open" (normalize_cmd output)
-  fan_off_threshold: 0.5        # fraction — fan considered off when normalized status <= this
-  consecutive_window: 36        # 3 h at 5-min sampling — minimum sustained valve-open period
-  rolling_window_7d: 2016       # 7 days at 5-min sampling — period for % calculation
+  vlv_open_threshold: 0.05      # fraction - treat anything above 5% as "open" (normalize_cmd output)
+  fan_off_threshold: 0.5        # fraction - fan considered off when normalized status <= this
+  consecutive_window: 36        # 3 h at 5-min sampling - minimum sustained valve-open period
+  rolling_window_7d: 2016       # 7 days at 5-min sampling - period for % calculation
   fraction_threshold: 0.25      # fraction of fan-off time that valve must be open to trigger
-  rolling_window: 36            # debounce: 3 h at 5-min sampling — consecutive True samples required
+  rolling_window: 36            # debounce: 3 h at 5-min sampling - consecutive True samples required
 
 expression: |
   (

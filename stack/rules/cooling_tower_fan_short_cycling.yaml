@@ -2,7 +2,7 @@
 # Catches stuck relay, control loop instability, oversized fan, or aggressive staging logic.
 # Tuning: state-change count uses a 60-min rolling window (12 samples at 5-min data); threshold set at 8 changes per the legacy rule.
 name: cooling_tower_fan_short_cycling
-description: CT fan short cycling — too many state changes in 60 min
+description: CT fan short cycling - too many state changes in 60 min
 type: expression
 flag: cooling_tower_fan_short_cycling_flag
 category: general
@@ -17,7 +17,7 @@ inputs:
     brick: Cooling_Tower_Fan_Command
 
 params:
-  max_state_changes: 8      # count — maximum allowed fan state changes per rolling window before flagging
+  max_state_changes: 8      # count - maximum allowed fan state changes per rolling window before flagging
   rolling_window: 12        # 60 min at 5-min sampling (debounce window)
 
 expression: |

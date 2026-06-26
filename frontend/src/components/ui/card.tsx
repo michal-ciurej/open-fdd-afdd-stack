@@ -4,10 +4,10 @@ import { cn } from "@/lib/utils";
 /**
  * Card tones:
  * - "flat" (default): solid surface, premium gradient stroke + soft elevation. No backdrop-blur.
- *   Use everywhere by default — performant on tables, charts, and dense data screens.
+ *   Use everywhere by default - performant on tables, charts, and dense data screens.
  * - "glass": semi-transparent surface with backdrop-blur. GPU-expensive; opt in only for
  *   hero/overview surfaces (Overview page) where it reads as premium and density is low.
- * - "elevated": same as flat but with stronger shadow — for primary call-to-action cards.
+ * - "elevated": same as flat but with stronger shadow - for primary call-to-action cards.
  */
 type CardTone = "flat" | "glass" | "elevated";
 

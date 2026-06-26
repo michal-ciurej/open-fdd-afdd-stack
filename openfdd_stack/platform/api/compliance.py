@@ -49,7 +49,7 @@ class ComplianceDial(BaseModel):
     severity: str
     # Count of distinct equipment currently in active state for this fault.
     active_count: int
-    # Capacity for the dial denominator — distinct equipment that have at
+    # Capacity for the dial denominator - distinct equipment that have at
     # least one row in fault_state for this fault_id (i.e. ever evaluated).
     evaluated_count: int
 

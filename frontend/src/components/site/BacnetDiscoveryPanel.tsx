@@ -266,7 +266,7 @@ export function BacnetDiscoveryPanel({ stepLabel = "Step 2" }: BacnetDiscoveryPa
             ok: importOk,
             error: importOk
               ? undefined
-              : "Data model import skipped or failed (no site, nothing to import, or API error — see console)",
+              : "Data model import skipped or failed (no site, nothing to import, or API error - see console)",
           });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
@@ -441,7 +441,7 @@ export function BacnetDiscoveryPanel({ stepLabel = "Step 2" }: BacnetDiscoveryPa
         {whoisResult != null && whoisResult.length > 0 && (
           <div className="overflow-x-auto rounded-lg border border-border/60">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 p-2">
-              <p className="text-xs font-medium text-muted-foreground">Devices ({whoisResult.length}) — select for batch</p>
+              <p className="text-xs font-medium text-muted-foreground">Devices ({whoisResult.length}) - select for batch</p>
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -491,10 +491,10 @@ export function BacnetDiscoveryPanel({ stepLabel = "Step 2" }: BacnetDiscoveryPa
                           className="h-4 w-4 rounded border-border"
                         />
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{inst ?? "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{row["i-am-device-identifier"] ?? "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{String(row["device-address"] ?? "—")}</TableCell>
-                      <TableCell className="text-xs">{String(row["device-description"] ?? "—")}</TableCell>
+                      <TableCell className="font-mono text-xs">{inst ?? "-"}</TableCell>
+                      <TableCell className="font-mono text-xs">{row["i-am-device-identifier"] ?? "-"}</TableCell>
+                      <TableCell className="font-mono text-xs">{String(row["device-address"] ?? "-")}</TableCell>
+                      <TableCell className="text-xs">{String(row["device-description"] ?? "-")}</TableCell>
                     </TableRow>
                   );
                 })}
@@ -528,7 +528,7 @@ export function BacnetDiscoveryPanel({ stepLabel = "Step 2" }: BacnetDiscoveryPa
           <div className="overflow-x-auto rounded-lg border border-border/60">
             <p className="mb-1 p-2 text-xs font-medium text-muted-foreground">
               Objects ({discoveryResult.length})
-              {discoverySourceInstance != null ? ` — last success: device ${discoverySourceInstance}` : ""}
+              {discoverySourceInstance != null ? ` - last success: device ${discoverySourceInstance}` : ""}
             </p>
             <Table>
               <TableHeader>

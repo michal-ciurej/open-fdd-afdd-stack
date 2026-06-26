@@ -5,7 +5,7 @@ recent fault counts so the row sparkline can render, and accepts append-only
 event-log writes (scheduled / maintained / cancelled).
 
 Current state ("currently scheduled?", "last maintained") is derived from the
-latest row per (equipment_id, event_type) — the table itself is append-only so
+latest row per (equipment_id, event_type) - the table itself is append-only so
 the dashboard can plot maintenance cutoffs over the fault timeline.
 """
 

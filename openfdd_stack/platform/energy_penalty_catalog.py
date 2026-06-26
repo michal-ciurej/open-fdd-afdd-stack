@@ -2,7 +2,7 @@
 Default FDD energy-penalty equation catalog (engineering narratives + calc_type mapping).
 
 Seeded per-site as disabled EnergyCalculation rows (external_id prefix ``penalty_default_``).
-Open-Meteo and utility rates remain on ``ofdd:platform_config`` / site config — see configuration docs.
+Open-Meteo and utility rates remain on ``ofdd:platform_config`` / site config - see configuration docs.
 """
 
 from __future__ import annotations
@@ -121,7 +121,7 @@ PENALTY_CATALOG: list[dict[str, Any]] = [
         "seq": 7,
         "layer": "airside",
         "difficulty": 3,
-        "name": "Simultaneous HC — leaking heating valve",
+        "name": "Simultaneous HC - leaking heating valve",
         "fdd_trigger": "Cooling active but \u0394T across HW coil when valve should be closed",
         "math_summary": r"Q \approx 1.08 \cdot CFM \cdot \Delta T_{coil}",
         "calc_type": "sensible_coil_leak_kw",

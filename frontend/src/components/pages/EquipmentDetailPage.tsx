@@ -391,7 +391,7 @@ export function EquipmentDetailPage() {
                 <div className="flex justify-between gap-3">
                   <span className="text-muted-foreground">Brick type</span>
                   <span className="font-mono text-xs">
-                    {equipment.equipment_type ?? "—"}
+                    {equipment.equipment_type ?? "-"}
                   </span>
                 </div>
                 {equipment.description && (
@@ -526,13 +526,13 @@ export function EquipmentDetailPage() {
                         {p.object_name ?? p.external_id}
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
-                        {p.brick_type ?? "—"}
+                        {p.brick_type ?? "-"}
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
-                        {p.fdd_input ?? "—"}
+                        {p.fdd_input ?? "-"}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {p.unit ?? "—"}
+                        {p.unit ?? "-"}
                       </TableCell>
                     </TableRow>
                   ))}

@@ -1,6 +1,6 @@
 """Guard: every rule YAML's `equipment_type:` list must use Brick 1.4 long-form.
 
-This test is the CI-side mirror of the API validators added in Phase 3 — it
+This test is the CI-side mirror of the API validators added in Phase 3 - it
 catches the drift that originally produced the bug (rules tagged ``[FCU]``
 while the DB used ``Fan_Coil_Unit``). New rule files copy-pasted from older
 open-fdd cookbooks often arrive with Brick 1.3 short-forms; this test fails

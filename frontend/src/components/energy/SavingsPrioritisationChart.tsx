@@ -74,7 +74,7 @@ interface SavingsPrioritisationChartProps {
 }
 
 /**
- * Viz 2 — impact vs payback bubble chart. x = simple payback (yrs),
+ * Viz 2 - impact vs payback bubble chart. x = simple payback (yrs),
  * y = annual savings (£/yr), bubble size = capex, colour = data quality.
  * The top-left band (low payback) is framed as "quick wins".
  */

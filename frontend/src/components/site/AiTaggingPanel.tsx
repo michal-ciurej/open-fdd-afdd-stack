@@ -58,7 +58,7 @@ export function AiTaggingPanel({ available }: { available: boolean | undefined }
   const { selectedSiteId } = useSiteContext();
 
   // Loose-point counter: DB points with no equipment, scoped to the selected
-  // site — the candidates an auto-tag run will organise into equipment.
+  // site - the candidates an auto-tag run will organise into equipment.
   const { data: dbPoints = [] } = useAllPoints();
   const scopedDbPoints = useMemo(
     () => (selectedSiteId ? dbPoints.filter((p) => p.site_id === selectedSiteId) : dbPoints),
@@ -69,18 +69,18 @@ export function AiTaggingPanel({ available }: { available: boolean | undefined }
     [scopedDbPoints],
   );
 
-  // Stage 1 has no faults/units/polling inputs — just an optional brief + model.
+  // Stage 1 has no faults/units/polling inputs - just an optional brief + model.
   const [notes, setNotes] = useState("");
   const [model, setModel] = useState("");
 
-  // Editable proposal (ephemeral — no DB write until Onboard).
+  // Editable proposal (ephemeral - no DB write until Onboard).
   const [points, setPoints] = useState<TaggingProposalPoint[] | null>(null);
   const [equipment, setEquipment] = useState<TaggingProposalEquipment[]>([]);
   const [meta, setMeta] = useState<Pick<TaggingProposal, "warnings" | "model" | "usage" | "chunks"> | null>(null);
   const [importResult, setImportResult] = useState<DataModelImportResponse | null>(null);
 
   // Background run: POST starts it and returns a run id; we poll for progress and
-  // the finished proposal (a full-site run runs minutes — too long to hold the
+  // the finished proposal (a full-site run runs minutes - too long to hold the
   // HTTP request open behind the SWA/ACA gateway).
   const [runId, setRunId] = useState<string | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
@@ -157,7 +157,7 @@ export function AiTaggingPanel({ available }: { available: boolean | undefined }
 
   function onboard() {
     if (!points) return;
-    // Only onboard equipment still referenced by a point or already in the DB —
+    // Only onboard equipment still referenced by a point or already in the DB -
     // dropping orphans left behind by dissolve/reassign.
     const referenced = new Set(
       points.map((p) => (p.equipment_name ?? "").trim()).filter(Boolean),
@@ -214,7 +214,7 @@ export function AiTaggingPanel({ available }: { available: boolean | undefined }
   const updatePoint = (idx: number, patch: Partial<TaggingProposalPoint>) =>
     setPoints((prev) => prev?.map((p, i) => (i === idx ? { ...p, ...patch } : p)) ?? prev);
 
-  /** Reassign a point to an equipment by name. Just updates the point — the
+  /** Reassign a point to an equipment by name. Just updates the point - the
    *  equipment row (and its type) is created lazily when the type is edited, so
    *  typing a name char-by-char doesn't spawn junk rows. */
   function assignPointEquipment(idx: number, rawName: string) {
@@ -265,7 +265,7 @@ export function AiTaggingPanel({ available }: { available: boolean | undefined }
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Sparkles className="h-5 w-5" />
-          AI tagging — Stage 1: structure
+          AI tagging - Stage 1: structure
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -279,7 +279,7 @@ export function AiTaggingPanel({ available }: { available: boolean | undefined }
           <>
             <p className="text-sm text-muted-foreground">
               Stage 1 organises scanned points into structured equipment and assigns Brick types to
-              both — a flat, structured model. Units are metric and every point stays{" "}
+              both - a flat, structured model. Units are metric and every point stays{" "}
               <strong>unpolled</strong>; feeds/fed-by relationships come in stage 2. Scopes to the
               site selected in the top bar
               {selectedSiteId ? "" : " (All sites)"}. Nothing is written until you click{" "}
@@ -302,7 +302,7 @@ export function AiTaggingPanel({ available }: { available: boolean | undefined }
                 </div>
                 <label className="space-y-1 block">
                   <span className="text-xs font-medium text-muted-foreground">
-                    Operator brief (optional) — equipment naming conventions, grouping hints
+                    Operator brief (optional) - equipment naming conventions, grouping hints
                   </span>
                   <textarea
                     className={`${INPUT_CLS} h-20`}
@@ -421,7 +421,7 @@ export function AiTaggingPanel({ available }: { available: boolean | undefined }
                             type="button"
                             onClick={() => dissolveEquipment(eqName)}
                             className="ml-auto inline-flex items-center gap-1 rounded border border-border/60 bg-card px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                            title="Dissolve this equipment — return its points to Unassigned"
+                            title="Dissolve this equipment - return its points to Unassigned"
                           >
                             <Unlink className="h-3.5 w-3.5" />
                             Dissolve
@@ -521,7 +521,7 @@ export function AiTaggingPanel({ available }: { available: boolean | undefined }
 
             {importResult && (
               <div className="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-                Onboarded — created {importResult.created ?? 0}, updated {importResult.updated ?? 0}
+                Onboarded - created {importResult.created ?? 0}, updated {importResult.updated ?? 0}
                 {importResult.warnings?.length ? ` (${importResult.warnings.join("; ")})` : ""}.
               </div>
             )}

@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "openfdd-afdd-stack"
 version = "0.1.0"
-description = "Open-FDD AFDD platform — Docker, FastAPI, BACnet scrapers, Grafana (uses open-fdd from PyPI)"
+description = "Open-FDD AFDD platform - Docker, FastAPI, BACnet scrapers, Grafana (uses open-fdd from PyPI)"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9"
 authors = [{ name = "Michal Ciurej", email = "mike.ciurej@email.com" }]
 dependencies = [
     # Cap below 3.x: open-fdd 3.x is a pyarrow/datafusion rewrite that removed the
-    # open_fdd.engine package and dropped pandas as a hard dep — incompatible with
+    # open_fdd.engine package and dropped pandas as a hard dep - incompatible with
     # this stack (which imports open_fdd.engine.runner and uses pandas directly).
     # Bump the lower bound after each compatible 2.x release.
     "open-fdd>=2.3.0,<3",
@@ -33,7 +33,7 @@ dependencies = [
     "argon2-cffi>=23.1",
     "docker>=7.0,<8",
     # AI-assisted Brick tagging (openfdd_stack/platform/ai/tagging.py). Optional
-    # at runtime — the endpoint returns 503 until OFDD_ANTHROPIC_API_KEY is set.
+    # at runtime - the endpoint returns 503 until OFDD_ANTHROPIC_API_KEY is set.
     "anthropic>=0.40",
     "pandas>=2,<3",
 ]

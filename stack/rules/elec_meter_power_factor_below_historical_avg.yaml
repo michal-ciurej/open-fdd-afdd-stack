@@ -18,11 +18,11 @@ inputs:
     brick: Electrical_Power_Sensor
 
 params:
-  pf_ratio_threshold: 0.80   # fraction — flag when short-term avg PF < 80% of historical avg PF
-  power_min: 0.0             # kW — meter must be drawing power (above zero) to evaluate PF
-  short_window: 12           # samples — ~1 h at 5-min sampling (short-term average)
-  baseline_window: 2016      # samples — ~7 days at 5-min sampling (historical average baseline)
-  rolling_window: 12         # samples — ~1 h consecutive debounce at 5-min sampling
+  pf_ratio_threshold: 0.80   # fraction - flag when short-term avg PF < 80% of historical avg PF
+  power_min: 0.0             # kW - meter must be drawing power (above zero) to evaluate PF
+  short_window: 12           # samples - ~1 h at 5-min sampling (short-term average)
+  baseline_window: 2016      # samples - ~7 days at 5-min sampling (historical average baseline)
+  rolling_window: 12         # samples - ~1 h consecutive debounce at 5-min sampling
 
 expression: |
   (

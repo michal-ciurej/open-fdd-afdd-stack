@@ -2,7 +2,7 @@
 # Catches water leaks in the heating circuit, failed makeup water heater, or incorrect sensor calibration.
 # Trigger period is 30 min → 6 consecutive samples at 5-min intervals.
 name: boiler_makeup_water_temp_low
-description: Makeup water temperature below minimum threshold — possible water leak
+description: Makeup water temperature below minimum threshold - possible water leak
 type: expression
 flag: boiler_makeup_water_temp_low_flag
 category: general
@@ -15,7 +15,7 @@ inputs:
     brick: Makeup_Water_Temperature_Sensor
 
 params:
-  makeup_water_temp_min: 10.0   # °C — minimum acceptable makeup water temperature
+  makeup_water_temp_min: 10.0   # °C - minimum acceptable makeup water temperature
   rolling_window: 6             # 30 min at 5-min sampling (debounce)
 
 expression: |

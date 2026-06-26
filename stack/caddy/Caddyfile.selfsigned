@@ -28,7 +28,7 @@
 	handle /ws* {
 		reverse_proxy api:8000
 	}
-	# diy-bacnet-server (host :8080, network_mode: host) — browser TLS via Caddy; strip /bacnet before proxy.
+	# diy-bacnet-server (host :8080, network_mode: host) - browser TLS via Caddy; strip /bacnet before proxy.
 	handle /bacnet {
 		redir /bacnet/ permanent
 	}

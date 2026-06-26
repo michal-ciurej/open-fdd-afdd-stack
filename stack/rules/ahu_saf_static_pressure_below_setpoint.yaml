@@ -20,10 +20,10 @@ inputs:
     brick: Supply_Fan_Speed_Command
 
 params:
-  sp_deviation_ratio: 0.15      # fraction — pressure must be >15% below setpoint
-  sp_deviation_abs: 20.0        # Pa — absolute pressure deviation must exceed 20 Pa (0.020 kPa)
-  fan_speed_max_ratio: 0.98     # fraction — fan considered saturated at ≥98% of maximum speed
-  rolling_window: 48            # 4 h at 5-min sampling (debounce — must persist for full period)
+  sp_deviation_ratio: 0.15      # fraction - pressure must be >15% below setpoint
+  sp_deviation_abs: 20.0        # Pa - absolute pressure deviation must exceed 20 Pa (0.020 kPa)
+  fan_speed_max_ratio: 0.98     # fraction - fan considered saturated at ≥98% of maximum speed
+  rolling_window: 48            # 4 h at 5-min sampling (debounce - must persist for full period)
 
 expression: |
   (

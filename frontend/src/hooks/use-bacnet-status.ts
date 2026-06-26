@@ -13,7 +13,7 @@ export const SERVER_HELLO_REQUEST_INIT: RequestInit = {
   body: JSON.stringify({}),
 };
 
-/** POST /bacnet/server_hello — returns gateway and mqtt_bridge status. */
+/** POST /bacnet/server_hello - returns gateway and mqtt_bridge status. */
 export function useBacnetStatus() {
   return useQuery<BacnetServerHelloResponse>({
     queryKey: ["bacnet", "server_hello"],

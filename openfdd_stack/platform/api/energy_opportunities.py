@@ -45,7 +45,7 @@ _OPP_COLS = (
 )
 
 # Same columns, alias-qualified for queries that JOIN `equipment` (which also has
-# `id`/`name`) — otherwise those references are ambiguous.
+# `id`/`name`) - otherwise those references are ambiguous.
 _OPP_COLS_O = ", ".join(f"o.{c.strip()}" for c in _OPP_COLS.split(","))
 
 _RESULT_COLS = (
@@ -106,7 +106,7 @@ def _load_rates(cur, site_id: str) -> dict[str, Any]:
     row = cur.fetchone()
     if row:
         return dict(row)
-    # No row yet — return library defaults so compute still returns a value.
+    # No row yet - return library defaults so compute still returns a value.
     return {
         "electric_rate_per_kwh": 0.12,
         "demand_charge_per_kw": 0.0,
@@ -223,7 +223,7 @@ def _split_joined_row(row: dict[str, Any]) -> tuple[dict, Optional[dict]]:
     }
     opp = {k: v for k, v in row.items() if k not in result_keys}
     result = {k: row[k] for k in result_keys if k in row}
-    # If the LEFT JOIN had no match every result field is NULL — detect that.
+    # If the LEFT JOIN had no match every result field is NULL - detect that.
     has_result = any(result.get(k) is not None for k in ("data_quality", "computed_at"))
     return opp, (result if has_result else None)
 

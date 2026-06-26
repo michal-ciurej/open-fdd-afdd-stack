@@ -16,7 +16,7 @@ inputs:
     brick: Pump_Speed_Command
 
 params:
-  dp_margin: 2.2            # psi / kPa — adjust to loop units
+  dp_margin: 2.2            # psi / kPa - adjust to loop units
   pmp_hi_frac: 0.93
   pmp_near_hi: 0.06
   rolling_window: 6

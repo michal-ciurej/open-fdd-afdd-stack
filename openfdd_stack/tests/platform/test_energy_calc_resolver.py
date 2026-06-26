@@ -1,4 +1,4 @@
-"""Tests for the energy_calc_resolver — hydration priority and data_quality."""
+"""Tests for the energy_calc_resolver - hydration priority and data_quality."""
 
 from openfdd_stack.platform.energy_calc_resolver import (
     compute_opportunity_result,

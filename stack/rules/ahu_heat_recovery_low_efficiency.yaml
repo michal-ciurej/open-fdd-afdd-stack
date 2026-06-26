@@ -21,8 +21,8 @@ inputs:
     brick: Supply_Fan_Status
 
 params:
-  min_delta_temp: 2.0       # °C — minimum RAT-OAT delta required to compute meaningful efficiency
-  efficiency_threshold: 0.20 # fraction — flag when recovered fraction is below 20%
+  min_delta_temp: 2.0       # °C - minimum RAT-OAT delta required to compute meaningful efficiency
+  efficiency_threshold: 0.20 # fraction - flag when recovered fraction is below 20%
   rolling_window: 6          # 6 consecutive samples = 30 min at 5-min data (matches trigger period)
 
 expression: |

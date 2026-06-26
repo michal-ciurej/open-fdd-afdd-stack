@@ -4,7 +4,7 @@ HTTP discovery manifest for MCP-style agent tooling.
 Open-FDD does **not** ship an MCP stdio/SSE server inside the API process. This
 module exposes a small JSON manifest so external clients (Cursor, custom agents,
 or a separate MCP server you host) can discover stable URLs for documentation
-context and common CRUD operations—without scraping OpenAPI by hand.
+context and common CRUD operations-without scraping OpenAPI by hand.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ def get_mcp_manifest() -> dict:
         "schema_version": SCHEMA_VERSION,
         "server": {
             "name": "open-fdd",
-            "summary": "Open-FDD — edge HVAC fault detection & Brick/BACnet data model",
+            "summary": "Open-FDD - edge HVAC fault detection & Brick/BACnet data model",
         },
         "resources": [
             {

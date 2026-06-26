@@ -1,6 +1,6 @@
 # FCU cooling valve held >80% open for an excessive share of the time.
 # Catches a stuck/failed actuator, lost control signal, or chronically under-sized
-# coil / poor control tuning — all of which waste cooling energy.
+# coil / poor control tuning - all of which waste cooling energy.
 # Tuning: valve >80% open for >20% of a rolling 7-day window; sized for 5-min samples.
 name: fcu_cooling_valve_stuck_open
 description: FCU cooling valve open >80% for more than 20% of a rolling 7-day window
@@ -16,8 +16,8 @@ inputs:
     brick: Cooling_Valve_Command
 
 params:
-  vlv_open_threshold: 0.80      # fraction — "more than 80% open" (normalize_cmd output)
-  rolling_window_7d: 2016       # 7 days at 5-min sampling — period for % calculation
+  vlv_open_threshold: 0.80      # fraction - "more than 80% open" (normalize_cmd output)
+  rolling_window_7d: 2016       # 7 days at 5-min sampling - period for % calculation
   fraction_threshold: 0.20      # trigger when valve is >80% open for more than 20% of the window
 
 expression: |

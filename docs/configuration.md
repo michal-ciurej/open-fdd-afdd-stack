@@ -9,7 +9,7 @@ nav_order: 12
 
 ## Platform config (RDF + CRUD)
 
-Platform config lives in the **same RDF graph** as Brick and BACnet (`config/data_model.ttl`). No YAML file. **Where:** Bootstrap seeds via PUT /config; API GET/PUT /config and POST /data-model/sparql use the graph. The **entire app is bootstrapped from this data model** (sites, equipment, points, and platform config such as `ofdd:rulesDir`, `ofdd:bacnetScrapeIntervalMin`, etc.). **`rules_dir` (ofdd:rulesDir) remains required**: it is the path where FDD rule YAML files are stored; the frontend upload/download UI manages files *in* that path and does not replace the need for the path itself. **Individual rule YAML files are not stored in the data model**—only the single directory path (e.g. `ofdd:rulesDir "stack/rules"`) is; the files themselves live on disk under that path.
+Platform config lives in the **same RDF graph** as Brick and BACnet (`config/data_model.ttl`). No YAML file. **Where:** Bootstrap seeds via PUT /config; API GET/PUT /config and POST /data-model/sparql use the graph. The **entire app is bootstrapped from this data model** (sites, equipment, points, and platform config such as `ofdd:rulesDir`, `ofdd:bacnetScrapeIntervalMin`, etc.). **`rules_dir` (ofdd:rulesDir) remains required**: it is the path where FDD rule YAML files are stored; the frontend upload/download UI manages files *in* that path and does not replace the need for the path itself. **Individual rule YAML files are not stored in the data model**-only the single directory path (e.g. `ofdd:rulesDir "stack/rules"`) is; the files themselves live on disk under that path.
 
 - **Bootstrap:** `./scripts/bootstrap.sh` seeds config via PUT /config (defaults or `OFDD_*` from `stack/.env`).
 - **API:** GET /config, PUT /config; query via POST /data-model/sparql.
@@ -31,12 +31,12 @@ Example keys (GET/PUT /config or OFDD_* at bootstrap seed):
 | `lookback_days` | 3 | Days of data loaded per run (each run pulls last N days into the rule engine) |
 | `fdd_strict_rules` | false | Env: **`OFDD_FDD_STRICT_RULES`**. When true, the FDD loop uses stricter open-fdd **RuleRunner** behavior (fail fast on bad column maps / non-numeric inputs when open-fdd **≥ 2.3**; see [Expression Rule Cookbook](expression_rule_cookbook#signal-scaling-0--1-fraction-vs-0--100-percent)). Intended for dev/CI, not typical production. |
 | `rules_dir` | stack/rules | **Single directory for your rules** (hot reload) |
-| `brick_ttl_dir` | — | Optional. Directory containing Brick model TTL (e.g. `config/`); platform uses first `.ttl` or brick_ttl path for FDD column mapping. Optional if using points `brick_type`/fdd_input. See [Data modeling](modeling/overview). |
+| `brick_ttl_dir` | - | Optional. Directory containing Brick model TTL (e.g. `config/`); platform uses first `.ttl` or brick_ttl path for FDD column mapping. Optional if using points `brick_type`/fdd_input. See [Data modeling](modeling/overview). |
 | `bacnet_enabled` | true | Enable BACnet scraper |
 | `graph_sync_interval_min` | 5 | Minutes between serializing the **full** in-memory graph to `data_model.ttl` (API background thread). That write runs `sync_brick_from_db` first, so Brick **`ref:`** external references reflect the DB at serialize time. Env: `OFDD_GRAPH_SYNC_INTERVAL_MIN`. Edit in the React app under **OpenFDD Config** (not Overview). For an immediate refresh after discovery or DB edits, use **Data model → Serialize to TTL** or GET `/data-model/ttl` with save. |
 | `bacnet_scrape_interval_min` | 5 | Poll interval (minutes) |
 | `bacnet_site_id` | default | Site to tag when scraping (use on **remote gateways** so data is attributed to the right building on the central DB) |
-| `bacnet_gateways` | — | Optional. **Central aggregator:** JSON array of `{url, site_id}`; scraper polls each remote diy-bacnet-server in turn. Env: `OFDD_BACNET_GATEWAYS`. |
+| `bacnet_gateways` | - | Optional. **Central aggregator:** JSON array of `{url, site_id}`; scraper polls each remote diy-bacnet-server in turn. Env: `OFDD_BACNET_GATEWAYS`. |
 | `open_meteo_enabled` | true | Enable weather; when true, **FDD loop runs a weather fetch at the start of each run** (same cadence as rules, every `rule_interval_hours`). |
 | `open_meteo_interval_hours` | 24 | **Standalone weather-scraper only.** Poll interval (hours) when using the optional weather-scraper container. Ignored when weather is run from the FDD loop. |
 | `open_meteo_latitude` | 41.88 | Site latitude |
@@ -78,8 +78,8 @@ Platform config (e.g. **Scrape interval (min)**) is stored in the data model and
 
 **BACnet scraper:** The scraper runs on a fixed interval (e.g. every 1, 5, or 10 minutes). It can get that interval in two ways:
 
-1. **From the API (dynamic)** — The scraper calls **GET /config** (with a short cache). It then uses `bacnet_scrape_interval_min` from the response, so whatever you set in the Config UI is what the scraper uses. **This only works when the scraper can authenticate:** the API requires Bearer auth when `OFDD_API_KEY` is set, so the scraper must have **`OFDD_API_KEY`** in its environment (same value as in `stack/.env`). The stack’s `docker-compose.yml` passes `OFDD_API_KEY: ${OFDD_API_KEY:-}` to the bacnet-scraper service for this reason.
-2. **Fallback (env)** — If GET /config fails (e.g. 401 because no API key, or API unreachable), the scraper falls back to **`OFDD_BACNET_SCRAPE_INTERVAL_MIN`** from its environment (e.g. 5 in compose). **So if you set an interval in the Config UI but the scraper does not have `OFDD_API_KEY`, it will ignore the UI and keep using the env default.** Rebuild/restart the bacnet-scraper after ensuring `OFDD_API_KEY` is in `stack/.env` and in the scraper’s env: `./scripts/bootstrap.sh --build bacnet-scraper`.
+1. **From the API (dynamic)** - The scraper calls **GET /config** (with a short cache). It then uses `bacnet_scrape_interval_min` from the response, so whatever you set in the Config UI is what the scraper uses. **This only works when the scraper can authenticate:** the API requires Bearer auth when `OFDD_API_KEY` is set, so the scraper must have **`OFDD_API_KEY`** in its environment (same value as in `stack/.env`). The stack’s `docker-compose.yml` passes `OFDD_API_KEY: ${OFDD_API_KEY:-}` to the bacnet-scraper service for this reason.
+2. **Fallback (env)** - If GET /config fails (e.g. 401 because no API key, or API unreachable), the scraper falls back to **`OFDD_BACNET_SCRAPE_INTERVAL_MIN`** from its environment (e.g. 5 in compose). **So if you set an interval in the Config UI but the scraper does not have `OFDD_API_KEY`, it will ignore the UI and keep using the env default.** Rebuild/restart the bacnet-scraper after ensuring `OFDD_API_KEY` is in `stack/.env` and in the scraper’s env: `./scripts/bootstrap.sh --build bacnet-scraper`.
 
 **Summary:** For the Config UI (and data model) to control the BACnet scrape interval, the API must have `OFDD_API_KEY` set and the bacnet-scraper container must receive the same key so it can call GET /config successfully.
 
@@ -112,7 +112,7 @@ In the **data model** and **Points** UI these appear under equipment **Open-Mete
 
 ## Edge / resource limits
 
-For edge deployments with limited disk, set these at bootstrap (or in `stack/.env`). See [Getting Started — Bootstrap options](getting_started#bootstrap-options).
+For edge deployments with limited disk, set these at bootstrap (or in `stack/.env`). See [Getting Started - Bootstrap options](getting_started#bootstrap-options).
 
 | Setting | Default | Bootstrap arg | Env (stack/.env) |
 |---------|---------|---------------|---------------------|

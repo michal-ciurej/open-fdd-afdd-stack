@@ -4,7 +4,7 @@ import { TopBar } from "./TopBar";
 import { PageShell } from "@/components/ui/page-shell";
 
 /**
- * Per-dashboard background image. Drop files in frontend/public/data/images/ — the
+ * Per-dashboard background image. Drop files in frontend/public/data/images/ - the
  * paths below are served from there at runtime. When the file is missing the page just
  * shows the green gradient wash with no image. Add new routes here when added in App.tsx.
  */

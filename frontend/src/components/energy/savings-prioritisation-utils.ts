@@ -7,11 +7,11 @@ export interface SavingsBubble {
   equipmentId: string;
   equipmentName: string;
   family: MeasureFamily;
-  /** Annual savings (£/yr) — the y-axis. Always finite and > 0 here. */
+  /** Annual savings (£/yr) - the y-axis. Always finite and > 0 here. */
   savings: number;
-  /** Simple payback (years) — the x-axis. Null/instant paybacks clamp to 0. */
+  /** Simple payback (years) - the x-axis. Null/instant paybacks clamp to 0. */
   payback: number;
-  /** Capex (£) — drives bubble size. Clamped to >= 0. */
+  /** Capex (£) - drives bubble size. Clamped to >= 0. */
   capex: number;
   quality: DataQuality;
 }
@@ -19,7 +19,7 @@ export interface SavingsBubble {
 /**
  * Project enabled opportunities that have a computed savings figure into bubble
  * points. Disabled rows and rows without an `annual_savings_usd` result are
- * dropped — they have nothing to plot. `equipmentName` resolves an equipment id
+ * dropped - they have nothing to plot. `equipmentName` resolves an equipment id
  * to a display label.
  */
 export function toSavingsBubbles(

@@ -18,8 +18,8 @@ inputs:
     brick: Supply_Fan_Status
 
 params:
-  dp_low_threshold: 15.0    # Pa — absolute DP below this magnitude is considered near-zero (sensor error band)
-  dp_high_threshold: -15.0  # Pa — lower bound of the near-zero band
+  dp_low_threshold: 15.0    # Pa - absolute DP below this magnitude is considered near-zero (sensor error band)
+  dp_high_threshold: -15.0  # Pa - lower bound of the near-zero band
   rolling_window: 48         # 4 hours at 5-min sampling (12 samples/h × 4 h)
 
 expression: |
