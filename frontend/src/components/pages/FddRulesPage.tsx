@@ -543,6 +543,9 @@ function FddLoopStatusSection({ siteId }: { siteId: string | undefined }) {
       baselineRunTs == null ||
       new Date(lastRun.run_ts).getTime() > new Date(baselineRunTs).getTime();
     if (!isNewer) return;
+    // Transitioning local UI state in response to freshly-polled server data is
+    // the intended use of an effect here; the lint rule flags it as a false positive.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsRunning(false);
     setRunResult(
       lastRun.status === "ok"
