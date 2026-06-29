@@ -176,7 +176,9 @@ export interface DataModelExportRow {
 }
 
 /** One equipment row in the structured data-model export (shape=structured).
- *  Mirrors the backend EquipmentExportRow; round-trips into DataModelImportBody.equipment. */
+ *  Mirrors the backend EquipmentExportRow (an EXISTING equipment, so equipment_id
+ *  is required). The import body uses DataModelEquipmentImportRow instead, where
+ *  equipment_id is optional (the equipment may not exist yet). */
 export interface EquipmentExportRow {
   equipment_id: string;
   equipment_name: string;
@@ -200,10 +202,32 @@ export interface StructuredDataModelExport {
   points: DataModelExportRow[];
 }
 
+/**
+ * One equipment row in the PUT /data-model/import body. Unlike the EXPORT row,
+ * the equipment may not exist yet — it is resolved/created by name or source_ref
+ * and the backend mints the real UUID — so equipment_id is optional here.
+ * Mirrors the backend EquipmentImportRow.
+ */
+export interface DataModelEquipmentImportRow {
+  /** Optional: the backend resolves/creates by name or source_ref when omitted. */
+  equipment_id?: string | null;
+  equipment_name?: string | null;
+  equipment_type?: string | null;
+  /** Stable identity key (e.g. Niagara device path) -> metadata.source_ref. */
+  source_ref?: string | null;
+  site_id?: string | null;
+  feeds_equipment_id?: string | null;
+  fed_by_equipment_id?: string | null;
+  feeds?: string[] | null;
+  fed_by?: string[] | null;
+  metadata?: Record<string, unknown> | null;
+  engineering?: Record<string, unknown> | null;
+}
+
 /** PUT /data-model/import body */
 export interface DataModelImportBody {
   points: DataModelExportRow[];
-  equipment?: EquipmentExportRow[];
+  equipment?: DataModelEquipmentImportRow[];
 }
 
 /** PUT /data-model/import response */
