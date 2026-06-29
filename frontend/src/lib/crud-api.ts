@@ -21,6 +21,7 @@ import type {
   EnergyPreviewResult,
   EquipmentEnergyProfile,
   EquipmentEnergyProfileUpdateBody,
+  JobCreateResponse,
   PlatformConfig,
   Point,
   PointPatchBody,
@@ -488,10 +489,14 @@ export function syncRuleDefinitions() {
   });
 }
 
-/** POST /run-fdd - touch trigger file so fdd-loop runs immediately. */
+/** POST /jobs/fdd/run - run FDD now, in-process in the API container. Returns a job_id.
+ *  Completion is detected via GET /run-fdd/status (DB-backed), not the in-memory job store
+ *  (the API may run >1 replica; the job store is per-replica). */
 export function triggerFddRun() {
-  return apiFetch<{ status: string; path: string }>("/run-fdd", {
+  return apiFetch<JobCreateResponse>("/jobs/fdd/run", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}", // FddRunJobBody is empty; send {} so Content-Type is satisfied
   });
 }
 

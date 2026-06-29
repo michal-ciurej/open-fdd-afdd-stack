@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Play, Clock, Layers, Server, ChevronRight } from "lucide-react";
 import { useSiteContext } from "@/contexts/site-context";
@@ -482,9 +482,25 @@ function RuleFilesSection() {
   );
 }
 
+// A manual run is ~1-2 min; if no fresh run_ts lands after this we stop the
+// spinner and tell the user to check the Faults page (prevents a stuck UI).
+const RUN_TIMEOUT_MS = 180_000;
+
+type RunResult =
+  | { kind: "success"; faults: number }
+  | { kind: "error"; status: string }
+  | { kind: "timeout" };
+
 function FddLoopStatusSection({ siteId }: { siteId: string | undefined }) {
   const queryClient = useQueryClient();
-  const { data: status, isLoading: statusLoading } = useFddStatus();
+  // While a manual run is in flight, poll the DB-backed status endpoint fast so
+  // we notice the new fdd_run_log row promptly; idle back to 60s otherwise.
+  const [isRunning, setIsRunning] = useState(false);
+  const [baselineRunTs, setBaselineRunTs] = useState<string | null>(null);
+  const [runResult, setRunResult] = useState<RunResult | null>(null);
+  const { data: status, isLoading: statusLoading } = useFddStatus(
+    isRunning ? 4_000 : 60_000,
+  );
   const { data: rulesList } = useRulesList();
   const { data: equipmentAll = [] } = useAllEquipment();
   const { data: equipmentSite = [] } = useEquipment(siteId);
@@ -498,15 +514,56 @@ function FddLoopStatusSection({ siteId }: { siteId: string | undefined }) {
   const equipmentCount = equipment.length;
   const evaluationsPerRun = ruleCount * equipmentCount;
 
+  const lastRun = status?.last_run ?? null;
+  const statusVariant = lastRun?.status === "ok" ? "success" : lastRun?.status ? "destructive" : "outline";
+
+  // Fire-and-forget the in-process job. The returned job_id is for telemetry
+  // only; completion is detected off the DB-backed status below, not the
+  // per-replica in-memory job store (the API may run >1 replica).
   const triggerMutation = useMutation({
     mutationFn: triggerFddRun,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fdd-status"] });
     },
+    onError: () => setIsRunning(false),
   });
 
-  const lastRun = status?.last_run ?? null;
-  const statusVariant = lastRun?.status === "ok" ? "success" : lastRun?.status ? "destructive" : "outline";
+  const handleTrigger = useCallback(() => {
+    setRunResult(null);
+    setBaselineRunTs(lastRun?.run_ts ?? null);
+    setIsRunning(true);
+    triggerMutation.mutate();
+  }, [lastRun?.run_ts, triggerMutation]);
+
+  // Completion: a run_ts strictly newer than the one captured at trigger time
+  // means a fresh fdd_run_log row landed (status ok or error).
+  useEffect(() => {
+    if (!isRunning || !lastRun?.run_ts) return;
+    const isNewer =
+      baselineRunTs == null ||
+      new Date(lastRun.run_ts).getTime() > new Date(baselineRunTs).getTime();
+    if (!isNewer) return;
+    setIsRunning(false);
+    setRunResult(
+      lastRun.status === "ok"
+        ? { kind: "success", faults: lastRun.faults_written }
+        : { kind: "error", status: lastRun.status },
+    );
+    queryClient.invalidateQueries({ queryKey: ["faults"] });
+    queryClient.invalidateQueries({ queryKey: ["analytics"] });
+  }, [isRunning, lastRun, baselineRunTs, queryClient]);
+
+  // Timeout guard so the spinner never gets stuck if no fresh run_ts arrives.
+  useEffect(() => {
+    if (!isRunning) return;
+    const t = setTimeout(() => {
+      setIsRunning(false);
+      setRunResult({ kind: "timeout" });
+    }, RUN_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [isRunning]);
+
+  const triggerDisabled = triggerMutation.isPending || isRunning;
 
   return (
     <section className="mb-8">
@@ -542,18 +599,36 @@ function FddLoopStatusSection({ siteId }: { siteId: string | undefined }) {
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                onClick={() => triggerMutation.mutate()}
-                disabled={triggerMutation.isPending}
+                onClick={handleTrigger}
+                disabled={triggerDisabled}
                 data-testid="fdd-run-now-button"
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-                title="POST /run-fdd - touches trigger file; loop picks it up within 60s"
+                title="POST /jobs/fdd/run — runs FDD now in the API container"
               >
                 <Play className="h-4 w-4" />
-                {triggerMutation.isPending ? "Triggering…" : "Run FDD now"}
+                {triggerMutation.isPending
+                  ? "Triggering…"
+                  : isRunning
+                    ? "Running…"
+                    : "Run FDD now"}
               </button>
-              {triggerMutation.isSuccess && (
+              {isRunning && (
                 <span className="text-xs text-muted-foreground">
-                  Triggered. Loop will pick up within ~60s.
+                  Running in the API container… waiting for the run to complete.
+                </span>
+              )}
+              {!isRunning && runResult?.kind === "success" && (
+                <span className="text-xs text-muted-foreground">
+                  Run complete — {runResult.faults} fault{" "}
+                  {runResult.faults === 1 ? "row" : "rows"} written.
+                </span>
+              )}
+              {!isRunning && runResult?.kind === "error" && (
+                <Badge variant="destructive">Run failed: {runResult.status}</Badge>
+              )}
+              {!isRunning && runResult?.kind === "timeout" && (
+                <span className="text-xs text-muted-foreground">
+                  Run started; status not yet confirmed — check the Faults page.
                 </span>
               )}
               {triggerMutation.isError && (

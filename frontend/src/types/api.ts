@@ -134,6 +134,24 @@ export interface FddRunStatus {
   } | null;
 }
 
+/** POST /jobs/* response (mirrors backend JobCreateResponse). */
+export interface JobCreateResponse {
+  job_id: string;
+  status: string; // "queued"
+}
+
+/** GET /jobs/{job_id} response (mirrors backend JobResponse). Not required for
+ *  completion detection (see crud-api triggerFddRun note) but typed for telemetry. */
+export interface JobResponse {
+  job_id: string;
+  job_type: string;
+  status: "queued" | "running" | "finished" | "failed";
+  created_at: string;
+  updated_at?: string | null;
+  result?: Record<string, unknown> | null;
+  error?: string | null;
+}
+
 export interface HealthStatus {
   status: string;
   serialization_status?: string | null;

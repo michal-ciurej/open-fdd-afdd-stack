@@ -2,11 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import type { FddRunStatus, HealthStatus, Capabilities } from "@/types/api";
 
-export function useFddStatus() {
+export function useFddStatus(refetchMs: number = 60_000) {
   return useQuery<FddRunStatus>({
     queryKey: ["fdd-status"],
     queryFn: () => apiFetch<FddRunStatus>("/run-fdd/status"),
-    refetchInterval: 60_000,
+    refetchInterval: refetchMs,
   });
 }
 
