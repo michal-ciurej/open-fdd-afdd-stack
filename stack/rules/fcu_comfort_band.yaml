@@ -1,0 +1,41 @@
+# FCU space (zone) temperature persistently outside the comfort band while the unit is occupied and running.
+# Catches undersized/failed heating or cooling, stuck valves, incorrect setpoints, sensor faults, or envelope/occupancy load issues.
+# Gated on occupied hours (comfort only matters when the space is in use) and on the fan being commanded on
+# (so an intentionally-off FCU is not flagged). Absolute band keeps the check independent of any local setpoint drift.
+# Tuning: 21-24°C is a general office comfort band - adjust temp_low/temp_high per site or standard (e.g. NABERS IE uses 21-24.9°C).
+# 1-hour trigger period at 5-min sampling = 12 consecutive samples (zone inertia is slow; avoids nuisance trips on transients).
+name: fcu_space_temp_comfort_band
+description: FCU space temp outside comfort band during occupied hours while fan is on
+type: expression
+flag: fcu_space_temp_comfort_band_flag
+category: compliance
+severity: warning
+equipment_type:
+  - Fan_Coil_Unit
+
+inputs:
+  Zone_Air_Temperature_Sensor:
+    brick: Zone_Air_Temperature_Sensor
+  Supply_Fan_Command:
+    brick: Supply_Fan_Command
+
+params:
+  temp_low: 21.0        # °C - lower comfort limit
+  temp_high: 24.0       # °C - upper comfort limit
+  fan_on_threshold: 0.0 # fraction - fan considered running above this command
+  rolling_window: 12    # 12 consecutive 5-min samples = 1 h continuous (debounce; zone inertia is slow)
+  schedule:
+    enabled: true
+    weekdays: [0, 1, 2, 3, 4]   # Mon=0 … Fri=4
+    start_hour: 9
+    end_hour: 17                 # business hours 9am-5pm; tune per site
+
+expression: |
+  (
+    (
+      (Zone_Air_Temperature_Sensor > temp_high) |
+      (Zone_Air_Temperature_Sensor < temp_low)
+    )
+    & (normalize_cmd(Supply_Fan_Command) > fan_on_threshold)
+    & schedule_occupied
+  )

@@ -45,7 +45,24 @@ def start_bacnet_discovery_job(body: BacnetDiscoveryJobBody | None = None):
 def start_fdd_run_job(body: FddRunJobBody | None = None):
     """
     Queue FDD rule run. Returns job_id; poll GET /jobs/{job_id} or subscribe to fdd.run.*.
+
+    Disabled on Azure: running the pandas FDD pass in-process exhausts the API
+    container's memory and OOM-kills it. When an ACA Job is configured, callers must
+    use POST /run-fdd (which starts the dedicated, correctly-sized job) instead.
     """
+    from openfdd_stack.platform.config import get_platform_settings
+
+    if getattr(get_platform_settings(), "fdd_job_resource_id", None):
+        raise HTTPException(
+            409,
+            {
+                "code": "USE_ACA_JOB",
+                "message": (
+                    "In-process FDD runs are disabled on this deployment "
+                    "(they exhaust API memory). Use POST /run-fdd to start the ACA job."
+                ),
+            },
+        )
     job_id = job_store.create_job("fdd.run", {})
     thread = threading.Thread(target=job_store.run_fdd_job, args=(job_id,), daemon=True)
     thread.start()

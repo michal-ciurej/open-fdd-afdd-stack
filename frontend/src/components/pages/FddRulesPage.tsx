@@ -606,7 +606,7 @@ function FddLoopStatusSection({ siteId }: { siteId: string | undefined }) {
                 disabled={triggerDisabled}
                 data-testid="fdd-run-now-button"
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-                title="POST /jobs/fdd/run — runs FDD now in the API container"
+                title="POST /run-fdd — starts the predmain-fdd-loop job; results land within ~1-2 min"
               >
                 <Play className="h-4 w-4" />
                 {triggerMutation.isPending
@@ -617,7 +617,7 @@ function FddLoopStatusSection({ siteId }: { siteId: string | undefined }) {
               </button>
               {isRunning && (
                 <span className="text-xs text-muted-foreground">
-                  Running in the API container… waiting for the run to complete.
+                  FDD job started… waiting for the run to complete.
                 </span>
               )}
               {!isRunning && runResult?.kind === "success" && (

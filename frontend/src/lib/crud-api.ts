@@ -21,7 +21,7 @@ import type {
   EnergyPreviewResult,
   EquipmentEnergyProfile,
   EquipmentEnergyProfileUpdateBody,
-  JobCreateResponse,
+  FddRunTriggerResponse,
   PlatformConfig,
   Point,
   PointPatchBody,
@@ -489,15 +489,12 @@ export function syncRuleDefinitions() {
   });
 }
 
-/** POST /jobs/fdd/run - run FDD now, in-process in the API container. Returns a job_id.
- *  Completion is detected via GET /run-fdd/status (DB-backed), not the in-memory job store
- *  (the API may run >1 replica; the job store is per-replica). */
+/** POST /run-fdd - start an FDD run. On Azure this starts the dedicated predmain-fdd-loop
+ *  ACA job (isolated + correctly sized); locally it touches the loop trigger file. Completion
+ *  is detected via GET /run-fdd/status (DB-backed fdd_run_log), which the run writes on finish —
+ *  not from this response. Avoids the in-process run that OOM-kills the 1 GiB API container. */
 export function triggerFddRun() {
-  return apiFetch<JobCreateResponse>("/jobs/fdd/run", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: "{}", // FddRunJobBody is empty; send {} so Content-Type is satisfied
-  });
+  return apiFetch<FddRunTriggerResponse>("/run-fdd", { method: "POST" });
 }
 
 // ---------------------------------------------------------------------------

@@ -140,6 +140,17 @@ export interface JobCreateResponse {
   status: string; // "queued"
 }
 
+/** POST /run-fdd response. On Azure mode="aca-job" (started the predmain-fdd-loop ACA
+ *  job; execution = the new execution name); locally mode="trigger-file". Completion is
+ *  still observed via GET /run-fdd/status, not this response. */
+export interface FddRunTriggerResponse {
+  status: string;
+  mode?: "aca-job" | "trigger-file";
+  job?: string | null;
+  execution?: string | null;
+  path?: string | null;
+}
+
 /** GET /jobs/{job_id} response (mirrors backend JobResponse). Not required for
  *  completion detection (see crud-api triggerFddRun note) but typed for telemetry. */
 export interface JobResponse {

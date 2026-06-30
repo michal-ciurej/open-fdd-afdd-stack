@@ -53,6 +53,17 @@ class PlatformSettings(BaseSettings):
     # When True: FDD loop fails fast on bad column_map / non-numeric inputs (open-fdd input_validation=strict, skip_missing_columns=False). Use in dev/CI.
     fdd_strict_rules: bool = False
 
+    # Manual FDD trigger on Azure (POST /run-fdd). When fdd_job_resource_id is set,
+    # /run-fdd starts ONE execution of this ACA Job (the dedicated, correctly-sized
+    # predmain-fdd-loop) via its managed identity, instead of touching the local
+    # trigger file. Running FDD in-process in the API container OOM-kills it; the job
+    # is the right home. fdd_job_mi_client_id selects the user-assigned identity
+    # (mi-predmain) on the token request. Leave unset for local docker-compose, where
+    # the run_rule_loop --loop poller consumes the trigger file instead.
+    fdd_job_resource_id: Optional[str] = None  # ARM id: /subscriptions/.../Microsoft.App/jobs/predmain-fdd-loop
+    fdd_job_mi_client_id: Optional[str] = None  # clientId of the user-assigned MI (mi-predmain)
+    fdd_job_api_version: str = "2024-03-01"
+
     # Driver intervals
     bacnet_scrape_interval_min: int = 5
     open_meteo_interval_hours: int = 24
