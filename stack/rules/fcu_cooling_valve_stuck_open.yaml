@@ -17,8 +17,8 @@ inputs:
 
 params:
   vlv_open_threshold: 0.10      # fraction - "more than 10% open" (normalize_cmd output)
-  rolling_window_7d: 672       # 7 days at 15-min sampling - period for % calculation
-  fraction_threshold: 0.15      # trigger when valve is >10% open for more than 20% of the window
+  rolling_window_7d: 288       # 7 days at 15-min sampling - period for % calculation
+  fraction_threshold: 0.01      # trigger when valve is >10% open for more than 20% of the window
 
 expression: |
   (
