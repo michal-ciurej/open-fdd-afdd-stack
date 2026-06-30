@@ -4,6 +4,8 @@ import { apiFetch } from "@/lib/api";
 export interface RuleMeta {
   filename: string;
   name: string | null;
+  /** The rule's `flag` field — used to join to the engine's fault_definitions row. */
+  flag: string | null;
   equipment_types: string[];
   category: string | null;
   severity: string | null;

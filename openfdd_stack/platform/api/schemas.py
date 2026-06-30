@@ -86,7 +86,7 @@ class FaultStateItem(BaseModel):
 
 
 class FaultDefinitionItem(BaseModel):
-    """One row from fault_definitions (for HA labels)."""
+    """One row from fault_definitions (for HA labels + engine-view preview)."""
 
     fault_id: str
     name: str
@@ -94,6 +94,10 @@ class FaultDefinitionItem(BaseModel):
     severity: str = "warning"
     category: str = "general"
     equipment_types: Optional[list[str]] = None
+    inputs: Optional[dict] = None
+    params: Optional[dict] = None
+    expression: Optional[str] = None
+    updated_at: Optional[str] = None
 
 
 # --- Jobs ---

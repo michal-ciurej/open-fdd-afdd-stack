@@ -113,6 +113,12 @@ export interface FaultDefinition {
   severity: string;
   category: string;
   equipment_types: string[] | null;
+  /** Engine view — populated by the rules→definitions sync. NULL on rows seeded before
+   *  the sync started writing these fields, or when the rule YAML omits the section. */
+  inputs?: Record<string, unknown> | null;
+  params?: Record<string, unknown> | null;
+  expression?: string | null;
+  updated_at?: string | null;
 }
 
 /** GET /faults/bacnet-devices - from data model (points + equipment). */

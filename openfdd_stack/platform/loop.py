@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 _log = logging.getLogger(__name__)
 
 import pandas as pd
-from psycopg2.extras import execute_values
+from psycopg2.extras import Json, execute_values
 
 from openfdd_stack.platform.config import get_platform_settings
 from openfdd_stack.platform.database import get_conn
@@ -263,16 +263,26 @@ def _sync_fault_definitions_from_rules(rules: list) -> None:
                         equipment_types = [eq_types]
                     else:
                         equipment_types = None
+                    # Engine-facing fields — populating these lets the UI show exactly
+                    # which thresholds/expression the rule is using after sync (was NULL before).
+                    inputs = r.get("inputs") if isinstance(r.get("inputs"), dict) else None
+                    params = r.get("params") if isinstance(r.get("params"), dict) else None
+                    expression = r.get("expression")
                     cur.execute(
                         """
-                        INSERT INTO fault_definitions (fault_id, name, description, severity, category, equipment_types, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, now())
+                        INSERT INTO fault_definitions
+                            (fault_id, name, description, severity, category, equipment_types,
+                             inputs, params, expression, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, now())
                         ON CONFLICT (fault_id) DO UPDATE SET
                           name = EXCLUDED.name,
                           description = EXCLUDED.description,
                           severity = EXCLUDED.severity,
                           category = EXCLUDED.category,
                           equipment_types = EXCLUDED.equipment_types,
+                          inputs = EXCLUDED.inputs,
+                          params = EXCLUDED.params,
+                          expression = EXCLUDED.expression,
                           updated_at = now()
                         """,
                         (
@@ -282,6 +292,9 @@ def _sync_fault_definitions_from_rules(rules: list) -> None:
                             severity,
                             category,
                             equipment_types,
+                            Json(inputs) if inputs is not None else None,
+                            Json(params) if params is not None else None,
+                            expression,
                         ),
                     )
                 # Prune definitions for rules no longer in rules_dir (removes phantom rows)

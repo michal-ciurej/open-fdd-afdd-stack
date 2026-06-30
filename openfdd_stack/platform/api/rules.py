@@ -41,6 +41,7 @@ def _rule_meta(path: Path) -> dict:
     meta = {
         "filename": path.name,
         "name": None,
+        "flag": None,
         "equipment_types": [],
         "category": None,
         "severity": None,
@@ -62,6 +63,7 @@ def _rule_meta(path: Path) -> dict:
     meta.update(
         {
             "name": data.get("name"),
+            "flag": data.get("flag"),
             "equipment_types": equipment_types,
             "category": data.get("category"),
             "severity": data.get("severity"),

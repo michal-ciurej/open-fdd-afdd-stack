@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Play, Clock, Layers, Server, ChevronRight, ArrowUp } from "lucide-react";
 import { useSiteContext } from "@/contexts/site-context";
@@ -96,6 +96,9 @@ type RuleGroup = { key: string; label: string; rules: RuleMeta[] };
 function RuleFilesSection() {
   const queryClient = useQueryClient();
   const { data, isLoading } = useRulesList();
+  // Engine view (fault_definitions) — same cache the FaultDefinitionsSection uses,
+  // refetches when a successful sync invalidates the "faults" key.
+  const { data: definitions = [] } = useFaultDefinitions();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileLoading, setFileLoading] = useState(false);
@@ -116,6 +119,7 @@ function RuleFilesSection() {
       : files.map((f) => ({
           filename: f,
           name: null,
+          flag: null,
           equipment_types: [],
           category: null,
           severity: null,
@@ -167,7 +171,13 @@ function RuleFilesSection() {
   );
   const collapseAll = useCallback(() => setOpenGroups(new Set()), []);
 
+  // Rapid clicks fire overlapping fetches; without a guard, a stale response
+  // landing after a newer one overwrites the displayed content (that's the
+  // "values flicker between previous and new" symptom). Each click bumps the
+  // request id and only the latest one is allowed to update state.
+  const requestIdRef = useRef(0);
   const openFile = useCallback((filename: string) => {
+    const myId = ++requestIdRef.current;
     setSelectedFile(filename);
     setFileContent(null);
     setFileError(null);
@@ -175,9 +185,15 @@ function RuleFilesSection() {
     setSaveError(null);
     setFileLoading(true);
     apiFetchText(`/rules/${encodeURIComponent(filename)}`)
-      .then(setFileContent)
-      .catch((e: Error) => setFileError(e.message))
-      .finally(() => setFileLoading(false));
+      .then((c) => {
+        if (myId === requestIdRef.current) setFileContent(c);
+      })
+      .catch((e: Error) => {
+        if (myId === requestIdRef.current) setFileError(e.message);
+      })
+      .finally(() => {
+        if (myId === requestIdRef.current) setFileLoading(false);
+      });
   }, []);
 
   const uploadMutation = useMutation({
@@ -535,6 +551,102 @@ function RuleFilesSection() {
                 ) : (
                   <RuleFileContentPreview content={fileContent} />
                 ))}
+              {/* Engine view — shows what the fault engine is actually using
+                  after the last Sync. Compare to the YAML above to confirm a
+                  sync wrote the values you expected. */}
+              {(() => {
+                const meta = (data?.rules ?? []).find((r) => r.filename === selectedFile);
+                const flag = meta?.flag ?? null;
+                const def = flag
+                  ? definitions.find((d) => d.fault_id === flag) ?? null
+                  : null;
+                return (
+                  <div
+                    className="mt-4 rounded-md border border-border/60 bg-muted/20 p-3"
+                    data-testid="rule-engine-view"
+                  >
+                    <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Engine view (fault_definitions)
+                      </h4>
+                      {def?.updated_at && (
+                        <span
+                          className="text-xs text-muted-foreground"
+                          title={def.updated_at}
+                        >
+                          synced {timeAgo(def.updated_at)}
+                        </span>
+                      )}
+                    </div>
+                    {!flag ? (
+                      <p className="text-xs text-muted-foreground">
+                        Rule file has no <code className="font-mono">flag</code> field — cannot
+                        match to an engine definition.
+                      </p>
+                    ) : !def ? (
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        ⚠ No <code className="font-mono">fault_definitions</code> row for{" "}
+                        <code className="font-mono">{flag}</code>. Click{" "}
+                        <strong>Sync definitions</strong> above to push this rule into the engine.
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-xs text-muted-foreground">
+                          <code className="font-mono">{def.fault_id}</code> · {def.category} ·{" "}
+                          severity {def.severity}
+                        </p>
+                        <div>
+                          <p className="mb-1 text-xs font-medium text-muted-foreground">
+                            Params (engine compares against these)
+                          </p>
+                          {def.params && Object.keys(def.params).length > 0 ? (
+                            <table className="w-full text-xs">
+                              <tbody className="divide-y divide-border/40">
+                                {Object.entries(def.params as Record<string, unknown>).map(([k, v]) => (
+                                  <tr key={k}>
+                                    <td className="py-1 pr-3 font-mono text-muted-foreground align-top">{k}</td>
+                                    <td className="py-1 font-mono break-all">
+                                      {typeof v === "object" && v !== null
+                                        ? JSON.stringify(v)
+                                        : String(v)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <p className="text-xs italic text-muted-foreground">
+                              no params on this row — re-sync after upgrading the API (older syncs didn't write this column)
+                            </p>
+                          )}
+                        </div>
+                        {def.inputs && Object.keys(def.inputs).length > 0 && (
+                          <div>
+                            <p className="mb-1 text-xs font-medium text-muted-foreground">Inputs</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {Object.keys(def.inputs as Record<string, unknown>).map((k) => (
+                                <Badge key={k} variant="outline" className="font-mono text-xs">
+                                  {k}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {def.expression && (
+                          <div>
+                            <p className="mb-1 text-xs font-medium text-muted-foreground">
+                              Expression
+                            </p>
+                            <pre className="max-h-48 overflow-auto rounded-md border border-border/60 bg-muted/50 p-2 font-mono text-[11px] whitespace-pre-wrap break-all text-foreground">
+                              {def.expression}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
 

@@ -212,18 +212,21 @@ def list_fault_state(
 
 @router.get("/definitions", response_model=list[FaultDefinitionItem])
 def list_fault_definitions():
-    """List fault definitions (fault_id, name, severity, category) for HA entity labels."""
+    """List fault definitions including the engine-view fields (inputs/params/expression)
+    plus updated_at — the UI uses these to confirm a sync wrote the expected values."""
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    SELECT fault_id, name, description, severity, category, equipment_types
+                    SELECT fault_id, name, description, severity, category, equipment_types,
+                           inputs, params, expression, updated_at
                     FROM fault_definitions
                     ORDER BY category, fault_id
                     """)
                 rows = cur.fetchall()
         out = []
         for r in rows:
+            ts = r.get("updated_at")
             out.append(
                 FaultDefinitionItem(
                     fault_id=r["fault_id"],
@@ -232,6 +235,10 @@ def list_fault_definitions():
                     severity=r.get("severity") or "warning",
                     category=r.get("category") or "general",
                     equipment_types=r.get("equipment_types"),
+                    inputs=r.get("inputs"),
+                    params=r.get("params"),
+                    expression=r.get("expression"),
+                    updated_at=ts.isoformat() if hasattr(ts, "isoformat") else (str(ts) if ts is not None else None),
                 )
             )
         return out

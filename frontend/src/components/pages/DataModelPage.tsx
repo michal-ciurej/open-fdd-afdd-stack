@@ -384,16 +384,7 @@ export function DataModelPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              GET /data-model/export?shape=structured - returns <code className="rounded bg-muted px-1 text-xs">{"{ equipment, points }"}</code>{" "}
-              (BACnet discovery + DB points, plus the equipment list with <code className="rounded bg-muted px-1 text-xs">equipment_type</code> and{" "}
-              <code className="rounded bg-muted px-1 text-xs">member_brick_types</code>) so a tag pass can set both equipment and point types in
-              one file that PUTs straight back to import. When a site is selected in the top bar, the export adds{" "}
-              <code className="rounded bg-muted px-1 text-xs">?site_id=…</code> so unimported discovery rows include{" "}
-              <code className="rounded bg-muted px-1 text-xs">site_id</code> / <code className="rounded bg-muted px-1 text-xs">site_name</code>{" "}
-              for LLM equipment tagging; with <strong>All sites</strong>, the API still pre-fills those fields if only one site exists.
-              Download JSON and use it with an <strong>external</strong> LLM or agent. Agents can pull documentation context from{" "}
-              <code className="rounded bg-muted px-1 text-xs">GET /model-context/docs</code> and discover HTTP mappings from{" "}
-              <code className="rounded bg-muted px-1 text-xs">GET /mcp/manifest</code>, then apply results with PUT /data-model/import below.
+              Download JSON for the entire equip / point model for selected site
             </p>
             {exportLoading && <Skeleton className="h-48 w-full rounded-lg" />}
             {!exportLoading && exportJson && (
