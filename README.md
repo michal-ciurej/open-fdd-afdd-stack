@@ -22,7 +22,7 @@ The content that used to live here is now **`afdd_stack/`** in **[bbartling/open
 
 ---
 
-## Documentation
+ Documentation
 
 
 * 📖 **[Stack Docs](https://bbartling.github.io/open-fdd-afdd-stack/)** - bootstrap, Docker, API, drivers, React UI
@@ -33,9 +33,9 @@ The content that used to live here is now **`afdd_stack/`** in **[bbartling/open
 
 ---
 
-## Quick Starts
+ Quick Starts
 
-### Open-FDD Engine-only (rules engine, no Docker) PyPi
+ Open-FDD Engine-only (rules engine, no Docker) PyPi
 
 If you only want the Python rules engine (without the full platform stack), you can use it in standard Python environments.
 
@@ -44,16 +44,16 @@ pip install open-fdd
 ```
 
 
-### Open-FDD AFDD Platform Manually by the Human
+ Open-FDD AFDD Platform Manually by the Human
 
 Open-FDD uses Docker and Docker Compose to orchestrate and manage all platform services within a unified containerized environment. The bootstrap script (`./scripts/bootstrap.sh`) is **Linux-only** and intended for IoT edge applications using Docker exclusively.
 
-### Debian / Ubuntu setup
+ Debian / Ubuntu setup
 
 - **Git:** Install Git if needed, e.g. `sudo apt update && sudo apt install git`.
 - **Docker:** Follow the official guide to install Docker Engine (and Compose): [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/).
 
-### Prerequisites (Ubuntu / Debian-style)
+ Prerequisites (Ubuntu / Debian-style)
 
 After Docker is installed, add your Linux user to the **`docker`** group so you can run `docker` without `sudo` (log out and back in, or use `newgrp`, for the group change to apply):
 
@@ -77,7 +77,7 @@ Clone the repository:
 git clone https://github.com/bbartling/open-fdd.git
 ```
 
-### Standard HTTP bootstrap (no TLS) and app login
+ Standard HTTP bootstrap (no TLS) and app login
 
 The `--bacnet-address` value is the static bind address for BACnet, which is the usual setup for BACnet/IP on operations technology (OT) LANs. Bootstrap supports **dual-NIC** hosts: use this address on the OT interface; your other interface can use DHCP for outbound internet access.
 
@@ -92,7 +92,7 @@ printf '%s' 'YourSecurePassword' | ./scripts/bootstrap.sh \
 ```
 
 
-### Standard hardened stack - self-signed TLS (Caddy) and app login
+ Standard hardened stack - self-signed TLS (Caddy) and app login
 
 Open-FDD runs over TLS with self-signed certificates, and there is no access to the Open-FDD API or the DIY BACnet server Docker container APIs.
 
@@ -108,7 +108,7 @@ printf '%s' 'YourSecurePassword' | ./scripts/bootstrap.sh \
   --caddy-self-signed
 ```
 
-### Bootstrap Troubleshooting
+ Bootstrap Troubleshooting
 
 ```bash
 ./scripts/bootstrap.sh --doctor
@@ -116,7 +116,7 @@ printf '%s' 'YourSecurePassword' | ./scripts/bootstrap.sh \
 
 Also available is the **partial stack** mode: `./scripts/bootstrap.sh --mode collector`, `--mode model`, or `--mode engine`. See the `Docs` below for more information.
 
-### Run tests (`--test`)
+ Run tests (`--test`)
 
 Use the same bootstrap script for local verification (no separate CI recipe required on the machine):
 
@@ -137,7 +137,7 @@ Combine with health checks: `./scripts/bootstrap.sh --verify --test`.
 
 ---
 
-## Python layout
+ Python layout
 
 
 Local development (co-developing engine + stack) and push to a new or existing development branch:
@@ -153,17 +153,17 @@ pytest openfdd_stack/tests -v
 
 ---
 
-## License
+ License
 
 MIT
 
 ---
 
-## Azure deployment
+ Azure deployment
 
 This section documents the **per-change deploy workflow** for the production Azure tenant. For the one-time infrastructure build-out (resource groups, ACR, ACA environment, SWA, Postgres Flex Server, secrets, Entra App Roles), see [docs/deployment-azure.md](docs/deployment-azure.md).
 
-### What lives where
+ What lives where
 
 | Artifact | Type | Built with | Deployed to |
 |---|---|---|---|
@@ -173,7 +173,7 @@ This section documents the **per-change deploy workflow** for the production Azu
 
 `stack/rules/*.yaml` rule files are **baked into the `predmain-fdd-loop` image** via `COPY stack/rules ./stack/rules` in the Dockerfile. There is no Azure Files mount for rules - every rule change requires rebuilding that image and rolling both jobs.
 
-### Prerequisites
+ Prerequisites
 
 - `az login` on the Pay-As-You-Go subscription (Entra tenant `fce6e120-a4ac-468f-bce8-0a9efa296639`).
 - **PowerShell 7+** on Windows for the build/roll commands.
@@ -181,11 +181,11 @@ This section documents the **per-change deploy workflow** for the production Azu
 - A clean working tree (image tags are short git SHAs - see *Pre-flight* below).
 - The `.dockerignore` at the repo root is **required**. Without it every `az acr build` uploads ~200 MB of `frontend/node_modules` and ~15 MB of `.git` as build context. Keep it committed.
 
-### One-shot workflow
+ One-shot workflow
 
-The full cycle is: **commit → build images → roll API → roll both jobs → build + deploy frontend → verify**. Each step below is copy-pasteable PowerShell.
+The full cycle is: **commit → build images → roll API → roll both jobs → build + deploy frontend → verify**. 
 
-#### 0. Pre-flight
+ 0. Pre-flight
 
 ```powershell
 git status                              # tree must be clean - image tags are SHAs
@@ -204,7 +204,7 @@ Tags are pinned to short git SHAs (`predmain-api:c6d8dec`). Tagging an image wit
 > #   az acr import -n 3mseContainers --source docker.io/library/python:3.14-slim --image python:3.14-slim --username <user> --password <PAT>
 > ```
 
-#### 1. Build the two backend images (run in parallel)
+ 1. Build the two backend images (run in parallel)
 
 ```powershell
 # API image
@@ -231,7 +231,7 @@ az acr repository show-tags -n 3mseContainers --repository predmain-api      --o
 az acr repository show-tags -n 3mseContainers --repository predmain-fdd-loop --orderby time_desc --top 3 -o tsv
 ```
 
-#### 2. Roll the API container app
+ 2. Roll the API container app
 
 ```powershell
 az containerapp update -g Live_Services -n predmain-api `
@@ -246,7 +246,7 @@ az containerapp revision show -g Live_Services -n predmain-api `
 
 Single-revision mode is the default - the new revision takes 100% of ingress automatically when it reports `Healthy`.
 
-#### 3. Roll **both** jobs in lockstep
+ 3. Roll **both** jobs in lockstep
 
 ```powershell
 az containerapp job update -g Live_Services -n predmain-fdd-loop `
@@ -254,7 +254,7 @@ az containerapp job update -g Live_Services -n predmain-fdd-loop `
 az containerapp job update -g Live_Services -n predmain-nightly-sync `
   --image "3msecontainers.azurecr.io/predmain-fdd-loop:$SHA"
 
-# Smoke each before the next cron firing.
+# Test each before the next cron firing.
 az containerapp job start -g Live_Services -n predmain-fdd-loop
 az containerapp job start -g Live_Services -n predmain-nightly-sync
 
@@ -267,7 +267,7 @@ az containerapp job execution list -g Live_Services --name predmain-nightly-sync
 
 > **⚠ Critical:** `predmain-nightly-sync` and `predmain-fdd-loop` share one image and differ only in the command override. **Always update both in lockstep.** Historically, updating one without the other left `predmain-nightly-sync` pointing at an image that didn't contain `run_nightly_sync.py`, which silently failed every night for two weeks before anyone noticed.
 
-#### 4. Build and deploy the frontend
+ 4. Build and deploy the frontend
 
 ```powershell
 Set-Location frontend
@@ -289,14 +289,14 @@ Set-Location ..
 
 After deploy, **hard-refresh** (Ctrl+Shift+R) or test in incognito. SWA serves the JS bundle with cache headers; browsers keep the old bundle otherwise.
 
-#### 5. Verify
+ 5. Verify
 
 - **API:** open a page that exercises a recently-changed endpoint and check the network tab.
 - **Rules / fdd-loop:** the smoke-start in step 3 should have written new rows to `fault_results`. Open the Faults page in the SPA.
 - **Nightly-sync:** confirm a new row in `point_readings` from each Niagara/IQVision-backed site, dated within the configured `--window` (default `yesterday`). For a longer catch-up, override args once: `az containerapp job start -g Live_Services -n predmain-nightly-sync --args="--window lastweek"`.
 - **Frontend:** hard-refresh and exercise the new feature. Screens behind a new role/permission require sign-out + sign-in (incognito) - Entra tokens are minted at sign-in and hold stale claims for up to 1h.
 
-### Order matters
+ Order matters
 
 | Change shape | Order |
 |---|---|
@@ -305,7 +305,7 @@ After deploy, **hard-refresh** (Ctrl+Shift+R) or test in incognito. SWA serves t
 | **Frontend-only** | Only `npm run build:swa && swa deploy`. |
 | **DB schema** | Always apply the migration **before** rolling any image that queries the new schema. |
 
-### DB schema migrations
+ DB schema migrations
 
 `stack/sql/0NN_*.sql` files auto-apply only on a **fresh** DB volume. For an existing deployment, apply via `psql` from the `ioProxyHandler` VM - the only host with a network path to the private Flex Server endpoint:
 
@@ -321,7 +321,7 @@ ssh N4EM_USER@<ioproxy-host>
 
 Migrations are written to be idempotent (`CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `DO ... EXCEPTION WHEN duplicate_object ...`).
 
-### Rollback
+ Rollback
 
 Every successful build pushes a SHA-tagged image to ACR. Tags are immutable, so rollback is a one-liner per component:
 
@@ -350,7 +350,7 @@ npm run build:swa
 # …then swa deploy as in step 4
 ```
 
-### Quick reference: which command for which change?
+ Quick reference: which command for which change?
 
 | What changed | Build step | Roll step |
 |---|---|---|
@@ -363,7 +363,7 @@ npm run build:swa
 | Secret value (DSN, API key) | n/a | `az containerapp secret set` + `containerapp update --revision-suffix` to force restart |
 | Entra App Role / user assignment | n/a | Entra portal directly; affected users must sign out + back in |
 
-### Pulling logs
+ Pulling logs
 
 For real-time tailing of an ACA container app:
 
@@ -397,7 +397,7 @@ Remove-Item .\.tmp_kql.json
 
 ACA Jobs do not populate `ContainerAppName_s` - for nightly-sync / fdd-loop logs, filter by content (`where Log_s has 'nightly-sync'`) or by the `Reason_s` system events (`SuccessfulCreate`, `PullingImage`, `ContainerTerminated`, `BackoffLimitExceeded`).
 
-### Common pitfalls
+ Common pitfalls
 
 - **`--no-logs` is essential on Windows `az acr build`.** The colorama→`cp1252` crash makes the local `az` exit `1` even when the remote build succeeded.
 - **Never deploy `:latest` to ACA.** `:latest` is fine for the local docker-compose path (below), but ACA can't tell when `:latest` moves, so rollbacks become ambiguous. Always pin SHA tags.

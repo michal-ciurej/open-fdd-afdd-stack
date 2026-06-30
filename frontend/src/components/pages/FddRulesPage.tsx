@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Play, Clock, Layers, Server, ChevronRight } from "lucide-react";
+import { Play, Clock, Layers, Server, ChevronRight, ArrowUp } from "lucide-react";
 import { useSiteContext } from "@/contexts/site-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -104,6 +104,10 @@ function RuleFilesSection() {
   const [uploadContent, setUploadContent] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  // Inline editing of the selected rule file (the preview window doubles as an editor).
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const { groups, benchRules, primaryCount, rulesDir } = useMemo(() => {
     const files = data?.files ?? [];
@@ -167,6 +171,8 @@ function RuleFilesSection() {
     setSelectedFile(filename);
     setFileContent(null);
     setFileError(null);
+    setIsEditing(false);
+    setSaveError(null);
     setFileLoading(true);
     apiFetchText(`/rules/${encodeURIComponent(filename)}`)
       .then(setFileContent)
@@ -203,6 +209,38 @@ function RuleFilesSection() {
     mutationFn: syncRuleDefinitions,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["faults"] }),
   });
+
+  // Save an edited rule. POST /rules overwrites the file by name and re-validates
+  // the YAML server-side; the next FDD run (or Sync definitions) picks it up.
+  const saveMutation = useMutation({
+    mutationFn: ({ filename, content }: { filename: string; content: string }) =>
+      uploadRule(filename, content),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["rules"] });
+      queryClient.invalidateQueries({ queryKey: ["faults"] });
+      setFileContent(vars.content);
+      setIsEditing(false);
+      setSaveError(null);
+    },
+    onError: (e: Error) => setSaveError(e.message),
+  });
+
+  const handleStartEdit = useCallback(() => {
+    setEditContent(fileContent ?? "");
+    setSaveError(null);
+    setIsEditing(true);
+  }, [fileContent]);
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditing(false);
+    setSaveError(null);
+  }, []);
+
+  const handleSave = useCallback(() => {
+    if (!selectedFile) return;
+    setSaveError(null);
+    saveMutation.mutate({ filename: selectedFile, content: editContent });
+  }, [selectedFile, editContent, saveMutation]);
 
   const handleUpload = (e: React.FormEvent) => {
     e.preventDefault();
@@ -322,45 +360,29 @@ function RuleFilesSection() {
             </p>
           )}
 
-          {/* Upload */}
-          <form onSubmit={handleUpload} className="mb-4 space-y-2">
-            <div className="flex flex-wrap items-end gap-2">
-              <input
-                type="text"
-                placeholder="filename.yaml"
-                value={uploadFilename}
-                onChange={(e) => setUploadFilename(e.target.value)}
-                className="rounded-md border border-input bg-background px-3 py-1.5 font-mono text-sm"
-              />
-              <label className="cursor-pointer">
-                <span className="inline-flex items-center rounded-md border border-input bg-muted px-3 py-1.5 text-sm hover:bg-muted/80">Choose file</span>
-                <input type="file" accept=".yaml,.yml" className="sr-only" onChange={handleFileSelect} />
-              </label>
-              <button
-                type="submit"
-                disabled={uploadMutation.isPending || !uploadContent.trim()}
-                className="rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-muted"
-              >
-                {uploadMutation.isPending ? "Uploading…" : "Upload"}
-              </button>
-              <button
-                type="button"
-                onClick={() => syncMutation.mutate()}
-                disabled={syncMutation.isPending}
-                className="rounded-md border border-input bg-muted/50 px-3 py-1.5 text-sm hover:bg-muted"
-              >
-                {syncMutation.isPending ? "Syncing…" : "Sync definitions"}
-              </button>
-            </div>
-            <textarea
-              placeholder="Paste YAML or use Choose file…"
-              value={uploadContent}
-              onChange={(e) => setUploadContent(e.target.value)}
-              rows={6}
-              className="w-full rounded-md border border-input bg-muted/30 p-2 font-mono text-xs"
-            />
-            {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
-          </form>
+          {/* Sync definitions — push the current rule files into the fault engine. */}
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => syncMutation.mutate()}
+              disabled={syncMutation.isPending}
+              className="inline-flex items-center gap-2 rounded-md border border-input bg-muted/50 px-3 py-1.5 text-sm hover:bg-muted"
+              title="POST /rules/sync-definitions — load the current rule files into the fault engine's definitions"
+            >
+              <ArrowUp className="h-4 w-4" />
+              {syncMutation.isPending ? "Syncing…" : "Sync definitions"}
+            </button>
+            {syncMutation.isSuccess && (
+              <span className="text-xs text-muted-foreground">
+                Definitions synced into the fault engine.
+              </span>
+            )}
+            {syncMutation.isError && (
+              <span className="text-xs text-destructive">
+                {(syncMutation.error as Error)?.message ?? "Sync failed"}
+              </span>
+            )}
+          </div>
 
           {!hasRules && !data?.error ? (
             <p className="text-sm text-muted-foreground">No .yaml files in rules_dir.</p>
@@ -462,20 +484,94 @@ function RuleFilesSection() {
           )}
           {selectedFile && (
             <div className="mt-4 border-t pt-4">
-              <p className="mb-2 font-mono text-xs text-muted-foreground">
-                {selectedFile}
-              </p>
-              {fileLoading && (
-                <Skeleton className="h-48 w-full rounded-md" />
-              )}
-              {fileError && (
-                <p className="text-sm text-destructive">{fileError}</p>
-              )}
-              {fileContent != null && !fileLoading && (
-                <RuleFileContentPreview content={fileContent} />
-              )}
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="font-mono text-xs text-muted-foreground">{selectedFile}</p>
+                {fileContent != null && !fileLoading && !fileError &&
+                  (isEditing ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={saveMutation.isPending || !editContent.trim()}
+                        className="rounded-md border border-input bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {saveMutation.isPending ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        disabled={saveMutation.isPending}
+                        className="rounded-md border border-input bg-background px-3 py-1 text-xs hover:bg-muted"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleStartEdit}
+                      className="rounded-md border border-input bg-background px-3 py-1 text-xs hover:bg-muted"
+                    >
+                      Edit
+                    </button>
+                  ))}
+              </div>
+              {fileLoading && <Skeleton className="h-48 w-full rounded-md" />}
+              {fileError && <p className="text-sm text-destructive">{fileError}</p>}
+              {fileContent != null && !fileLoading &&
+                (isEditing ? (
+                  <>
+                    <textarea
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      spellCheck={false}
+                      rows={18}
+                      className="w-full rounded-md border border-input bg-muted/30 p-3 font-mono text-xs"
+                    />
+                    {saveError && (
+                      <p className="mt-1 text-sm text-destructive">{saveError}</p>
+                    )}
+                  </>
+                ) : (
+                  <RuleFileContentPreview content={fileContent} />
+                ))}
             </div>
           )}
+
+          {/* Add a new rule — the create flow lives at the bottom of the repository. */}
+          <div className="mt-6 border-t pt-4">
+            <h3 className="mb-2 text-sm font-medium">Add a new rule</h3>
+            <form onSubmit={handleUpload} className="space-y-2">
+              <div className="flex flex-wrap items-end gap-2">
+                <input
+                  type="text"
+                  placeholder="filename.yaml"
+                  value={uploadFilename}
+                  onChange={(e) => setUploadFilename(e.target.value)}
+                  className="rounded-md border border-input bg-background px-3 py-1.5 font-mono text-sm"
+                />
+                <label className="cursor-pointer">
+                  <span className="inline-flex items-center rounded-md border border-input bg-muted px-3 py-1.5 text-sm hover:bg-muted/80">Choose file</span>
+                  <input type="file" accept=".yaml,.yml" className="sr-only" onChange={handleFileSelect} />
+                </label>
+                <button
+                  type="submit"
+                  disabled={uploadMutation.isPending || !uploadContent.trim()}
+                  className="rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-muted"
+                >
+                  {uploadMutation.isPending ? "Uploading…" : "Upload"}
+                </button>
+              </div>
+              <textarea
+                placeholder="Paste YAML or use Choose file…"
+                value={uploadContent}
+                onChange={(e) => setUploadContent(e.target.value)}
+                rows={6}
+                className="w-full rounded-md border border-input bg-muted/30 p-2 font-mono text-xs"
+              />
+              {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
+            </form>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -622,7 +718,7 @@ function FddLoopStatusSection({ siteId }: { siteId: string | undefined }) {
               )}
               {!isRunning && runResult?.kind === "success" && (
                 <span className="text-xs text-muted-foreground">
-                  Run complete — {runResult.faults} fault{" "}
+                  Run complete: {runResult.faults} fault{" "}
                   {runResult.faults === 1 ? "row" : "rows"} written.
                 </span>
               )}
