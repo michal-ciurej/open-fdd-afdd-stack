@@ -613,9 +613,10 @@ function FddLoopStatusSection({ siteId }: { siteId: string | undefined }) {
   const lastRun = status?.last_run ?? null;
   const statusVariant = lastRun?.status === "ok" ? "success" : lastRun?.status ? "destructive" : "outline";
 
-  // Fire-and-forget the in-process job. The returned job_id is for telemetry
-  // only; completion is detected off the DB-backed status below, not the
-  // per-replica in-memory job store (the API may run >1 replica).
+  // POST /run-fdd starts the dedicated predmain-fdd-loop ACA job (in the fdd
+  // container, correctly sized) rather than running in-process in the API
+  // container. Fire-and-forget: completion is detected off the DB-backed status
+  // below (the fdd_run_log row the run writes on finish), not this response.
   const triggerMutation = useMutation({
     mutationFn: triggerFddRun,
     onSuccess: () => {
