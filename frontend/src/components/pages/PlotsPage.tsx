@@ -10,13 +10,20 @@ import type { DatePreset } from "@/components/site/DateRangeSelect";
 import { Skeleton } from "@/components/ui/skeleton";
 import { downloadTimeseriesCsv, fetchCsv } from "@/lib/csv";
 import {
-  inferYColumns,
   joinFaultSignals,
   parseCsvText,
   pickFaultBucket,
   type ParsedCsv,
 } from "@/lib/plots-csv";
-import { ChartLine, ChevronDown, Download, RefreshCw } from "lucide-react";
+import {
+  ChartLine,
+  ChevronDown,
+  Download,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+  X,
+} from "lucide-react";
 
 function presetRange(preset: DatePreset): { start: string; end: string } {
   const end = new Date();
@@ -96,14 +103,30 @@ function pointLabel(p: Point): string {
   return p.object_name ?? p.external_id;
 }
 
+/**
+ * Semantic description of one y-axis, kept style-free so PlotlyCanvas can apply
+ * theme colours. Built by the parent from the series' units (see `yAxes`).
+ */
+type YAxisSpec = {
+  title?: string;
+  side?: "left" | "right";
+  overlaying?: "y";
+  range?: [number, number];
+  visible?: boolean;
+  showgrid?: boolean;
+};
+
 function PlotlyCanvas({
   traces,
   title,
   isDark,
+  yAxes,
 }: {
   traces: Record<string, unknown>[];
   title: string;
   isDark: boolean;
+  /** yaxis / yaxis2 / yaxis3 definitions; traces reference these via their `yaxis`. */
+  yAxes: Record<string, YAxisSpec>;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -126,6 +149,21 @@ function PlotlyCanvas({
         tickfont: { color: muted },
         title: { font: { color: muted } },
       };
+      // Merge each caller-supplied axis spec with the shared theme styling.
+      const yAxisLayout: Record<string, unknown> = {};
+      for (const [key, spec] of Object.entries(yAxes)) {
+        yAxisLayout[key] = {
+          ...axis,
+          ...(spec.title !== undefined
+            ? { title: { text: spec.title, font: { color: muted } } }
+            : {}),
+          ...(spec.side ? { side: spec.side } : {}),
+          ...(spec.overlaying ? { overlaying: spec.overlaying } : {}),
+          ...(spec.range ? { range: spec.range } : {}),
+          ...(spec.visible === false ? { visible: false } : {}),
+          ...(spec.showgrid === false ? { showgrid: false } : {}),
+        };
+      }
       Plotly.react(
         ref.current,
         traces,
@@ -137,15 +175,7 @@ function PlotlyCanvas({
           plot_bgcolor: "transparent",
           font: { color: text },
           xaxis: { ...axis, title: { text: "X", font: { color: muted } } },
-          yaxis: { ...axis, title: { text: "Value", font: { color: muted } } },
-          yaxis2: {
-            ...axis,
-            title: { text: "Fault 0/1", font: { color: muted } },
-            overlaying: "y",
-            side: "right",
-            range: [0, 1.1],
-            showgrid: false,
-          },
+          ...yAxisLayout,
           legend: { orientation: "h", font: { color: text } },
         },
         {
@@ -159,7 +189,7 @@ function PlotlyCanvas({
     return () => {
       mounted = false;
     };
-  }, [traces, title, isDark]);
+  }, [traces, title, isDark, yAxes]);
   return <div ref={ref} className="h-[62vh] min-h-[420px] w-full rounded-lg border border-border/60 bg-card" />;
 }
 
@@ -205,7 +235,7 @@ function EquipmentCombobox({ options, selectedId, onChange, disabled }: Equipmen
         onClick={() => setOpen((v) => !v)}
       >
         <span className="truncate">
-          {selected ? equipmentLabel(selected) : options.length === 0 ? "No equipment available" : "Select equipment\u2026"}
+          {selected ? equipmentLabel(selected) : options.length === 0 ? "No equipment available" : "Select equipment…"}
         </span>
         <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
       </button>
@@ -215,7 +245,7 @@ function EquipmentCombobox({ options, selectedId, onChange, disabled }: Equipmen
           <div className="border-b border-border p-2">
             <input
               type="text"
-              placeholder="Search equipment by name or type\u2026"
+              placeholder="Search equipment by name or type…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
@@ -254,6 +284,101 @@ function EquipmentCombobox({ options, selectedId, onChange, disabled }: Equipmen
   );
 }
 
+/** One plotted time series (a point). `key` is the wide-CSV column = external_id. */
+interface ChartSeries {
+  key: string;
+  pointId: string;
+  label: string;
+  unit: string | null;
+  visible: boolean;
+  /** Palette slot assigned at add time and kept for life, so removing another
+   *  equipment never recolours this line (and theme switches still recolour it). */
+  colorIndex: number;
+}
+
+/** Series grouped under the equipment they belong to (one card in the key grid). */
+interface EquipmentGroup {
+  equipmentId: string;
+  equipmentName: string;
+  series: ChartSeries[];
+}
+
+/**
+ * The "y columns" key: a grid of outlined cards, one per equipment. Each card
+ * lists its series (click a name to toggle visibility) and an X to remove the
+ * whole equipment from the chart. Colours match the plotted lines via colorByKey.
+ */
+function SeriesKeyGrid({
+  groups,
+  colorByKey,
+  onToggleSeries,
+  onRemoveGroup,
+}: {
+  groups: EquipmentGroup[];
+  colorByKey: Record<string, string>;
+  onToggleSeries: (equipmentId: string, key: string) => void;
+  onRemoveGroup: (equipmentId: string) => void;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {groups.map((g) => (
+        <div
+          key={g.equipmentId}
+          className="relative rounded-lg border border-border/70 bg-background/40 p-3"
+          data-testid={`plots-key-group-${g.equipmentId}`}
+        >
+          <div className="mb-2 pr-6">
+            <span
+              className="block truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              title={g.equipmentName}
+            >
+              {g.equipmentName}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => onRemoveGroup(g.equipmentId)}
+            aria-label={`Remove ${g.equipmentName} from chart`}
+            title={`Remove ${g.equipmentName} from chart`}
+            className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+          <div className="flex flex-col gap-0.5">
+            {g.series.map((s) => {
+              const color = colorByKey[s.key] ?? "currentColor";
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => onToggleSeries(g.equipmentId, s.key)}
+                  title={s.visible ? "Click to hide this series" : "Click to show this series"}
+                  aria-pressed={s.visible}
+                  className={`flex items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm transition-colors hover:bg-muted/60 ${
+                    s.visible ? "" : "opacity-40"
+                  }`}
+                >
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{
+                      backgroundColor: s.visible ? color : "transparent",
+                      border: `1.5px solid ${color}`,
+                    }}
+                  />
+                  <span className={`truncate ${s.visible ? "" : "line-through"}`}>{s.label}</span>
+                  {s.unit ? (
+                    <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">{s.unit}</span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function PlotsPage() {
   const { selectedSiteId } = useSiteContext();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -272,21 +397,25 @@ export function PlotsPage() {
 
   const [plotMode, setPlotMode] = useState<PlotMode>("lines");
   const [showFaultOverlays, setShowFaultOverlays] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Sidebar picker state (browsing) — distinct from what's plotted.
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>("");
-  const [selectedPointIds, setSelectedPointIds] = useState<string[]>([]);
+  const [pickerPointIds, setPickerPointIds] = useState<string[]>([]);
   const [selectedFaultId, setSelectedFaultId] = useState<string>("");
+  // What's plotted: series grouped by equipment, accumulated via "Add".
+  const [groups, setGroups] = useState<EquipmentGroup[]>([]);
   const [loadingCsv, setLoadingCsv] = useState(false);
   const [downloadingCsv, setDownloadingCsv] = useState(false);
   const [parsedCsv, setParsedCsv] = useState<ParsedCsv | null>(null);
-  const [yColumns, setYColumns] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Reset the chart + picker when the site changes (equipment/points differ).
   const prevSiteIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (
-      prevSiteIdRef.current != null &&
-      prevSiteIdRef.current !== selectedSiteId
-    ) {
+    if (prevSiteIdRef.current != null && prevSiteIdRef.current !== selectedSiteId) {
+      setGroups([]);
+      setParsedCsv(null);
+      setPickerPointIds([]);
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -335,11 +464,17 @@ export function PlotsPage() {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [equipment, pointsByEquipmentId]);
 
+  /** Points for the browsed equipment, history-backed ones first (then alpha). */
   const pointsForEquipment = useMemo(() => {
     if (!selectedEquipmentId) return [] as Point[];
-    const arr = pointsByEquipmentId.get(selectedEquipmentId) ?? [];
-    return arr.slice().sort((a, b) => pointLabel(a).localeCompare(pointLabel(b)));
-  }, [pointsByEquipmentId, selectedEquipmentId]);
+    const arr = (pointsByEquipmentId.get(selectedEquipmentId) ?? []).slice();
+    return arr.sort((a, b) => {
+      const ah = historyPointIds.has(a.id) ? 0 : 1;
+      const bh = historyPointIds.has(b.id) ? 0 : 1;
+      if (ah !== bh) return ah - bh;
+      return pointLabel(a).localeCompare(pointLabel(b));
+    });
+  }, [pointsByEquipmentId, selectedEquipmentId, historyPointIds]);
 
   const faultIdsForEquipment = useMemo(() => {
     if (!selectedEquipmentId) return [] as string[];
@@ -371,34 +506,27 @@ export function PlotsPage() {
   const isDark = useIsDarkMode();
   const palette = isDark ? PLOT_COLORS_DARK : PLOT_COLORS_LIGHT;
 
-  const pointByExternalId = useMemo(() => {
-    const m = new Map<string, Point>();
-    for (const p of points) {
-      if (p.external_id) m.set(p.external_id, p);
+  // Every plotted point id, across all equipment groups (drives the CSV fetch).
+  const allPointIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const g of groups) for (const ser of g.series) s.add(ser.pointId);
+    return Array.from(s);
+  }, [groups]);
+  // Stable key so visibility toggles (which change `groups`) don't refetch data.
+  const allPointIdsKey = useMemo(() => [...allPointIds].sort().join("\0"), [allPointIds]);
+
+  // Stable colour per series via its assigned colorIndex, so neither toggling
+  // visibility nor removing another equipment recolours it; the key swatch matches
+  // the line, and colours still follow the light/dark palette.
+  const colorByKey = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const g of groups) {
+      for (const ser of g.series) {
+        m[ser.key] = palette[ser.colorIndex % palette.length];
+      }
     }
     return m;
-  }, [points]);
-
-  const columnLabel = useCallback(
-    (col: string): string => {
-      if (col.startsWith("fault_")) {
-        const fid = col.slice("fault_".length);
-        return `fault: ${faultOptionLabel(fid)}`;
-      }
-      const p = pointByExternalId.get(col);
-      return p ? pointLabel(p) : col;
-    },
-    [pointByExternalId, faultOptionLabel],
-  );
-
-  const pointIdsForExport =
-    selectedPointIds.length > 0
-      ? selectedPointIds
-      : pointsForEquipment.filter((p) => historyPointIds.has(p.id)).map((p) => p.id);
-
-  const pointSelectionKey = useMemo(() => {
-    return [...pointIdsForExport].sort().join("\0");
-  }, [pointIdsForExport]);
+  }, [groups, palette]);
 
   const faultBucket = pickFaultBucket(start, end);
   const equipmentIdsForFaultOverlay = useMemo(
@@ -416,38 +544,41 @@ export function PlotsPage() {
     equipmentIds: equipmentIdsForFaultOverlay,
   });
 
-  const onCsvLoaded = useCallback((text: string) => {
-    const parsed = parseCsvText(text);
-    setParsedCsv(parsed);
-    const x = "timestamp";
-    setYColumns(inferYColumns(parsed, x));
-    setError(null);
-  }, []);
-
-  /** Drop loaded CSV when load inputs change so we never join fault data onto a stale export. */
+  // Auto-load the wide CSV whenever the set of plotted points (or date range)
+  // changes. Keyed on allPointIdsKey so a visibility toggle does NOT refetch.
   useEffect(() => {
-    setParsedCsv(null);
-    setYColumns([]);
-  }, [selectedSiteId, selectedEquipmentId, start, end, pointSelectionKey]);
-
-  const loadOpenFddCsv = useCallback(async () => {
-    if (!selectedSiteId) return;
-    setLoadingCsv(true);
-    try {
-      const csv = await fetchCsv({
-        site_id: selectedSiteId,
-        start_date: toDateOnly(start),
-        end_date: toDateOnly(end),
-        format: "wide",
-        point_ids: pointIdsForExport.length > 0 ? pointIdsForExport : undefined,
-      });
-      onCsvLoaded(csv);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load CSV from Open-FDD.");
-    } finally {
-      setLoadingCsv(false);
+    if (!selectedSiteId || allPointIds.length === 0) {
+      setParsedCsv(null);
+      return;
     }
-  }, [selectedSiteId, start, end, pointIdsForExport, onCsvLoaded]);
+    let cancelled = false;
+    setLoadingCsv(true);
+    setError(null);
+    fetchCsv({
+      site_id: selectedSiteId,
+      start_date: toDateOnly(start),
+      end_date: toDateOnly(end),
+      format: "wide",
+      point_ids: allPointIds,
+    })
+      .then((csv) => {
+        if (!cancelled) setParsedCsv(parseCsvText(csv));
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setParsedCsv(null);
+          setError(err instanceof Error ? err.message : "Failed to load data from Open-FDD.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCsv(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // allPointIds is intentionally referenced via its stable key; see allPointIdsKey.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSiteId, allPointIdsKey, start, end]);
 
   const selectedEquipment = useMemo(
     () => equipmentOptions.find((e) => e.id === selectedEquipmentId) ?? null,
@@ -455,31 +586,28 @@ export function PlotsPage() {
   );
 
   const downloadExcelCsv = useCallback(async () => {
-    if (!selectedSiteId || pointIdsForExport.length === 0) return;
+    if (!selectedSiteId || allPointIds.length === 0) return;
     setDownloadingCsv(true);
     setError(null);
     try {
       const startD = toDateOnly(start);
       const endD = toDateOnly(end);
-      const eqSlug = selectedEquipment
-        ? selectedEquipment.name.replace(/[^a-zA-Z0-9._-]+/g, "_")
-        : "equipment";
       await downloadTimeseriesCsv(
         {
           site_id: selectedSiteId,
           start_date: startD,
           end_date: endD,
           format: "wide",
-          point_ids: pointIdsForExport,
+          point_ids: allPointIds,
         },
-        `openfdd_plots_${eqSlug}_${startD}_${endD}.csv`,
+        `openfdd_plots_${startD}_${endD}.csv`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to download CSV.");
     } finally {
       setDownloadingCsv(false);
     }
-  }, [selectedSiteId, start, end, pointIdsForExport, selectedEquipment]);
+  }, [selectedSiteId, start, end, allPointIds]);
 
   const effectiveCsv = useMemo(() => {
     if (!parsedCsv || !selectedFaultId) return parsedCsv;
@@ -487,12 +615,57 @@ export function PlotsPage() {
     return joinFaultSignals(parsedCsv, "timestamp", faults, faultBucket);
   }, [parsedCsv, selectedFaultId, faultData, faultBucket]);
 
+  // Only visible series are plotted; toggling a series just hides its line.
+  const visibleSeries = useMemo(
+    () => groups.flatMap((g) => g.series.filter((s) => s.visible)),
+    [groups],
+  );
+
+  // Distinct engineering units across the VISIBLE series. Two units → split onto
+  // left/right y-axes; one → single labelled axis; three or more → single
+  // unitless axis (mixed scales can't share meaningfully).
+  const dataUnits = useMemo(() => {
+    const s = new Set<string>();
+    for (const ser of visibleSeries) if (ser.unit) s.add(ser.unit);
+    return Array.from(s);
+  }, [visibleSeries]);
+
+  const dualAxis = dataUnits.length === 2;
+
+  // Fault overlay keeps its own 0/1 axis. In dual-unit mode yaxis2 is taken by the
+  // second data unit, so the overlay moves to an invisible yaxis3.
+  const faultAxisId = dualAxis ? "y3" : "y2";
+
+  const yAxes = useMemo<Record<string, YAxisSpec>>(() => {
+    if (dualAxis) {
+      const dual: Record<string, YAxisSpec> = {
+        yaxis: { title: dataUnits[0] },
+        yaxis2: { title: dataUnits[1], overlaying: "y", side: "right" },
+        // Fault overlay scale: present so the 0/1 step line has a range, but hidden.
+        yaxis3: { overlaying: "y", side: "right", range: [0, 1.1], visible: false },
+      };
+      return dual;
+    }
+    const single: Record<string, YAxisSpec> = {
+      yaxis: { title: dataUnits.length === 1 ? dataUnits[0] : "Value" },
+      yaxis2: {
+        title: "Fault 0/1",
+        overlaying: "y",
+        side: "right",
+        range: [0, 1.1],
+        showgrid: false,
+      },
+    };
+    return single;
+  }, [dualAxis, dataUnits]);
+
   const traces = useMemo(() => {
-    if (!effectiveCsv || yColumns.length === 0) return [];
+    if (!effectiveCsv || visibleSeries.length === 0) return [];
     const mode = plotMode === "both" ? "lines+markers" : plotMode === "points" ? "markers" : "lines";
     const rows = effectiveCsv.rows;
     const out: Record<string, unknown>[] = [];
-    yColumns.forEach((col, i) => {
+    for (const ser of visibleSeries) {
+      const col = ser.key;
       const x: Array<string | number> = [];
       const y: number[] = [];
       for (const row of rows) {
@@ -503,17 +676,21 @@ export function PlotsPage() {
         x.push(xv as string | number);
         y.push(yNum);
       }
-      const color = palette[i % palette.length];
-      out.push({
+      const color = colorByKey[ser.key] ?? palette[0];
+      const trace: Record<string, unknown> = {
         x,
         y,
         type: "scatter",
         mode,
-        name: columnLabel(col),
+        name: ser.label,
         line: { width: isDark ? 2.25 : 2, color },
         marker: { size: 5, color },
-      });
-    });
+      };
+      // In dual-unit mode, route each series to the axis matching its unit
+      // (second unit → right/y2, everything else → left/y). Single axis otherwise.
+      if (dualAxis) trace.yaxis = ser.unit === dataUnits[1] ? "y2" : "y";
+      out.push(trace);
+    }
     if (showFaultOverlays && selectedFaultId && faultData?.series?.length) {
       const series = faultData.series.filter((s) => String(s.metric) === selectedFaultId);
       const x: string[] = [];
@@ -528,24 +705,28 @@ export function PlotsPage() {
         type: "scatter",
         mode: "lines",
         name: `fault: ${faultOptionLabel(selectedFaultId)}`,
-        line: { shape: "hv", width: 1.5, dash: "dot", color: palette[yColumns.length % palette.length] },
-        yaxis: "y2",
+        line: { shape: "hv", width: 1.5, dash: "dot", color: isDark ? "#f87171" : "#b91c1c" },
+        yaxis: faultAxisId,
       });
     }
     return out;
   }, [
     effectiveCsv,
-    yColumns,
+    visibleSeries,
     plotMode,
-    selectedFaultId,
-    faultData,
-    showFaultOverlays,
-    faultOptionLabel,
-    columnLabel,
+    colorByKey,
     palette,
     isDark,
+    dualAxis,
+    dataUnits,
+    showFaultOverlays,
+    selectedFaultId,
+    faultData,
+    faultOptionLabel,
+    faultAxisId,
   ]);
 
+  // Seed / keep the browsed equipment valid (also honours ?equipment= deep link).
   useEffect(() => {
     if (equipmentOptions.length === 0) {
       if (selectedEquipmentId) setSelectedEquipmentId("");
@@ -561,30 +742,10 @@ export function PlotsPage() {
     }
   }, [selectedEquipmentId, equipmentOptions, urlPlotEquipment]);
 
-  const prevPointSeedEquipmentIdRef = useRef<string>("");
-
+  // Picker point selection is per-equipment: clear it when the browsed equipment changes.
   useEffect(() => {
-    if (!selectedEquipmentId) {
-      prevPointSeedEquipmentIdRef.current = "";
-      return;
-    }
-    const forEquipment = pointsForEquipment;
-    const withHistory = forEquipment.filter((p) => historyPointIds.has(p.id));
-    const seed = (withHistory.length > 0 ? withHistory : forEquipment).slice(0, 4).map((p) => p.id);
-    const equipmentChanged = prevPointSeedEquipmentIdRef.current !== selectedEquipmentId;
-    if (equipmentChanged) {
-      prevPointSeedEquipmentIdRef.current = selectedEquipmentId;
-      setSelectedPointIds(seed);
-      return;
-    }
-    setSelectedPointIds((prev) => {
-      const valid = prev.filter((id) => forEquipment.some((p) => p.id === id));
-      if (valid.length !== prev.length) {
-        return valid.length > 0 ? valid : seed;
-      }
-      return prev;
-    });
-  }, [selectedEquipmentId, pointsForEquipment, historyPointIds]);
+    setPickerPointIds([]);
+  }, [selectedEquipmentId]);
 
   useEffect(() => {
     if (faultIdsForEquipment.length === 0) {
@@ -600,11 +761,74 @@ export function PlotsPage() {
     }
   }, [faultIdsForEquipment, selectedFaultId, urlPlotFault]);
 
-  const togglePoint = useCallback((id: string) => {
-    setSelectedPointIds((prev) =>
+  const togglePickerPoint = useCallback((id: string) => {
+    setPickerPointIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }, []);
+
+  /** Add the checked picker points as series under their equipment's card. */
+  const addSelected = useCallback(() => {
+    if (!selectedEquipmentId || pickerPointIds.length === 0) return;
+    const eqName = selectedEquipment?.name ?? selectedEquipmentId;
+    const byId = new Map(pointsForEquipment.map((p) => [p.id, p]));
+    setGroups((prev) => {
+      const next = prev.map((g) => ({ ...g, series: [...g.series] }));
+      // Next free palette slot: one past the highest in use, so new series get
+      // fresh colours and existing ones keep theirs across adds/removes.
+      let nextColor = 0;
+      for (const g of next) {
+        for (const s of g.series) nextColor = Math.max(nextColor, s.colorIndex + 1);
+      }
+      let group = next.find((g) => g.equipmentId === selectedEquipmentId);
+      if (!group) {
+        group = { equipmentId: selectedEquipmentId, equipmentName: eqName, series: [] };
+        next.push(group);
+      }
+      const existing = new Set(group.series.map((s) => s.pointId));
+      for (const pid of pickerPointIds) {
+        if (existing.has(pid)) continue;
+        const p = byId.get(pid);
+        if (!p || !p.external_id) continue;
+        group.series.push({
+          key: p.external_id,
+          pointId: p.id,
+          label: pointLabel(p),
+          unit: p.unit ?? null,
+          visible: true,
+          colorIndex: nextColor,
+        });
+        nextColor += 1;
+      }
+      return next;
+    });
+    setPickerPointIds([]);
+  }, [selectedEquipmentId, pickerPointIds, selectedEquipment, pointsForEquipment]);
+
+  const removeGroup = useCallback((equipmentId: string) => {
+    setGroups((prev) => prev.filter((g) => g.equipmentId !== equipmentId));
+  }, []);
+
+  const toggleSeries = useCallback((equipmentId: string, key: string) => {
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.equipmentId !== equipmentId
+          ? g
+          : {
+              ...g,
+              series: g.series.map((s) =>
+                s.key === key ? { ...s, visible: !s.visible } : s,
+              ),
+            },
+      ),
+    );
+  }, []);
+
+  const totalSeries = useMemo(
+    () => groups.reduce((n, g) => n + g.series.length, 0),
+    [groups],
+  );
+  const visibleCount = visibleSeries.length;
 
   if (!selectedSiteId) {
     return (
@@ -628,242 +852,257 @@ export function PlotsPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
-      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Plots</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Plot equipment trends with fault overlays.
+            Add time series from any equipment and compare them on one chart.
           </p>
         </div>
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center gap-4">
-        <DateRangeSelect
-          preset={preset}
-          onPresetChange={setPreset}
-          customStart={customStart}
-          customEnd={customEnd}
-          onCustomStartChange={setCustomStart}
-          onCustomEndChange={setCustomEnd}
-        />
-        <label className="text-sm">Mode:</label>
-        <select
-          value={plotMode}
-          onChange={(e) => setPlotMode(e.target.value as PlotMode)}
-          className="h-9 rounded-lg border border-border/60 bg-background px-3 text-sm"
+        <button
+          type="button"
+          onClick={() => setSidebarOpen((v) => !v)}
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-border/60 bg-background px-3 text-sm font-medium transition-colors hover:bg-muted/40"
+          title={sidebarOpen ? "Collapse data selector" : "Expand data selector"}
         >
-          <option value="lines">Lines</option>
-          <option value="points">Points</option>
-          <option value="both">Both</option>
-        </select>
-        <label className="inline-flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={showFaultOverlays}
-            onChange={(e) => setShowFaultOverlays(e.target.checked)}
-          />
-          Show fault overlays
-        </label>
+          {sidebarOpen ? (
+            <>
+              <PanelLeftClose className="h-4 w-4" /> Hide panel
+            </>
+          ) : (
+            <>
+              <PanelLeftOpen className="h-4 w-4" /> Data selector
+            </>
+          )}
+        </button>
       </div>
 
-      <div className="rounded-lg border border-border/60 bg-card p-4">
-        <div className="grid gap-3 md:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Equipment
-            </label>
-            <EquipmentCombobox
-              options={equipmentOptions}
-              selectedId={selectedEquipmentId}
-              onChange={(id) => {
-                setSelectedEquipmentId(id);
-                setSearchParams(
-                  (prev) => {
-                    const next = new URLSearchParams(prev);
-                    if (id) next.set("equipment", id);
-                    else next.delete("equipment");
-                    next.delete("fault");
-                    return next;
-                  },
-                  { replace: true },
-                );
-              }}
-              disabled={equipmentOptions.length === 0}
-            />
-          </div>
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <label className="block text-xs font-medium text-muted-foreground">
-                Points (for selected equipment)
+      <div className="flex min-h-0 flex-1 gap-4">
+        {sidebarOpen && (
+          <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto rounded-lg border border-border/60 bg-card p-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                Date range
               </label>
-              {pointsForEquipment.length > 0 && (
-                <span className="text-[11px] text-muted-foreground">
-                  <span className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-500 align-middle" />
-                  has history
-                </span>
-              )}
+              <DateRangeSelect
+                preset={preset}
+                onPresetChange={setPreset}
+                customStart={customStart}
+                customEnd={customEnd}
+                onCustomStartChange={setCustomStart}
+                onCustomEndChange={setCustomEnd}
+              />
             </div>
-            <div className="h-28 w-full overflow-y-auto rounded-lg border border-border/60 bg-background px-1 py-1 text-sm">
-              {pointsForEquipment.length === 0 ? (
-                <div className="px-2 py-2 text-xs text-muted-foreground">
-                  {selectedEquipmentId ? "No points on this equipment." : "Select equipment to list points."}
-                </div>
-              ) : (
-                pointsForEquipment.map((p) => {
-                  const hasHistory = historyPointIds.has(p.id);
-                  const checked = selectedPointIds.includes(p.id);
-                  return (
-                    <label
-                      key={p.id}
-                      className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/60 ${
-                        hasHistory ? "bg-emerald-500/10 text-foreground" : "text-muted-foreground"
-                      }`}
-                      title={hasHistory ? "Has timeseries history" : "No timeseries history yet"}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => togglePoint(p.id)}
-                        className="h-3.5 w-3.5 accent-primary"
-                      />
-                      {hasHistory && (
-                        <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-                      )}
-                      <span className="truncate">{pointLabel(p)}</span>
-                    </label>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Mode</label>
+                <select
+                  value={plotMode}
+                  onChange={(e) => setPlotMode(e.target.value as PlotMode)}
+                  className="h-9 w-full rounded-lg border border-border/60 bg-background px-3 text-sm"
+                >
+                  <option value="lines">Lines</option>
+                  <option value="points">Points</option>
+                  <option value="both">Both</option>
+                </select>
+              </div>
+              <label className="mt-5 inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={showFaultOverlays}
+                  onChange={(e) => setShowFaultOverlays(e.target.checked)}
+                />
+                Faults
+              </label>
+            </div>
+
+            <div className="border-t border-border/60 pt-3">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Equipment</label>
+              <EquipmentCombobox
+                options={equipmentOptions}
+                selectedId={selectedEquipmentId}
+                onChange={(id) => {
+                  setSelectedEquipmentId(id);
+                  setSearchParams(
+                    (prev) => {
+                      const next = new URLSearchParams(prev);
+                      if (id) next.set("equipment", id);
+                      else next.delete("equipment");
+                      next.delete("fault");
+                      return next;
+                    },
+                    { replace: true },
                   );
-                })
-              )}
+                }}
+                disabled={equipmentOptions.length === 0}
+              />
             </div>
-          </div>
-          <div>
-            <label
-              htmlFor="plots-faults-select"
-              className="mb-1 block text-xs font-medium text-muted-foreground"
-            >
-              Faults (for selected equipment)
-            </label>
-            <select
-              id="plots-faults-select"
-              value={selectedFaultId}
-              onChange={(e) => {
-                const id = e.target.value;
-                setSelectedFaultId(id);
-                setSearchParams(
-                  (prev) => {
-                    const next = new URLSearchParams(prev);
-                    if (id) next.set("fault", id);
-                    else next.delete("fault");
-                    return next;
-                  },
-                  { replace: true },
-                );
-              }}
-              className="h-9 w-full rounded-lg border border-border/60 bg-background px-3 text-sm"
-              disabled={faultIdsForEquipment.length === 0}
-              title={
-                faultIdsForEquipment.length === 0
-                  ? "No fault state rows for this equipment yet. Run FDD or pick another equipment."
-                  : undefined
-              }
-            >
-              {faultIdsForEquipment.length === 0 ? (
-                <option value="">No faults linked to this equipment</option>
-              ) : (
-                faultIdsForEquipment.map((faultId) => (
-                  <option key={faultId} value={faultId}>
-                    {faultOptionLabel(faultId)}
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-        </div>
-        {selectedEquipmentId && faultIdsForEquipment.length === 0 && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Faults listed here come from fault state for the selected equipment. If the list is empty,
-            run an FDD job or confirm faults are evaluated for points on this equipment.
-          </p>
+
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-xs font-medium text-muted-foreground">
+                  Points
+                </label>
+                {pointsForEquipment.length > 0 && (
+                  <span className="text-[11px] text-muted-foreground">
+                    <span className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-500 align-middle" />
+                    has history
+                  </span>
+                )}
+              </div>
+              <div className="max-h-64 w-full overflow-y-auto rounded-lg border border-border/60 bg-background px-1 py-1 text-sm">
+                {pointsForEquipment.length === 0 ? (
+                  <div className="px-2 py-2 text-xs text-muted-foreground">
+                    {selectedEquipmentId ? "No points on this equipment." : "Select equipment to list points."}
+                  </div>
+                ) : (
+                  pointsForEquipment.map((p) => {
+                    const hasHistory = historyPointIds.has(p.id);
+                    const checked = pickerPointIds.includes(p.id);
+                    return (
+                      <label
+                        key={p.id}
+                        className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-muted/60 ${
+                          hasHistory ? "bg-emerald-500/10 text-foreground" : "text-muted-foreground"
+                        }`}
+                        title={hasHistory ? "Has timeseries history" : "No timeseries history yet"}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => togglePickerPoint(p.id)}
+                          className="h-3.5 w-3.5 accent-primary"
+                        />
+                        {hasHistory && (
+                          <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                        )}
+                        <span className="truncate">{pointLabel(p)}</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={addSelected}
+                disabled={pickerPointIds.length === 0}
+                className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors disabled:opacity-50"
+              >
+                <Plus className="h-4 w-4" />
+                Add{pickerPointIds.length > 0 ? ` ${pickerPointIds.length}` : ""} to chart
+              </button>
+            </div>
+
+            <div className="border-t border-border/60 pt-3">
+              <label
+                htmlFor="plots-faults-select"
+                className="mb-1 block text-xs font-medium text-muted-foreground"
+              >
+                Fault overlay
+              </label>
+              <select
+                id="plots-faults-select"
+                value={selectedFaultId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setSelectedFaultId(id);
+                  setSearchParams(
+                    (prev) => {
+                      const next = new URLSearchParams(prev);
+                      if (id) next.set("fault", id);
+                      else next.delete("fault");
+                      return next;
+                    },
+                    { replace: true },
+                  );
+                }}
+                className="h-9 w-full rounded-lg border border-border/60 bg-background px-3 text-sm"
+                disabled={faultIdsForEquipment.length === 0}
+                title={
+                  faultIdsForEquipment.length === 0
+                    ? "No fault state rows for this equipment yet. Run FDD or pick another equipment."
+                    : undefined
+                }
+              >
+                {faultIdsForEquipment.length === 0 ? (
+                  <option value="">No faults linked to this equipment</option>
+                ) : (
+                  faultIdsForEquipment.map((faultId) => (
+                    <option key={faultId} value={faultId}>
+                      {faultOptionLabel(faultId)}
+                    </option>
+                  ))
+                )}
+              </select>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Overlays the selected fault for the equipment chosen above.
+              </p>
+            </div>
+          </aside>
         )}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={loadOpenFddCsv}
-            disabled={loadingCsv || !selectedEquipmentId || pointIdsForExport.length === 0}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-          >
-            <RefreshCw className="h-4 w-4" />
-            {loadingCsv ? "Loading..." : "Load Data from Database"}
-          </button>
-          <button
-            type="button"
-            onClick={() => void downloadExcelCsv()}
-            disabled={downloadingCsv || !selectedEquipmentId || pointIdsForExport.length === 0}
-            className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background px-4 py-2 text-sm font-medium disabled:opacity-50"
-            title="UTF-8 with BOM, wide format: timestamp column plus one column per point (ISO UTC). Excel-ready."
-          >
-            <Download className="h-4 w-4" />
-            {downloadingCsv ? "Downloading..." : "Download CSV"}
-          </button>
-          <span className="text-xs text-muted-foreground">
-            Timestamp is fixed to `timestamp`; fault data is joined automatically when available. If no
-            points are checked, all points with history for this equipment are loaded.
-          </span>
-        </div>
-      </div>
 
-      {error && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+        <main className="flex min-w-0 flex-1 flex-col gap-3">
+          {error && (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
 
-      {effectiveCsv && (
-        <div className="rounded-lg border border-border/60 bg-card p-4">
-          <div>
-            <label
-              htmlFor="plots-y-columns-select"
-              className="mb-1 block text-xs font-medium text-muted-foreground"
-            >
-              Y columns (multi-select)
-            </label>
-            <select
-              id="plots-y-columns-select"
-              multiple
-              value={yColumns}
-              onChange={(e) => {
-                const vals = Array.from(e.target.selectedOptions).map((o) => o.value);
-                setYColumns(vals);
-              }}
-              className="h-28 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
-            >
-              {effectiveCsv.headers.filter((h) => h !== "timestamp").map((h) => (
-                <option key={h} value={h}>{columnLabel(h)}</option>
-              ))}
-            </select>
+          {groups.length > 0 && (
+            <div className="rounded-lg border border-border/60 bg-card p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Series — {visibleCount}/{totalSeries} shown
+                  {loadingCsv ? " · loading…" : ""}
+                </span>
+                {allPointIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => void downloadExcelCsv()}
+                    disabled={downloadingCsv}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background px-2.5 py-1 text-xs font-medium transition-colors hover:bg-muted/40 disabled:opacity-50"
+                    title="Download the plotted points as wide-format CSV (Excel-ready)."
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    {downloadingCsv ? "Downloading…" : "CSV"}
+                  </button>
+                )}
+              </div>
+              <SeriesKeyGrid
+                groups={groups}
+                colorByKey={colorByKey}
+                onToggleSeries={toggleSeries}
+                onRemoveGroup={removeGroup}
+              />
+            </div>
+          )}
+
+          <div className="min-h-0 flex-1" data-testid="plots-chart-container">
+            {traces.length > 0 ? (
+              <PlotlyCanvas
+                traces={traces}
+                title="Trends and Faults"
+                isDark={isDark}
+                yAxes={yAxes}
+              />
+            ) : (
+              <div className="flex h-[62vh] min-h-[420px] items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-2 text-center">
+                  <ChartLine className="h-4 w-4 shrink-0" />
+                  {groups.length === 0
+                    ? sidebarOpen
+                      ? "Pick an equipment, select points, and click Add to plot."
+                      : "Open the data selector to add time series."
+                    : loadingCsv
+                      ? "Loading data…"
+                      : "No data for the selected series in this date range."}
+                </span>
+              </div>
+            )}
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Loaded {effectiveCsv.rows.length.toLocaleString()} rows, {effectiveCsv.headers.length} columns.
-          </p>
-        </div>
-      )}
-
-      <div className="w-full" data-testid="plots-chart-container">
-        {traces.length > 0 ? (
-          <PlotlyCanvas
-            traces={traces}
-            title="Trends and Faults"
-            isDark={isDark}
-          />
-        ) : (
-          <div className="flex h-[50vh] min-h-[360px] items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-2">
-              <ChartLine className="h-4 w-4" />
-              Select equipment, pick points with history, then load data to plot.
-            </span>
-          </div>
-        )}
+        </main>
       </div>
     </div>
   );

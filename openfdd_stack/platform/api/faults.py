@@ -89,6 +89,55 @@ def _fault_state_table_exists(cur) -> bool:
     return cur.fetchone() is not None
 
 
+def _query_fault_state(
+    cur, site_id: str | None, equipment_id: str | None, active_only: bool
+):
+    """Fetch fault_state rows with equipment_id resolved to the canonical equipment UUID.
+
+    ``fault_state.equipment_id`` is TEXT and may hold either the equipment UUID
+    (current FDD runs) or the equipment NAME (legacy runs) or a site name
+    (site-level fallback). We resolve it against the equipment table by *either*
+    form and return ``e.id`` when matched (else the raw value), so callers can
+    match by UUID consistently — the same tolerance the analytics endpoints use.
+    Resolving equipment first also lets the bacnet lookup join points on the real
+    UUID (``p.equipment_id = e.id``) instead of comparing uuid = text.
+    """
+    conditions: list[str] = []
+    params: list = []
+    if active_only:
+        conditions.append("fs.active = true")
+    if site_id:
+        conditions.append(
+            "(fs.site_id = %s OR fs.site_id IN (SELECT name FROM sites WHERE id::text = %s))"
+        )
+        params.extend([site_id, site_id])
+    if equipment_id:
+        # Caller may pass a UUID or a name; match the raw stored value or the
+        # resolved equipment (by id or name).
+        conditions.append("(fs.equipment_id = %s OR e.id::text = %s OR e.name = %s)")
+        params.extend([equipment_id, equipment_id, equipment_id])
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    cur.execute(
+        f"""
+        SELECT fs.id::text,
+               fs.site_id,
+               COALESCE(e.id::text, fs.equipment_id) AS equipment_id,
+               fs.fault_id, fs.active, fs.last_changed_ts, fs.last_evaluated_ts, fs.context,
+               (SELECT p.bacnet_device_id FROM points p
+                WHERE p.equipment_id = e.id AND p.bacnet_device_id IS NOT NULL
+                LIMIT 1) AS bacnet_device_id
+        FROM fault_state fs
+        LEFT JOIN sites s ON (s.id::text = fs.site_id OR s.name = fs.site_id)
+        LEFT JOIN equipment e ON e.site_id = s.id
+            AND (e.id::text = fs.equipment_id OR e.name = fs.equipment_id)
+        {where}
+        ORDER BY fs.site_id, fs.equipment_id, fs.fault_id
+        """,
+        tuple(params),
+    )
+    return cur.fetchall()
+
+
 @router.get("/active", response_model=list[FaultStateItem])
 def list_active_faults(
     site_id: str | None = Query(None, description="Filter by site_id"),
@@ -106,46 +155,7 @@ def list_active_faults(
             with conn.cursor() as cur:
                 if not _fault_state_table_exists(cur):
                     return []
-                bacnet_subquery = """
-                    (SELECT p.bacnet_device_id FROM points p
-                     WHERE p.equipment_id = fs.equipment_id AND p.bacnet_device_id IS NOT NULL
-                       AND (p.site_id::text = fs.site_id OR (SELECT s.name FROM sites s WHERE s.id = p.site_id) = fs.site_id)
-                     LIMIT 1)
-                """
-                site_clause = (
-                    "(fs.site_id = %s OR fs.site_id IN (SELECT name FROM sites WHERE id::text = %s))"
-                )
-                if equipment_id and site_id:
-                    cur.execute(
-                        f"""
-                        SELECT fs.id::text, fs.site_id, fs.equipment_id, fs.fault_id, fs.active,
-                               fs.last_changed_ts, fs.last_evaluated_ts, fs.context, {bacnet_subquery} AS bacnet_device_id
-                        FROM fault_state fs
-                        WHERE {site_clause} AND fs.equipment_id = %s AND fs.active = true
-                        ORDER BY fs.site_id, fs.equipment_id, fs.fault_id
-                        """,
-                        (site_id, site_id, equipment_id),
-                    )
-                elif site_id:
-                    cur.execute(
-                        f"""
-                        SELECT fs.id::text, fs.site_id, fs.equipment_id, fs.fault_id, fs.active,
-                               fs.last_changed_ts, fs.last_evaluated_ts, fs.context, {bacnet_subquery} AS bacnet_device_id
-                        FROM fault_state fs
-                        WHERE {site_clause} AND fs.active = true
-                        ORDER BY fs.site_id, fs.equipment_id, fs.fault_id
-                        """,
-                        (site_id, site_id),
-                    )
-                else:
-                    cur.execute(f"""
-                        SELECT fs.id::text, fs.site_id, fs.equipment_id, fs.fault_id, fs.active,
-                               fs.last_changed_ts, fs.last_evaluated_ts, fs.context, {bacnet_subquery} AS bacnet_device_id
-                        FROM fault_state fs
-                        WHERE fs.active = true
-                        ORDER BY fs.site_id, fs.equipment_id, fs.fault_id
-                        """)
-                rows = cur.fetchall()
+                rows = _query_fault_state(cur, site_id, equipment_id, active_only=True)
         return [FaultStateItem.model_validate(dict(r)) for r in rows]
     except psycopg2.Error:
         return []
@@ -166,45 +176,7 @@ def list_fault_state(
             with conn.cursor() as cur:
                 if not _fault_state_table_exists(cur):
                     return []
-                bacnet_subquery = """
-                    (SELECT p.bacnet_device_id FROM points p
-                     WHERE p.equipment_id = fs.equipment_id AND p.bacnet_device_id IS NOT NULL
-                       AND (p.site_id::text = fs.site_id OR (SELECT s.name FROM sites s WHERE s.id = p.site_id) = fs.site_id)
-                     LIMIT 1)
-                """
-                site_clause = (
-                    "(fs.site_id = %s OR fs.site_id IN (SELECT name FROM sites WHERE id::text = %s))"
-                )
-                if equipment_id and site_id:
-                    cur.execute(
-                        f"""
-                        SELECT fs.id::text, fs.site_id, fs.equipment_id, fs.fault_id, fs.active,
-                               fs.last_changed_ts, fs.last_evaluated_ts, fs.context, {bacnet_subquery} AS bacnet_device_id
-                        FROM fault_state fs
-                        WHERE {site_clause} AND fs.equipment_id = %s
-                        ORDER BY fs.fault_id
-                        """,
-                        (site_id, site_id, equipment_id),
-                    )
-                elif site_id:
-                    cur.execute(
-                        f"""
-                        SELECT fs.id::text, fs.site_id, fs.equipment_id, fs.fault_id, fs.active,
-                               fs.last_changed_ts, fs.last_evaluated_ts, fs.context, {bacnet_subquery} AS bacnet_device_id
-                        FROM fault_state fs
-                        WHERE {site_clause}
-                        ORDER BY fs.equipment_id, fs.fault_id
-                        """,
-                        (site_id, site_id),
-                    )
-                else:
-                    cur.execute(f"""
-                        SELECT fs.id::text, fs.site_id, fs.equipment_id, fs.fault_id, fs.active,
-                               fs.last_changed_ts, fs.last_evaluated_ts, fs.context, {bacnet_subquery} AS bacnet_device_id
-                        FROM fault_state fs
-                        ORDER BY fs.site_id, fs.equipment_id, fs.fault_id
-                        """)
-                rows = cur.fetchall()
+                rows = _query_fault_state(cur, site_id, equipment_id, active_only=False)
         return [FaultStateItem.model_validate(dict(r)) for r in rows]
     except psycopg2.Error:
         return []

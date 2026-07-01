@@ -113,3 +113,29 @@ def test_faults_state_site_filter_matches_uuid_or_stored_name():
     assert r.json() == []
     assert len(execute_calls) >= 1
     _assert_site_filter_execute(execute_calls, site_key)
+
+
+def test_faults_state_resolves_equipment_id_to_canonical_uuid():
+    """
+    Regression: fault_state.equipment_id may hold the equipment NAME (legacy runs)
+    or UUID (current runs). /faults/state must resolve it to the canonical equipment
+    UUID via a name-or-uuid join so the Plots/Equipment pages' UUID comparison matches
+    (otherwise the fault-overlay dropdown shows "No faults linked"). The bacnet lookup
+    must join points on the resolved UUID, not compare uuid = text.
+    """
+    conn, execute_calls = _make_conn_with_execute_capture()
+    with (
+        patch(
+            "openfdd_stack.platform.api.faults._fault_state_table_exists", return_value=True
+        ),
+        patch("openfdd_stack.platform.api.faults.get_conn", side_effect=lambda: conn),
+    ):
+        r = client.get("/faults/state")
+
+    assert r.status_code == 200
+    assert any(
+        "COALESCE(e.id::text, fs.equipment_id)" in q
+        and "e.id::text = fs.equipment_id OR e.name = fs.equipment_id" in q
+        and "p.equipment_id = e.id" in q
+        for q, _ in execute_calls
+    ), f"expected equipment_id resolution join in query, got: {execute_calls!r}"

@@ -370,9 +370,16 @@ def fetch_fault_timeseries_data(
         )
         params.extend([site_id, site_id])
     if equipment_ids:
+        # fr.equipment_id may be stored as the equipment UUID (current FDD runs) or
+        # its NAME (legacy runs), so match either: the passed UUIDs directly, or the
+        # names those UUIDs resolve to. Mirrors the name-or-uuid tolerance elsewhere.
         placeholders = ",".join(["%s"] * len(equipment_ids))
-        conditions.append(f"fr.equipment_id IN ({placeholders})")
+        conditions.append(
+            f"(fr.equipment_id IN ({placeholders}) "
+            "OR fr.equipment_id IN (SELECT name FROM equipment WHERE id::text = ANY(%s)))"
+        )
         params.extend(equipment_ids)
+        params.append(list(equipment_ids))
 
     with get_conn() as conn:
         with conn.cursor() as cur:
