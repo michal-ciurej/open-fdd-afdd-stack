@@ -19,8 +19,8 @@ import {
   ChartLine,
   ChevronDown,
   Download,
-  PanelLeftClose,
-  PanelLeftOpen,
+  //PanelLeftClose,
+  //PanelLeftOpen,
   Plus,
   X,
 } from "lucide-react";
@@ -397,7 +397,7 @@ export function PlotsPage() {
 
   const [plotMode, setPlotMode] = useState<PlotMode>("lines");
   const [showFaultOverlays, setShowFaultOverlays] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  //const [sidebarOpen, setSidebarOpen] = useState(true);
   // Sidebar picker state (browsing) — distinct from what's plotted.
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>("");
   const [pickerPointIds, setPickerPointIds] = useState<string[]>([]);
