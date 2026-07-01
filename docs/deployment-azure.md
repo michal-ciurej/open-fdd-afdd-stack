@@ -24,14 +24,14 @@ ACA env (cae-predmain, uksouth, VNet-integrated)
         ├─ predmain-api (Container App)            ← scheduled HTTP traffic
         │     image: 3msecontainers.azurecr.io/predmain-api:<sha>
         │     mount: openfdd-config → /app/config   (data_model.ttl + rules/)
-        │     env:   OFDD_RULES_DIR=config/rules     (rules on the shared mount)
+        │     env:   OFDD_RULES_DIR=/app/config/rules  (absolute, like OFDD_BRICK_TTL_PATH)
         │     ingress: external 8000, auto-enabled platform auth from SWA link
         │     UDR: 172.27.0.0/16 → 10.0.3.4 (ioProxyHandler) for ZeroTier
         │
         └─ predmain-fdd-loop (Container App Job)    ← cron 0 */3 * * *
               image: 3msecontainers.azurecr.io/predmain-fdd-loop:<sha>
               mount: openfdd-config → /app/config
-              env:   OFDD_RULES_DIR=config/rules
+              env:   OFDD_RULES_DIR=/app/config/rules
 
 db-subnet 10.0.3.16/28 (delegated to Microsoft.DBforPostgreSQL)
    └─ predmain-postgres (Flex Server B2s, PG16)
@@ -66,7 +66,7 @@ Azure Files (stpredmain27016 / predmain-config)
 | ACA app | `predmain-api` | External ingress 8000. Image: `3msecontainers.azurecr.io/predmain-api:<sha>` |
 | ACA job | `predmain-fdd-loop` | Schedule trigger, cron `0 */3 * * *`. Same image registry. |
 | ACA job | `predmain-nightly-sync` | Schedule trigger, cron `0 3 * * *` UTC. **Shares the `predmain-fdd-loop` image**; command override runs `openfdd_stack.platform.drivers.run_nightly_sync`. Orchestrator for nightly maintenance (currently: Niagara + IQVision history sync, "yesterday" window). |
-| Storage account | `stpredmain27016` | Standard_LRS. File share `predmain-config` (5 GiB) mounted into API and Job at `/app/config`. Holds `data_model.ttl` and `rules/*.yaml` (the FDD rule set; `OFDD_RULES_DIR=config/rules`) |
+| Storage account | `stpredmain27016` | Standard_LRS. File share `predmain-config` (5 GiB) mounted into API and Job at `/app/config`. Holds `data_model.ttl` and `rules/*.yaml` (the FDD rule set; `OFDD_RULES_DIR=/app/config/rules`) |
 | Log Analytics workspace | `law-predmain` | Wires ACA env logs |
 | Key Vault | `kv-predmain-27016` | RBAC-enabled. Currently underused - see "RBAC limits" section. |
 | Managed identity | `mi-predmain` | Provisioned but **not** in use yet (subscription RBAC blocks role assignments). ACA app uses ACR admin auth + inline secrets. |
@@ -316,14 +316,23 @@ az storage file upload-batch --account-name stpredmain27016 --account-key "$KEY"
 ```
 
 ```powershell
-# 3. Point all three containers at the mount and roll them.
-az containerapp update     -g Live_Services -n predmain-api          --image "3msecontainers.azurecr.io/predmain-api:$SHA"      --set-env-vars OFDD_RULES_DIR=config/rules --revision-suffix "rules$SHA"
-az containerapp job update -g Live_Services -n predmain-fdd-loop     --image "3msecontainers.azurecr.io/predmain-fdd-loop:$SHA" --set-env-vars OFDD_RULES_DIR=config/rules
-az containerapp job update -g Live_Services -n predmain-nightly-sync --image "3msecontainers.azurecr.io/predmain-fdd-loop:$SHA" --set-env-vars OFDD_RULES_DIR=config/rules
+# 3. Point all three containers at the mount and roll them. Use the ABSOLUTE path
+#    /app/config/rules (the share mounts at /app/config) — same convention as
+#    OFDD_BRICK_TTL_PATH=/app/config/data_model.ttl. An absolute value is immune to
+#    the container's working directory; a relative "config/rules" only resolves by
+#    luck of cwd, so don't use it here.
+az containerapp update     -g Live_Services -n predmain-api          --image "3msecontainers.azurecr.io/predmain-api:$SHA"      --set-env-vars OFDD_RULES_DIR=/app/config/rules --revision-suffix "rules$SHA"
+az containerapp job update -g Live_Services -n predmain-fdd-loop     --image "3msecontainers.azurecr.io/predmain-fdd-loop:$SHA" --set-env-vars OFDD_RULES_DIR=/app/config/rules
+az containerapp job update -g Live_Services -n predmain-nightly-sync --image "3msecontainers.azurecr.io/predmain-fdd-loop:$SHA" --set-env-vars OFDD_RULES_DIR=/app/config/rules
 
 # 4. Validate: trigger one FDD run, then confirm the DB mirror matches the share.
 az containerapp job start  -g Live_Services -n predmain-fdd-loop
 ```
+
+> **Path vs share dir.** The env var is the *container* path `/app/config/rules`; on
+> the file share the directory is just `rules/` (the share root maps to `/app/config`).
+> So `az storage file upload ... -p rules/foo.yaml` in step 2 writes the file the
+> container sees at `/app/config/rules/foo.yaml`.
 
 If you skip step 2, the seed-capable image still self-heals an empty share on
 first boot (`ensure_rules_dir_seeded` copies the image's baked-in `stack/rules`),
