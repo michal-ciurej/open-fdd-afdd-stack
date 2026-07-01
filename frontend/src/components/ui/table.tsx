@@ -51,8 +51,7 @@ const TableRow = React.forwardRef<
     className={cn(
       "relative border-b border-border/40 transition-colors hover:bg-primary/[0.04]",
       "before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-[2px]",
-      "before:bg-gradient-to-b before:from-primary/0 before:via-primary/0 before:to-primary/0",
-      "hover:before:from-primary/60 hover:before:via-primary/40 hover:before:to-primary/0",
+      "before:bg-primary/0 hover:before:bg-primary",
       "before:transition-colors",
       className,
     )}

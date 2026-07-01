@@ -17,11 +17,11 @@ inputs:
 
 params:
   vlv_open_threshold: 0.10      # fraction - "more than 10% open" (normalize_cmd output)
-  rolling_window_7d: 288       # 7 days at 15-min sampling - period for % calculation
+  rolling_window_7d: 96       # 7 days at 15-min sampling - period for % calculation
   fraction_threshold: 0.01      # trigger when valve is >10% open for more than 20% of the window
 
 expression: |
   (
     (normalize_cmd(Cooling_Valve_Command) > vlv_open_threshold)
-    .rolling(window=rolling_window_7d).sum() / rolling_window_7d
+    .rolling(window=rolling_window_7d, min_periods=24).sum() / rolling_window_7d
   ) > fraction_threshold
