@@ -25,7 +25,7 @@ export function PageShell({
 }: PageShellProps) {
   const baseOpacity = 0.08 * intensity;
   return (
-    <div className={cn("relative", className)} {...props}>
+    <div className={cn("relative h-full", className)} {...props}>
       {backgroundImage && (
         <div
           aria-hidden

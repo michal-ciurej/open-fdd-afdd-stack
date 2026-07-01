@@ -49,7 +49,7 @@ export function AppLayout() {
             <div
               className={
                 fullWidthContent
-                  ? "w-full px-6 py-8"
+                  ? "h-full w-full py-8 pr-6"
                   : "mx-auto max-w-7xl px-6 py-8"
               }
             >
