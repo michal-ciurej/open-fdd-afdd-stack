@@ -15,15 +15,7 @@ import {
   pickFaultBucket,
   type ParsedCsv,
 } from "@/lib/plots-csv";
-import {
-  ChartLine,
-  ChevronDown,
-  Download,
-  //PanelLeftClose,
-  //PanelLeftOpen,
-  Plus,
-  X,
-} from "lucide-react";
+import { ChartLine, ChevronDown, Download, Plus, X } from "lucide-react";
 
 function presetRange(preset: DatePreset): { start: string; end: string } {
   const end = new Date();
@@ -397,7 +389,6 @@ export function PlotsPage() {
 
   const [plotMode, setPlotMode] = useState<PlotMode>("lines");
   const [showFaultOverlays, setShowFaultOverlays] = useState(true);
-  //const [sidebarOpen, setSidebarOpen] = useState(true);
   // Sidebar picker state (browsing) — distinct from what's plotted.
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>("");
   const [pickerPointIds, setPickerPointIds] = useState<string[]>([]);
@@ -851,43 +842,10 @@ export function PlotsPage() {
     );
   }
 
-  /**       
-   * This bit adds the toggle and title to the charting page. Hiding to maximise vertical space
-   * <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Plots</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add time series from any equipment and compare them on one chart.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setSidebarOpen((v) => !v)}
-          className="inline-flex h-9 items-center gap-2 rounded-lg border border-border/60 bg-background px-3 text-sm font-medium transition-colors hover:bg-muted/40"
-          title={sidebarOpen ? "Collapse data selector" : "Expand data selector"}
-        >
-          {sidebarOpen ? (
-            <>
-              <PanelLeftClose className="h-4 w-4" /> Hide panel
-            </>
-          ) : (
-            <>
-              <PanelLeftOpen className="h-4 w-4" /> Data selector
-            </>
-          )}
-        </button>
-      </div>
-*/
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      
-
-
-      
-
       <div className="flex min-h-0 flex-1 gap-4">
-        {sidebarOpen && (
-          <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto rounded-lg border border-border/60 bg-card p-4">
+        <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto rounded-lg border border-border/60 bg-card p-4">
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 Date range
@@ -1047,8 +1005,7 @@ export function PlotsPage() {
                 Overlays the selected fault for the equipment chosen above.
               </p>
             </div>
-          </aside>
-        )}
+        </aside>
 
         <main className="flex min-w-0 flex-1 flex-col gap-3">
           {error && (
@@ -1099,9 +1056,7 @@ export function PlotsPage() {
                 <span className="inline-flex items-center gap-2 text-center">
                   <ChartLine className="h-4 w-4 shrink-0" />
                   {groups.length === 0
-                    ? sidebarOpen
-                      ? "Pick an equipment, select points, and click Add to plot."
-                      : "Open the data selector to add time series."
+                    ? "Pick an equipment, select points, and click Add to plot."
                     : loadingCsv
                       ? "Loading data…"
                       : "No data for the selected series in this date range."}
