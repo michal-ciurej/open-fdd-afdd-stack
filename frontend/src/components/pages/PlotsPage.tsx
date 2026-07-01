@@ -851,9 +851,9 @@ export function PlotsPage() {
     );
   }
 
-  return (
-    <div className="flex h-full min-h-0 flex-col gap-3">
-      <div className="flex items-start justify-between gap-3">
+  /**       
+   * This bit adds the toggle and title to the charting page. Hiding to maximise vertical space
+   * <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Plots</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -877,6 +877,13 @@ export function PlotsPage() {
           )}
         </button>
       </div>
+*/
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      
+
+
+      
 
       <div className="flex min-h-0 flex-1 gap-4">
         {sidebarOpen && (
