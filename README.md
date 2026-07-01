@@ -171,7 +171,7 @@ This section documents the **per-change deploy workflow** for the production Azu
 | `predmain-fdd-loop` | Docker image (`3msecontainers.azurecr.io/predmain-fdd-loop`) | `az acr build -f stack/Dockerfile.fdd_loop` | **Two** ACA Jobs sharing this image: `predmain-fdd-loop` (rule loop, cron `0 */3 * * *`) and `predmain-nightly-sync` (history sync, cron `0 3 * * *`). They differ only in the command override. |
 | `predmain-frontend` | Static React bundle | `npm run build:swa` (frontend/) | Azure Static Web Apps `predmain-frontend`, environment `production`. |
 
-`stack/rules/*.yaml` rule files are **baked into the `predmain-fdd-loop` image** via `COPY stack/rules ./stack/rules` in the Dockerfile. There is no Azure Files mount for rules - every rule change requires rebuilding that image and rolling both jobs.
+**Rule storage (single source of truth).** In cloud, rule YAML lives on the shared `predmain-config` Azure Files mount as `config/rules/*.yaml` — the same read-write share (mounted at `/app/config`) that holds `data_model.ttl`, so `predmain-api` and both jobs read and write **one** physical copy. Set `OFDD_RULES_DIR=config/rules` on all three containers so they resolve to the mount. The `stack/rules/*.yaml` still baked into each image (`COPY stack/rules ./stack/rules`) is now only the **dev default and a one-time seed**: on first boot the API/loop seeds an empty `config/rules` from the baked-in defaults (`ensure_rules_dir_seeded`), then treats the share as authoritative and never overwrites it. Consequence: **tuning a rule param no longer needs an image rebuild** — edit the YAML on the share (or via the Faults page → *Sync definitions*) and it is picked up on the next FDD run, exactly as the UI displays it. Rebuild the image only to change the *baked-in defaults* used for a fresh share. See [rule storage](docs/rules/overview.md) and [deployment](docs/deployment-azure.md#42-fdd-loop-image-shared-by-predmain-fdd-loop-and-predmain-nightly-sync).
 
  Prerequisites
 
@@ -356,7 +356,8 @@ npm run build:swa
 |---|---|---|
 | API code (`openfdd_stack/platform/api/`) | `az acr build … predmain-api` | `az containerapp update predmain-api` |
 | FDD driver code (`openfdd_stack/platform/drivers/`, `…/loop.py`) | `az acr build … predmain-fdd-loop` | `az containerapp job update` **× 2** |
-| Rule YAML (`stack/rules/`) | `az acr build … predmain-fdd-loop` | `az containerapp job update` **× 2** |
+| Rule YAML — **tuning a live rule** | n/a (no rebuild) | Edit `config/rules/*.yaml` on the `predmain-config` share (or Faults page → *Sync definitions*); picked up next FDD run |
+| Rule YAML — **baked-in defaults** (`stack/rules/`, seeds a fresh share) | `az acr build … predmain-fdd-loop` **and** `predmain-api` | `az containerapp job update` **× 2** + `az containerapp update predmain-api` |
 | Frontend (`frontend/src/`) | `npm run build:swa` | `swa deploy ./dist` |
 | `frontend/public/staticwebapp.config.json` (routes, auth) | `npm run build:swa` (tenant injection runs every time) | `swa deploy ./dist` |
 | DB schema (`stack/sql/`) | n/a | `scp` + `psql` via `ioProxyHandler` |

@@ -23,13 +23,15 @@ ACA env (cae-predmain, uksouth, VNet-integrated)
    └─ aca-subnet 10.0.4.0/27
         ├─ predmain-api (Container App)            ← scheduled HTTP traffic
         │     image: 3msecontainers.azurecr.io/predmain-api:<sha>
-        │     mount: openfdd-config → /app/config
+        │     mount: openfdd-config → /app/config   (data_model.ttl + rules/)
+        │     env:   OFDD_RULES_DIR=config/rules     (rules on the shared mount)
         │     ingress: external 8000, auto-enabled platform auth from SWA link
         │     UDR: 172.27.0.0/16 → 10.0.3.4 (ioProxyHandler) for ZeroTier
         │
         └─ predmain-fdd-loop (Container App Job)    ← cron 0 */3 * * *
               image: 3msecontainers.azurecr.io/predmain-fdd-loop:<sha>
               mount: openfdd-config → /app/config
+              env:   OFDD_RULES_DIR=config/rules
 
 db-subnet 10.0.3.16/28 (delegated to Microsoft.DBforPostgreSQL)
    └─ predmain-postgres (Flex Server B2s, PG16)
@@ -46,7 +48,8 @@ appsubnet 10.0.3.0/29
               (e.g. network af78… "Predictive Maintenance" → 172.27.0.0/16)
 
 Azure Files (stpredmain27016 / predmain-config)
-   └─ holds data_model.ttl, shared read-write between API and fdd-loop
+   └─ holds data_model.ttl AND rules/*.yaml, shared read-write between API and fdd-loop
+      (the single source of truth for both the data model and the FDD rule set)
 ```
 
 ## 2. Resource inventory (Live_Services RG, uksouth unless noted)
@@ -63,7 +66,7 @@ Azure Files (stpredmain27016 / predmain-config)
 | ACA app | `predmain-api` | External ingress 8000. Image: `3msecontainers.azurecr.io/predmain-api:<sha>` |
 | ACA job | `predmain-fdd-loop` | Schedule trigger, cron `0 */3 * * *`. Same image registry. |
 | ACA job | `predmain-nightly-sync` | Schedule trigger, cron `0 3 * * *` UTC. **Shares the `predmain-fdd-loop` image**; command override runs `openfdd_stack.platform.drivers.run_nightly_sync`. Orchestrator for nightly maintenance (currently: Niagara + IQVision history sync, "yesterday" window). |
-| Storage account | `stpredmain27016` | Standard_LRS. File share `predmain-config` (5 GiB) mounted into API and Job at `/app/config` |
+| Storage account | `stpredmain27016` | Standard_LRS. File share `predmain-config` (5 GiB) mounted into API and Job at `/app/config`. Holds `data_model.ttl` and `rules/*.yaml` (the FDD rule set; `OFDD_RULES_DIR=config/rules`) |
 | Log Analytics workspace | `law-predmain` | Wires ACA env logs |
 | Key Vault | `kv-predmain-27016` | RBAC-enabled. Currently underused - see "RBAC limits" section. |
 | Managed identity | `mi-predmain` | Provisioned but **not** in use yet (subscription RBAC blocks role assignments). ACA app uses ACR admin auth + inline secrets. |
@@ -79,7 +82,7 @@ This was done once and is captured in commit history. If recreating from scratch
 1. **Provider registrations** - `Microsoft.DBforPostgreSQL`, `Microsoft.App`, `Microsoft.KeyVault` (subscription Owner needed)
 2. **Network** - extend VNet with the new prefixes; create `db-subnet` and `aca-subnet` with delegations
 3. **DB** - create Flex Server with `--vnet`/`--subnet` and the auto-created private DNS zone; enable `timescaledb` extension; restart; apply [stack/sql/](../stack/sql/) migrations from ioProxyHandler over the VNet path; create the `openfdd_app` role
-4. **Storage** - Storage Account → file share `predmain-config`; upload seed `data_model.ttl`
+4. **Storage** - Storage Account → file share `predmain-config`; upload seed `data_model.ttl` and seed `rules/*.yaml` (see §4.7). Both are shared read-write and are the single source of truth for the data model and rule set respectively.
 5. **ACA env** - workload-profiles env in aca-subnet, link LAW, register the file share
 6. **ACR images** - build `predmain-api` and `predmain-fdd-loop` images (see push plan below for the command)
 7. **ACA app + job** - create both with the image, inline secrets (DSN, API key, BACnet API key), ACR admin auth, file-share mount
@@ -159,7 +162,7 @@ executions retain logs via Log Analytics - query
 
 - **Schedule:** `0 */3 * * *` UTC (every 3 hours).
 - **Command override:** `python -u -m openfdd_stack.platform.drivers.run_rule_loop` (one-shot mode - `--loop` is *not* passed in ACA).
-- **Purpose:** Open-Meteo fetch (when enabled) + FDD rule loop + energy opportunity recomputation. Reads YAML rules from the baked-in `stack/rules` dir and the graph from the mounted `data_model.ttl`.
+- **Purpose:** Open-Meteo fetch (when enabled) + FDD rule loop + energy opportunity recomputation. Reads YAML rules from the shared mount `config/rules` (`OFDD_RULES_DIR=config/rules`) — the same copy the API serves/edits and the UI displays — and the graph from the mounted `data_model.ttl`. If `config/rules` is empty on first boot it is seeded from the baked-in `stack/rules` defaults, then treated as authoritative. Rebuild the image only to change those baked-in defaults; tuning a live param is just an edit on the share.
 
 #### 4.2b `predmain-nightly-sync`
 
@@ -262,6 +265,71 @@ az network route-table route create -g Live_Services --route-table-name rt-aca-z
 Then add the matching managed route in ZT Central
 (`10.0.4.0/27 via <ioProxyHandler-ZT-IP-on-that-network>`) so on-prem can reply.
 
+### 4.7 Rules on the shared mount (rule storage)
+
+Rule YAML is the single source of truth on the `predmain-config` share at
+`config/rules/*.yaml`, read-write by the API and both jobs. This eliminates the
+old three-copy drift (engine image ≠ API image ≠ `fault_definitions` DB mirror):
+one physical copy is what the engine runs, what the API serves/edits, and what
+the Faults UI displays.
+
+**Day-to-day: tune a rule param (no rebuild).** Either edit via the UI (Faults
+page → edit YAML → *Sync definitions*), or edit the file on the share directly
+and let the next FDD run (or *Sync definitions*) pick it up:
+
+```bash
+# From ioProxyHandler (has the storage key / network path). Round-trip one rule.
+KEY=$(az storage account keys list -g Live_Services -n stpredmain27016 --query '[0].value' -o tsv)
+az storage file download --account-name stpredmain27016 --account-key "$KEY" \
+  --share-name predmain-config -p rules/fcu_cooling_valve_stuck_open.yaml \
+  --dest ./fcu_cooling_valve_stuck_open.yaml
+# …edit params…, then upload back:
+az storage file upload --account-name stpredmain27016 --account-key "$KEY" \
+  --share-name predmain-config --source ./fcu_cooling_valve_stuck_open.yaml \
+  -p rules/fcu_cooling_valve_stuck_open.yaml
+```
+
+The FDD loop hot-reloads `config/rules` every run; the definitions table (and the
+UI params view) update on the next run or an immediate `POST /api/rules/sync-definitions`.
+
+**One-time cutover** (moving rules onto the mount). Order matters: deploy the
+seed-capable images first, seed the share deterministically, then point the
+containers at it.
+
+```powershell
+# 1. Build + roll the seed-capable images (API + fdd-loop) from a clean, committed tree.
+$SHA = git rev-parse --short HEAD
+$env:PYTHONIOENCODING = 'utf-8'
+az acr build -r 3mseContainers -t "predmain-api:$SHA"      -t predmain-api:latest      -f stack/Dockerfile.api .
+az acr build -r 3mseContainers -t "predmain-fdd-loop:$SHA" -t predmain-fdd-loop:latest -f stack/Dockerfile.fdd_loop .
+```
+
+```bash
+# 2. Seed config/rules on the share deterministically from the repo (on ioProxyHandler,
+#    or locally if the storage account allows your IP). This fixes which value is
+#    authoritative — do NOT rely on whichever image boots first.
+KEY=$(az storage account keys list -g Live_Services -n stpredmain27016 --query '[0].value' -o tsv)
+az storage directory create --account-name stpredmain27016 --account-key "$KEY" \
+  --share-name predmain-config -n rules
+az storage file upload-batch --account-name stpredmain27016 --account-key "$KEY" \
+  --destination predmain-config/rules --source stack/rules --pattern '*.yaml'
+```
+
+```powershell
+# 3. Point all three containers at the mount and roll them.
+az containerapp update     -g Live_Services -n predmain-api          --image "3msecontainers.azurecr.io/predmain-api:$SHA"      --set-env-vars OFDD_RULES_DIR=config/rules --revision-suffix "rules$SHA"
+az containerapp job update -g Live_Services -n predmain-fdd-loop     --image "3msecontainers.azurecr.io/predmain-fdd-loop:$SHA" --set-env-vars OFDD_RULES_DIR=config/rules
+az containerapp job update -g Live_Services -n predmain-nightly-sync --image "3msecontainers.azurecr.io/predmain-fdd-loop:$SHA" --set-env-vars OFDD_RULES_DIR=config/rules
+
+# 4. Validate: trigger one FDD run, then confirm the DB mirror matches the share.
+az containerapp job start  -g Live_Services -n predmain-fdd-loop
+```
+
+If you skip step 2, the seed-capable image still self-heals an empty share on
+first boot (`ensure_rules_dir_seeded` copies the image's baked-in `stack/rules`),
+but which image boots first then decides the seed — seed explicitly to be sure.
+Once the share has `*.yaml`, seeding is a no-op forever; the share is authoritative.
+
 ## 5. RBAC limits and known constraints
 
 | Item | Status | Mitigation in current deployment |
@@ -292,7 +360,9 @@ Then add the matching managed route in ZT Central
 | What changed | Push command (high level) |
 |---|---|
 | API Python code | `az acr build → predmain-api:<sha>`, then `az containerapp update --image` |
-| fdd-loop driver code or rules YAML | `az acr build → predmain-fdd-loop:<sha>`, then `az containerapp job update --image` |
+| fdd-loop driver code | `az acr build → predmain-fdd-loop:<sha>`, then `az containerapp job update --image` |
+| **Tune a live rule param** (thresholds/windows) | No rebuild. Edit `config/rules/*.yaml` on the `predmain-config` share (or Faults page → *Sync definitions*); picked up next FDD run. See §4.7 |
+| Change the **baked-in default** rules (seed for a fresh share) | `az acr build → predmain-fdd-loop:<sha>` **and** `predmain-api:<sha>`, then roll both. Does **not** alter an already-seeded share |
 | Frontend React code or staticwebapp.config.json | `npm run build:swa && swa deploy` |
 | Secret value (DSN, API key) | `az containerapp secret set`, then `az containerapp update --revision-suffix` to force restart |
 | New DB migration (`stack/sql/0NN_*.sql`) | scp to ioProxyHandler, `psql -v ON_ERROR_STOP=1 -f` |

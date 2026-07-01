@@ -87,6 +87,14 @@ async def lifespan(app: FastAPI):
         get_config_from_graph()
     )  # so get_platform_settings() sees RDF config
     write_ttl_to_file()  # ensure file exists and health state is set
+    # Seed the shared rules mount from baked-in defaults on first boot (no-op once
+    # populated), so GET/POST /rules and the FDD loop share one authoritative copy.
+    from openfdd_stack.platform.rules_loader import (
+        ensure_rules_dir_seeded,
+        resolve_rules_dir,
+    )
+
+    ensure_rules_dir_seeded(resolve_rules_dir())
     start_sync_thread()
     yield
     from openfdd_stack.platform.graph_model import stop_sync_thread

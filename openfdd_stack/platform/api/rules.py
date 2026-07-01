@@ -8,8 +8,6 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
-from openfdd_stack.platform.config import get_platform_settings
-
 router = APIRouter(prefix="/rules", tags=["rules"])
 
 # Test-only: allow injecting/deleting a rule file for hot-reload tests (e.g. 4_hot_reload_test.py)
@@ -21,15 +19,15 @@ _ALLOW_TEST_RULES = os.environ.get("OFDD_ALLOW_TEST_RULES", "").strip().lower() 
 
 
 def _rules_dir_resolved() -> Path:
-    """Return resolved rules_dir from platform config (RDF-backed). Uses same repo-relative logic as run_fdd_loop so GET /rules and the FDD runner agree."""
-    settings = get_platform_settings()
-    raw = getattr(settings, "rules_dir", None) or "stack/rules"
-    path = Path(raw)
-    if path.is_absolute():
-        return path
-    # Same as loop.run_fdd_loop: repo_root / rules_dir
-    repo_root = Path(__file__).resolve().parent.parent.parent.parent
-    return (repo_root / path).resolve()
+    """Return resolved rules_dir from platform config (RDF-backed).
+
+    Delegates to the shared resolver so GET/POST /rules, the FDD runner, and the
+    definitions sync all point at the same directory (on Azure: the ``config/rules``
+    shared mount).
+    """
+    from openfdd_stack.platform.rules_loader import resolve_rules_dir
+
+    return resolve_rules_dir()
 
 
 def _rule_meta(path: Path) -> dict:

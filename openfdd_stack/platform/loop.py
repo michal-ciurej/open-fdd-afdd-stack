@@ -315,13 +315,15 @@ def sync_fault_definitions_from_rules_dir() -> None:
     """
     from open_fdd.engine.runner import load_rules_from_dir
 
-    settings = get_platform_settings()
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    rules_path = Path(settings.rules_dir)
-    if not rules_path.is_absolute():
-        rules_path = repo_root / rules_path
+    from openfdd_stack.platform.rules_loader import (
+        ensure_rules_dir_seeded,
+        resolve_rules_dir,
+    )
+
+    rules_path = resolve_rules_dir()
+    ensure_rules_dir_seeded(rules_path)
     if not rules_path.exists():
-        rules_path = repo_root / "stack" / "rules"
+        rules_path = Path(__file__).resolve().parent.parent.parent / "stack" / "rules"
     all_rules = load_rules_from_dir(rules_path)
     _sync_fault_definitions_from_rules(all_rules)
 
@@ -349,6 +351,7 @@ def run_fdd_loop(
     )
     from openfdd_stack.platform.brick_vocabulary import normalize_equipment_type
     from openfdd_stack.platform.equipment_column_map import build_equipment_column_map
+    from openfdd_stack.platform.rules_loader import ensure_rules_dir_seeded
 
     settings = get_platform_settings()
     lookback = lookback_days if lookback_days is not None else settings.lookback_days
@@ -361,6 +364,9 @@ def run_fdd_loop(
         rules_path = Path(settings.rules_dir)
         if not rules_path.is_absolute():
             rules_path = repo_root / rules_path
+    # Seed an empty shared mount from baked-in defaults (no-op once populated),
+    # so the loop and API share one authoritative rules dir on the Azure mount.
+    ensure_rules_dir_seeded(rules_path)
     if not rules_path.exists():
         rules_path = repo_root / "stack" / "rules"
 
