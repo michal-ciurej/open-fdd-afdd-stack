@@ -431,10 +431,13 @@ async def _scrape_via_rpc(
                         """
                         INSERT INTO timeseries_readings (ts, site_id, point_id, value)
                         VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (point_id, ts) DO NOTHING
                         """,
                         (ts_r, sid, pid, val),
                     )
-                    rows_inserted += 1
+                    # rowcount is 0 when the ON CONFLICT clause dropped the row.
+                    if cur.rowcount:
+                        rows_inserted += 1
                 conn.commit()
 
     if errors:

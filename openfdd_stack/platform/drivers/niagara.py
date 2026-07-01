@@ -752,7 +752,7 @@ def _store_readings(
             """
             INSERT INTO timeseries_readings (ts, site_id, point_id, value)
             VALUES %s
-            ON CONFLICT DO NOTHING
+            ON CONFLICT (point_id, ts) DO NOTHING
             """,
             rows,
             page_size=1000,

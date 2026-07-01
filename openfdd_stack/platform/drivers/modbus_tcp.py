@@ -211,10 +211,13 @@ def run_modbus_scrape_data_model(
                         """
                         INSERT INTO timeseries_readings (ts, site_id, point_id, value)
                         VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (point_id, ts) DO NOTHING
                         """,
                         (ts, site_uuid_str, point_id_str, val),
                     )
-                    rows_inserted += 1
+                    # rowcount is 0 when the ON CONFLICT clause dropped the row.
+                    if cur.rowcount:
+                        rows_inserted += 1
             conn.commit()
 
     logger.info(

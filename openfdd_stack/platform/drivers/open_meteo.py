@@ -259,6 +259,7 @@ def store_weather_for_site(
                     """
                     INSERT INTO timeseries_readings (ts, site_id, point_id, value, job_id)
                     VALUES %s
+                    ON CONFLICT (point_id, ts) DO NOTHING
                     """,
                     rows,
                     page_size=2000,
