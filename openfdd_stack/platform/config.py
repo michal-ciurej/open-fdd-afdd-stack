@@ -5,6 +5,7 @@ When the graph has config, it overrides env for those keys. Overlay is populated
 on API startup from data_model.ttl and on PUT /config.
 """
 
+import os
 from typing import Optional
 
 from pydantic import AliasChoices, Field
@@ -127,6 +128,14 @@ class PlatformSettings(BaseSettings):
 def get_platform_settings() -> PlatformSettings:
     """Effective settings: env first, then overlay from RDF (PUT /config). Not cached so overlay is visible.
     Overlay uses API keys (e.g. bacnet_enabled); we map to settings attrs (e.g. bacnet_scrape_enabled).
+
+    ``rules_dir`` is the deliberate exception: an explicitly-set ``OFDD_RULES_DIR``
+    env var wins over the graph overlay (env-authoritative, exactly like
+    ``OFDD_BRICK_TTL_PATH``). Without this, a stale ``ofdd:rulesDir "stack/rules"`` in
+    data_model.ttl silently repoints the API at the container-baked rules copy instead
+    of the shared ``config/rules`` mount, so UI rule edits never persist and fault
+    definitions revert to image defaults. The overlay still applies when the env var is
+    unset (local/dev, UI-driven config).
     """
     s = PlatformSettings()
     overlay = get_config_overlay()
@@ -134,8 +143,12 @@ def get_platform_settings() -> PlatformSettings:
         "bacnet_enabled": "bacnet_scrape_enabled",
         "ai_backend": "ai_backend",
     }  # RDF/API name -> PlatformSettings attr
+    env_rules_dir = os.environ.get("OFDD_RULES_DIR")
     for k, v in overlay.items():
         attr = key_to_attr.get(k, k)
-        if hasattr(s, attr):
-            setattr(s, attr, v)
+        if not hasattr(s, attr):
+            continue
+        if attr == "rules_dir" and env_rules_dir and env_rules_dir.strip():
+            continue  # env-authoritative: ignore overlay rules_dir when OFDD_RULES_DIR is set
+        setattr(s, attr, v)
     return s

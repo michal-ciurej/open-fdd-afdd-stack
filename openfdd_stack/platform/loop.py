@@ -323,7 +323,14 @@ def sync_fault_definitions_from_rules_dir() -> None:
     rules_path = resolve_rules_dir()
     ensure_rules_dir_seeded(rules_path)
     if not rules_path.exists():
-        rules_path = Path(__file__).resolve().parent.parent.parent / "stack" / "rules"
+        baked = Path(__file__).resolve().parent.parent.parent / "stack" / "rules"
+        _log.warning(
+            "Configured rules_dir %s does not exist - falling back to baked-in %s for "
+            "definitions sync. UI rule edits on the shared mount will NOT be reflected.",
+            rules_path,
+            baked,
+        )
+        rules_path = baked
     all_rules = load_rules_from_dir(rules_path)
     _sync_fault_definitions_from_rules(all_rules)
 
@@ -351,7 +358,10 @@ def run_fdd_loop(
     )
     from openfdd_stack.platform.brick_vocabulary import normalize_equipment_type
     from openfdd_stack.platform.equipment_column_map import build_equipment_column_map
-    from openfdd_stack.platform.rules_loader import ensure_rules_dir_seeded
+    from openfdd_stack.platform.rules_loader import (
+        ensure_rules_dir_seeded,
+        resolve_rules_dir,
+    )
 
     settings = get_platform_settings()
     lookback = lookback_days if lookback_days is not None else settings.lookback_days
@@ -361,13 +371,22 @@ def run_fdd_loop(
     if rules_dir is not None:
         rules_path = Path(rules_dir)
     else:
-        rules_path = Path(settings.rules_dir)
-        if not rules_path.is_absolute():
-            rules_path = repo_root / rules_path
+        # Same resolver the rules API uses, so the loop and UI always agree on the
+        # rules directory. Env-authoritative (OFDD_RULES_DIR), which also makes the
+        # loop immune to the RDF config overlay never being loaded in this process.
+        rules_path = resolve_rules_dir()
     # Seed an empty shared mount from baked-in defaults (no-op once populated),
     # so the loop and API share one authoritative rules dir on the Azure mount.
     ensure_rules_dir_seeded(rules_path)
     if not rules_path.exists():
+        _log.warning(
+            "Configured rules_dir %s does not exist - falling back to baked-in %s. "
+            "fault_definitions will be synced from image defaults and any UI rule edits "
+            "will be IGNORED (they revert to baked-in). On Azure this usually means the "
+            "predmain-config share is not mounted on this job or OFDD_RULES_DIR is wrong.",
+            rules_path,
+            repo_root / "stack" / "rules",
+        )
         rules_path = repo_root / "stack" / "rules"
 
     # Use same TTL file as the rest of the platform (API, graph sync) so column_map matches the data model.
