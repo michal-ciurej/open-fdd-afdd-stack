@@ -6,7 +6,7 @@ has_children: true
 
 # BACnet
 
-BACnet is the **default data driver** for Open-FDD. Discovery, [diy-bacnet-server](https://github.com/bbartling/diy-bacnet-server), and the BACnet scraper are documented here. **Swagger (diy-bacnet-server):** http://localhost:8080/docs
+BACnet is the **default data driver** for Open-FDD. Discovery, [diy-bacnet-server]( /diy-bacnet-server), and the BACnet scraper are documented here. **Swagger (diy-bacnet-server):** http://localhost:8080/docs
 
 ---
 

@@ -14,11 +14,11 @@ Open-FDD does **not** require MQTT for core FDD, BACnet scraping, or the web UI.
    Run `./scripts/bootstrap.sh --with-mqtt-bridge` to start a broker on **`localhost:1883`** (see [Getting started](../getting_started) and [Quick reference](quick_reference)).
 
 2. **BACnet2MQTT (diy-bacnet-server)**  
-   When **`BACNET2MQTT_ENABLED=true`** and **`MQTT_BROKER_URL`** point at that broker, **diy-bacnet-server** publishes per-point state under **`MQTT_BASE_TOPIC`** (default `bacnet2mqtt`) and can publish Home Assistant discovery under **`HA_DISCOVERY_TOPIC`**. This is documented in the **[diy-bacnet-server repo](https://github.com/bbartling/diy-bacnet-server)** (README and `HOME_ASSISTANT_MQTT_CHEATSHEET.md`).
+   When **`BACNET2MQTT_ENABLED=true`** and **`MQTT_BROKER_URL`** point at that broker, **diy-bacnet-server** publishes per-point state under **`MQTT_BASE_TOPIC`** (default `bacnet2mqtt`) and can publish Home Assistant discovery under **`HA_DISCOVERY_TOPIC`**. This is documented in the **[diy-bacnet-server repo]( /diy-bacnet-server)** (README and `HOME_ASSISTANT_MQTT_CHEATSHEET.md`).
 
 3. **MQTT RPC gateway (experimental, diy-bacnet-server)**  
    When **`MQTT_RPC_GATEWAY_ENABLED=true`**, the same gateway process can subscribe to **`{MQTT_RPC_TOPIC_PREFIX}/cmd`** and publish structured acks on **`.../ack`**, using the **same method names** as HTTP JSON-RPC (`server_hello`, `client_whois_range`, `client_read_property`, etc.). Optional **telemetry** topics advertise supported methods and periodic metadata.  
-   Configure via **`stack/.env`** (variables are passed through **`stack/docker-compose.yml`** to the **bacnet-server** service). See the upstream **[MQTT RPC gateway](https://github.com/bbartling/diy-bacnet-server/blob/master/README.md#mqtt-rpc-gateway-optional-experimental)** section for topic layout and security notes (TLS, ACLs).
+   Configure via **`stack/.env`** (variables are passed through **`stack/docker-compose.yml`** to the **bacnet-server** service). See the upstream **[MQTT RPC gateway]( /diy-bacnet-server/blob/master/README.md#mqtt-rpc-gateway-optional-experimental)** section for topic layout and security notes (TLS, ACLs).
 
 ## Open-FDD product scope
 

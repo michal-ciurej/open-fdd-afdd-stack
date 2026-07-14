@@ -13,12 +13,12 @@ plugins:
   - jekyll-seo-tag
 
 aux_links:
-  "AFDD stack (GitHub)": "https://github.com/bbartling/open-fdd-afdd-stack"
+  "AFDD stack (GitHub)": " /open-fdd-afdd-stack"
   "Engine docs": "https://bbartling.github.io/open-fdd/"
-  "Engine (GitHub)": "https://github.com/bbartling/open-fdd"
+  "Engine (GitHub)": " /open-fdd"
   "PyPI (open-fdd)": "https://pypi.org/project/open-fdd/"
 
-footer_content: "MIT · <a href=\"https://github.com/bbartling/open-fdd-afdd-stack\">AFDD stack</a> · <a href=\"https://bbartling.github.io/open-fdd/\">Engine docs</a>"
+footer_content: "MIT · <a href=\" /open-fdd-afdd-stack\">AFDD stack</a> · <a href=\"https://bbartling.github.io/open-fdd/\">Engine docs</a>"
 
 heading_anchors: true
 

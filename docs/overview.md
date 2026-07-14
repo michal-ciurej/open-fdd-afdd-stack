@@ -7,7 +7,7 @@ nav_order: 2
 
 **This repository** ships the **`open-fdd`** Python package on **PyPI**: YAML-defined **FDD rules on pandas** (`open_fdd.engine`), plus schema and reporting helpers. That engine can run **inside your own application** or inside the **AFDD Docker stack** (separate repo), which installs `open-fdd` from PyPI and adds TimescaleDB, scrapers, FastAPI, and a React UI.
 
-The text below describes the **full edge platform** as deployed from **[open-fdd-afdd-stack](https://github.com/bbartling/open-fdd-afdd-stack)**-knowledge graph, services, and data flow. For engine-only usage, see **[Engine-only / IoT](howto/engine_only_iot)** and **[Getting started](getting_started)**.
+The text below describes the **full edge platform** as deployed from **[open-fdd-afdd-stack]( /open-fdd-afdd-stack)**-knowledge graph, services, and data flow. For engine-only usage, see **[Engine-only / IoT](howto/engine_only_iot)** and **[Getting started](getting_started)**.
 
 ---
 
@@ -30,7 +30,7 @@ This project is an open-source stack; a cloud or MSI vendor can develop their ow
 | **BACnet scraper** | Polls diy-bacnet-server via JSON-RPC. Writes readings to `timeseries_readings`. |
 | **Weather scraper** | Fetches from Open-Meteo ERA5 (temp, RH, dewpoint, wind, solar/radiation, cloud cover). |
 | **FDD loop** | Runs every N hours (see `rule_interval_hours`, `lookback_days` in platform config). Pulls last N days from DB into pandas, **reloads all rules from YAML on every run** (hot reload), runs rules, writes `fault_results` back to DB. No restart needed when tuning rule params. |
-| **[diy-bacnet-server](https://github.com/bbartling/diy-bacnet-server)** | BACnet/IP JSON-RPC bridge. Discovery and present-value reads via JSON-RPC; Open-FDD merges discovery into the **data model** (RDF/TTL), not a required CSV. |
+| **[diy-bacnet-server]( /diy-bacnet-server)** | BACnet/IP JSON-RPC bridge. Discovery and present-value reads via JSON-RPC; Open-FDD merges discovery into the **data model** (RDF/TTL), not a required CSV. |
 
 ---
 
@@ -55,7 +55,7 @@ Remote Open-FDD BACnet gateways (e.g. diy-bacnet-server plus scraper) can be dep
 
 ## Ways to deploy
 
-- **Docker Compose (AFDD stack):** In **[open-fdd-afdd-stack](https://github.com/bbartling/open-fdd-afdd-stack)**, run `./scripts/bootstrap.sh` (see **[stack docs](https://bbartling.github.io/open-fdd-afdd-stack/)**).
+- **Docker Compose (AFDD stack):** In **[open-fdd-afdd-stack]( /open-fdd-afdd-stack)**, run `./scripts/bootstrap.sh` (see **[stack docs](https://bbartling.github.io/open-fdd-afdd-stack/)**).
 - **Minimal stack (BACnet-focused):** `./scripts/bootstrap.sh --minimal` in that repo - DB + BACnet server + scraper; no full API/FDD/weather unless you add services.
 - **Engine only:** `pip install open-fdd` and run `RuleRunner` on pandas DataFrames (no Compose); see **[Engine-only / IoT](howto/engine_only_iot)**.
 - **Manual / custom:** Start your own processes; reuse the same rule YAML and `open_fdd.engine` APIs.

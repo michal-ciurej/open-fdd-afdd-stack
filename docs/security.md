@@ -56,7 +56,7 @@ Older docs referred to baking **`VITE_OFDD_API_KEY`** into the frontend at build
 ## Stack hardening (database, Caddy, secrets)
 {: #stack-hardening-db-caddy-secrets }
 
-Related tracking: **[Stack security hardening](https://github.com/bbartling/open-fdd/issues/73)** and **[dashboard / API authentication](https://github.com/bbartling/open-fdd/issues/72)**.
+Related tracking: **[Stack security hardening]( /open-fdd/issues/73)** and **[dashboard / API authentication]( /open-fdd/issues/72)**.
 
 **Architecture rule:** **Frontend → API → database.** The React app must not talk to Postgres; only the API uses `OFDD_DB_DSN` on the Docker network (`db:5432`).
 

@@ -53,7 +53,7 @@ Integrators own the bridge from **their** naming (warehouse columns, Haystack re
 
 1. **Plain dict (most common)** - Build `column_map: dict[str, str]` (rule input / Brick-class key → **actual DataFrame column name**) and pass it to **`RuleRunner.run(..., column_map=column_map)`**. No TTL required on your side if you already know the columns.
 
-2. **Brick TTL** - The **`open-fdd`** wheel does **not** include **rdflib**. If you need SPARQL over a **`.ttl`** file in **Python code outside the Docker stack**, either install **rdflib** yourself and copy the small resolver from **`openfdd_stack.platform.brick_ttl_resolver`** in **[open-fdd-afdd-stack](https://github.com/bbartling/open-fdd-afdd-stack)**, or build **`column_map`** another way (manifest / dict).
+2. **Brick TTL** - The **`open-fdd`** wheel does **not** include **rdflib**. If you need SPARQL over a **`.ttl`** file in **Python code outside the Docker stack**, either install **rdflib** yourself and copy the small resolver from **`openfdd_stack.platform.brick_ttl_resolver`** in **[open-fdd-afdd-stack]( /open-fdd-afdd-stack)**, or build **`column_map`** another way (manifest / dict).
 
 3. **Custom `ColumnMapResolver`** - Implement the **`ColumnMapResolver`** protocol (`build_column_map(*, ttl_path: Path) -> dict[str, str]`) with your own lookup (REST, SQL, manifest file, etc.). You may ignore **`ttl_path`** if your source is elsewhere. For **forked** platform code, **`run_fdd_loop(..., column_map_resolver=your_resolver)`** swaps mapping for the DB loop; the **stock Docker `fdd-loop`** does **not** set this - it keeps **`BrickTtlColumnMapResolver`** from **`openfdd_stack.platform.brick_ttl_resolver`**.
 

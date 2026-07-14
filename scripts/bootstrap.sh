@@ -126,7 +126,7 @@ fi
 BUILD_SERVICES_STR=""
 
 # Default repo to clone when diy-bacnet-server sibling is missing
-DIY_BACNET_REPO_URL="${DIY_BACNET_REPO_URL:-https://github.com/bbartling/diy-bacnet-server.git}"
+DIY_BACNET_REPO_URL="${DIY_BACNET_REPO_URL:- /diy-bacnet-server.git}"
 
 # -----------------------------
 # Args
@@ -261,7 +261,7 @@ Security:
   --password-stdin          Read Phase-1 app password from stdin.
                             (Alternative: set OFDD_APP_PASSWORD env var.)
 
-  BACnet gateway (diy-bacnet-server; host network - see https://github.com/bbartling/diy-bacnet-server ):
+  BACnet gateway (diy-bacnet-server; host network - see  /diy-bacnet-server ):
                             Gateway BACnet name is fixed as open-fdd (not configurable).
   --bacnet-instance N       Writes OFDD_BACNET_DEVICE_INSTANCE → --instance (compose default 3456788 if omitted).
   --bacnet-address ADDR     Writes OFDD_BACNET_ADDRESS → --address (e.g. 192.168.204.11/24:47808) for BACnet/IP on the OT NIC.

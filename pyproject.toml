@@ -51,10 +51,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/bbartling/open-fdd-afdd-stack"
+Homepage = " /open-fdd-afdd-stack"
 Documentation = "https://bbartling.github.io/open-fdd-afdd-stack/"
-Repository = "https://github.com/bbartling/open-fdd-afdd-stack"
-Changelog = "https://github.com/bbartling/open-fdd-afdd-stack/releases"
+Repository = " /open-fdd-afdd-stack"
+Changelog = " /open-fdd-afdd-stack/releases"
 "Engine (PyPI)" = "https://pypi.org/project/open-fdd/"
 "Engine documentation" = "https://bbartling.github.io/open-fdd/"
 

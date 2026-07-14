@@ -39,7 +39,7 @@ python examples/cloud_export.py --site default --days 14
 API_BASE=http://your-openfdd-host:8000 python examples/cloud_export.py
 ```
 
-**Docker:** See [`examples/cloud_export/README.md`](https://github.com/bbartling/open-fdd/blob/master/examples/cloud_export/README.md) for building and running the example in a container (e.g. on a vendor edge device that reaches the Open-FDD API over the LAN).
+**Docker:** See [`examples/cloud_export/README.md`]( /open-fdd/blob/master/examples/cloud_export/README.md) for building and running the example in a container (e.g. on a vendor edge device that reaches the Open-FDD API over the LAN).
 
 ---
 

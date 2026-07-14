@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/bbartling/open-fdd/docs/config_schema.json",
+  "$id": " /open-fdd/docs/config_schema.json",
   "title": "open-fdd Rule Config",
   "description": "Schema for open-fdd YAML rule configs. Not enforced at runtime.",
   "type": "object",

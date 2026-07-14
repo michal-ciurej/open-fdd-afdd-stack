@@ -61,4 +61,4 @@ The **Data model** page ends with a **Danger zone** card. The actions are ordere
 
 **How this fits:** Postgres holds the authoritative sites/equipment/points (including `external_id` for time-series columns). The in-memory graph merges Brick (from DB) with BACnet discovery RDF. The TTL file on disk is a snapshot of that graph; the API also persists periodically and on import/reset.
 
-For the same **help links** as the Overview page (GitHub Pages, PDF, LLM prompt, Open‑Claw integration), see [README - Online Documentation](https://github.com/bbartling/open-fdd/blob/master/README.md#online-documentation) in the repo.
+For the same **help links** as the Overview page (GitHub Pages, PDF, LLM prompt, Open‑Claw integration), see [README - Online Documentation]( /open-fdd/blob/master/README.md#online-documentation) in the repo.

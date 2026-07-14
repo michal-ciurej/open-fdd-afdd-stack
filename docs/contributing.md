@@ -12,7 +12,7 @@ Open-FDD is in **Alpha**. The most valuable contributions right now are **bug re
 **Phase focus:** Alpha emphasizes platform stability, driver implementation beyond BACnet, and API changes for specific integration needs. Beta (planned) will focus more on Brick data modeling (e.g. ASHRAE 223P), mechanical engineering and consulting input into the expression rule cookbook, and better default Grafana dashboards for HVAC analytics. See the [Table of Contents](#table-of-contents) for different ways to help and how this project handles them. Please read the relevant section before contributing; it helps maintainers and keeps things smooth for everyone.
 
 > If you like the project but don't have time to contribute, that's fine. Other ways to support it:
-> - Star the [repository](https://github.com/bbartling/open-fdd)
+> - Star the [repository]( /open-fdd)
 > - Share it with colleagues or at meetups
 > - Refer to Open-FDD in your project's readme or documentation
 
@@ -43,11 +43,11 @@ This project expects everyone to be respectful and constructive. By participatin
 
 ## I Have a Question
 
-Before asking, check **[this site’s docs](https://bbartling.github.io/open-fdd-afdd-stack/)** (platform) and the **[engine docs](https://bbartling.github.io/open-fdd/)** (`pip install open-fdd`), and search [stack issues](https://github.com/bbartling/open-fdd-afdd-stack/issues) / [engine issues](https://github.com/bbartling/open-fdd/issues).
+Before asking, check **[this site’s docs](https://bbartling.github.io/open-fdd-afdd-stack/)** (platform) and the **[engine docs](https://bbartling.github.io/open-fdd/)** (`pip install open-fdd`), and search [stack issues]( /open-fdd-afdd-stack/issues) / [engine issues]( /open-fdd/issues).
 
 If you still need help:
 
-- Open an [issue](https://github.com/bbartling/open-fdd/issues/new).
+- Open an [issue]( /open-fdd/issues/new).
 - Provide as much context as you can (what you're trying to do, what you ran, what happened).
 - Include relevant versions: Python, Docker, OS (e.g. Ubuntu, Linux Mint), and Open-FDD commit or release if known.
 
@@ -71,7 +71,7 @@ When contributing, you agree that you have authored 100% of the content, have th
 
 - Use the latest version (main branch or latest release).
 - Confirm the bug is in Open-FDD and not in your environment (e.g. wrong Python version, missing config). Check the [platform docs](https://bbartling.github.io/open-fdd-afdd-stack/) or [engine docs](https://bbartling.github.io/open-fdd/) and [I Have a Question](#i-have-a-question) first.
-- Search [issues](https://github.com/bbartling/open-fdd/issues?q=label%3Abug) to see if the bug is already reported.
+- Search [issues]( /open-fdd/issues?q=label%3Abug) to see if the bug is already reported.
 - Collect:
   - **Stack trace** (Traceback) if applicable
   - **OS and platform** (e.g. Linux, macOS, Windows; x86, ARM)
@@ -82,7 +82,7 @@ When contributing, you agree that you have authored 100% of the content, have th
 ### How to submit a good bug report
 
 - **Security issues:** Do **not** report security vulnerabilities in public issues. Email the repository owner or open a private security advisory on GitHub.
-- Open a new [issue](https://github.com/bbartling/open-fdd/issues/new). Don't assume it's a bug yet-avoid using the word "bug" in the title until it's confirmed.
+- Open a new [issue]( /open-fdd/issues/new). Don't assume it's a bug yet-avoid using the word "bug" in the title until it's confirmed.
 - Describe **expected behavior** vs **actual behavior**.
 - Provide **reproduction steps** so someone else can recreate the issue. Isolate the problem when possible (e.g. minimal rule YAML, minimal config).
 - Paste the information you collected above.
@@ -95,12 +95,12 @@ After you file:
 
 ## Suggesting Enhancements
 
-Enhancements are tracked as [GitHub issues](https://github.com/bbartling/open-fdd/issues).
+Enhancements are tracked as [GitHub issues]( /open-fdd/issues).
 
 ### Before submitting
 
 - Use the latest version and read the [platform](https://bbartling.github.io/open-fdd-afdd-stack/) or [engine](https://bbartling.github.io/open-fdd/) documentation to see if the behavior already exists or can be configured.
-- Search [issues](https://github.com/bbartling/open-fdd/issues) to see if the enhancement was already suggested; if so, add to that discussion.
+- Search [issues]( /open-fdd/issues) to see if the enhancement was already suggested; if so, add to that discussion.
 - Consider whether the idea fits Open-FDD's scope (edge AFDD, rules, API, BACnet, Grafana). Make a clear case for why it would help most users.
 
 ### How to submit a good enhancement suggestion
@@ -157,7 +157,7 @@ Open a PR with your changes; for large edits, an issue first can help align with
 BASE=https://bbartling.github.io/open-fdd
 curl -sS -o /dev/null -w "%{http_code}" "$BASE/modeling/llm_workflow"    # expect 200
 curl -sS -o /dev/null -w "%{http_code}" "$BASE/modeling/llm_workflow/"   # often 404 - avoid trailing slash in external links
-curl -sS -o /dev/null -w "%{http_code}" "https://github.com/bbartling/open-fdd/blob/master/pdf/open-fdd-docs.pdf"  # expect 302 or 200
+curl -sS -o /dev/null -w "%{http_code}" " /open-fdd/blob/master/pdf/open-fdd-docs.pdf"  # expect 302 or 200
 ```
 
 ---

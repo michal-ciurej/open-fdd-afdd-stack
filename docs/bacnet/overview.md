@@ -6,7 +6,7 @@ nav_order: 1
 
 # BACnet Integration
 
-Open-FDD uses [diy-bacnet-server](https://github.com/bbartling/diy-bacnet-server) as a BACnet/IP-to-JSON-RPC bridge. Discovery and scrape feed the same **data model** (building as a knowledge graph). The gateway uses **bacpypes3**’s built-in RDF (BACnetGraph) for discovery-to-RDF; Open-FDD merges that TTL and queries via SPARQL.
+Open-FDD uses [diy-bacnet-server]( /diy-bacnet-server) as a BACnet/IP-to-JSON-RPC bridge. Discovery and scrape feed the same **data model** (building as a knowledge graph). The gateway uses **bacpypes3**’s built-in RDF (BACnetGraph) for discovery-to-RDF; Open-FDD merges that TTL and queries via SPARQL.
 
 ---
 
@@ -14,7 +14,7 @@ Open-FDD uses [diy-bacnet-server](https://github.com/bbartling/diy-bacnet-server
 
 | Component | Purpose |
 |-----------|---------|
-| **[diy-bacnet-server](https://github.com/bbartling/diy-bacnet-server)** | BACnet/IP UDP listener + HTTP JSON-RPC API. Discovers devices and objects; exposes present-value reads. Interactive OpenAPI/Swagger is disabled on the gateway; use **BACnet tools** in the React app or JSON-RPC. |
+| **[diy-bacnet-server]( /diy-bacnet-server)** | BACnet/IP UDP listener + HTTP JSON-RPC API. Discovers devices and objects; exposes present-value reads. Interactive OpenAPI/Swagger is disabled on the gateway; use **BACnet tools** in the React app or JSON-RPC. |
 | **BACnet scraper** | Platform service. Polls diy-bacnet-server on a schedule; **reads points from the data model** (points with `bacnet_device_id` and `object_identifier`) and writes readings to TimescaleDB. |
 | **Data model** | Sites, equipment, and points with BACnet addressing (`bacnet_device_id`, `object_identifier`, `object_name`). Configured via the **React frontend** (Config, Data model, Points) or the API. Single source of truth for what to scrape. |
 

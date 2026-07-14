@@ -15,7 +15,7 @@ This page covers **prerequisites** and the **bootstrap script**: how to get the 
 2. **Clone and run bootstrap** (from any directory):
 
    ```bash
-   git clone https://github.com/bbartling/open-fdd-afdd-stack.git
+   git clone  /open-fdd-afdd-stack.git
    cd open-fdd-afdd-stack
    ./scripts/bootstrap.sh
    ```
@@ -75,10 +75,10 @@ This starts an MCP-style retrieval sidecar at `http://localhost:8090` using deri
 - **Troubleshooting:** See the root [README](../README.md) section *Ubuntu prerequisites* and *Common bootstrap failures* (Docker permissions, missing argon2, PEP 668, venv).
 - **Git:** To clone the project:
   ```bash
-  git clone https://github.com/bbartling/open-fdd-afdd-stack.git
+  git clone  /open-fdd-afdd-stack.git
   cd open-fdd-afdd-stack
   ```
-- **BACnet (default data driver):** The default data driver is BACnet. Bootstrap **automatically** builds and starts [diy-bacnet-server](https://github.com/bbartling/diy-bacnet-server) as its own Docker container (plus the BACnet scraper). Run **BACnet discovery** from the UI or API, then add points to the **data model** (with `bacnet_device_id` / `object_identifier`)-the scraper reads **only the database + graph**, not a CSV file. See [BACnet → Setup](bacnet/index#setup) and [BACnet overview](bacnet/overview). To run without BACnet (e.g. central-only with remote gateways), start only the services you need (e.g. `docker compose --profile grafana up -d db api fdd-loop weather-scraper grafana` from `stack/` if you want optional Grafana).
+- **BACnet (default data driver):** The default data driver is BACnet. Bootstrap **automatically** builds and starts [diy-bacnet-server]( /diy-bacnet-server) as its own Docker container (plus the BACnet scraper). Run **BACnet discovery** from the UI or API, then add points to the **data model** (with `bacnet_device_id` / `object_identifier`)-the scraper reads **only the database + graph**, not a CSV file. See [BACnet → Setup](bacnet/index#setup) and [BACnet overview](bacnet/overview). To run without BACnet (e.g. central-only with remote gateways), start only the services you need (e.g. `docker compose --profile grafana up -d db api fdd-loop weather-scraper grafana` from `stack/` if you want optional Grafana).
 
 ---
 
@@ -143,7 +143,7 @@ printf '%s' 'YOUR_PASSWORD' | ./scripts/bootstrap.sh --user YOURNAME --password-
 | **`OFDD_APP_USER`**, **`OFDD_APP_USER_HASH`**, **`OFDD_JWT_SECRET`** (+ TTL keys) | **Open-FDD API** (`/auth/login`, JWT validation) | Dashboard login; the browser keeps a **short-lived JWT** and sends **`Authorization: Bearer`** with that token on API calls-not the dashboard password. |
 | **`OFDD_BACNET_SERVER_API_KEY`** | **Open-FDD API** and **bacnet-scraper** (outbound to the gateway) | **`Authorization: Bearer`** on JSON-RPC to **diy-bacnet-server**. Docker Compose passes the **same value** into the gateway container as **`BACNET_RPC_API_KEY`**. When that env is non-empty, the gateway enforces Bearer on RPC routes except **`POST /server_hello`**; when empty, RPC auth is disabled. |
 
-You normally only edit **`stack/.env`**; do not set **`BACNET_RPC_API_KEY`** separately unless you override compose env. Standalone diy-bacnet-server (outside this stack) uses **`BACNET_RPC_API_KEY`** in **its** environment only-see the [diy-bacnet-server README](https://github.com/bbartling/diy-bacnet-server/blob/master/README.md).
+You normally only edit **`stack/.env`**; do not set **`BACNET_RPC_API_KEY`** separately unless you override compose env. Standalone diy-bacnet-server (outside this stack) uses **`BACNET_RPC_API_KEY`** in **its** environment only-see the [diy-bacnet-server README]( /diy-bacnet-server/blob/master/README.md).
 
 Dashboard login and piping passwords into `--user` are covered in more detail (including maintenance one-liners) under **[Security - authentication](security#frontend-and-api-authentication)**.
 

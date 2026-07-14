@@ -6,7 +6,7 @@ description: "Docker AFDD platform: bootstrap.sh, Compose, BACnet, TimescaleDB, 
 
 # Open-FDD AFDD stack
 
-> **Docs split:** This site (published from **open-fdd-afdd-stack**) is the **Docker platform**. The **`open-fdd`** engine (`RuleRunner`, rule YAML, column maps) is documented at **[bbartling.github.io/open-fdd](https://bbartling.github.io/open-fdd/)** ([repo](https://github.com/bbartling/open-fdd)).
+> **Docs split:** This site (published from **open-fdd-afdd-stack**) is the **Docker platform**. The **`open-fdd`** engine (`RuleRunner`, rule YAML, column maps) is documented at **[bbartling.github.io/open-fdd](https://bbartling.github.io/open-fdd/)** ([repo]( /open-fdd)).
 
 {: .fs-6 .fw-400 }
 **On-prem AFDD stack** - **`./scripts/bootstrap.sh`** brings up Compose services; the rules engine is **`open-fdd`** from **PyPI**. Brick/BACnet RDF, REST API, React dashboard, optional Grafana.
@@ -34,7 +34,7 @@ Operators and integrators get full control, lower cost, and no vendor lock-in. A
 ## Quick start
 
 ```bash
-git clone https://github.com/bbartling/open-fdd-afdd-stack.git
+git clone  /open-fdd-afdd-stack.git
 cd open-fdd-afdd-stack
 ./scripts/bootstrap.sh
 ```
