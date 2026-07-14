@@ -32,7 +32,7 @@ export function FaultsByDeviceChart({ siteId, start, end }: FaultsByDeviceChartP
   if (error) {
     return (
       <div className="flex h-72 items-center justify-center rounded-2xl border border-border/60 bg-card">
-        <p className="text-sm text-destructive">Failed to load faults by device.</p>
+        <p className="text-sm text-destructive">Failed to load issues by device.</p>
       </div>
     );
   }
@@ -45,7 +45,7 @@ export function FaultsByDeviceChart({ siteId, start, end }: FaultsByDeviceChartP
     return (
       <div className="flex h-72 items-center justify-center rounded-2xl border border-border/60 bg-card">
         <p className="text-sm text-muted-foreground">
-          No faults by device in this period. FDD runs write to fault_results; select a range with data.
+          No issues by device in this period. FDD runs write to fault_results; select a range with data.
         </p>
       </div>
     );
@@ -69,11 +69,11 @@ export function FaultsByDeviceChart({ siteId, start, end }: FaultsByDeviceChartP
             tickFormatter={(v: string) => (v.length > 32 ? v.slice(0, 29) + "…" : v)}
           />
           <Tooltip
-            formatter={(value: number | undefined) => [value ?? 0, "Active faults"]}
+            formatter={(value: number | undefined) => [value ?? 0, "Active issues"]}
             labelFormatter={(label) => label}
             contentStyle={{ fontSize: 12 }}
           />
-          <Bar dataKey="count" fill="hsl(215, 60%, 42%)" radius={[0, 4, 4, 0]} name="Active faults" />
+          <Bar dataKey="count" fill="hsl(215, 60%, 42%)" radius={[0, 4, 4, 0]} name="Active issues" />
         </BarChart>
       </ResponsiveContainer>
     </div>

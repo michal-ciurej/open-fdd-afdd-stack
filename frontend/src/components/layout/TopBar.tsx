@@ -12,14 +12,14 @@ function ActiveFaultCounter() {
   const hasFaults = count > 0;
   const label =
     count === 0
-      ? "No New faults"
-      : `${count} active fault${count === 1 ? "" : "s"}`;
+      ? "No New issues"
+      : `${count} active issue${count === 1 ? "" : "s"}`;
 
   return (
     <TutorialPopover
-      title={hasFaults ? "Active faults" : "All clear"}
-      meaning="Number of equipment × fault rows currently flagged across the stack."
-      status="Click to open the Faults page."
+      title={hasFaults ? "Active issues" : "All clear"}
+      meaning="Number of equipment × issue rows currently flagged across the stack."
+      status="Click to open the Issues page."
       side="bottom"
     >
       <Link

@@ -68,7 +68,7 @@ const PILL_DEFS: {
   { id: "Fan_Coil_Unit", label: "Fan Coil Units", icon: Wind, equipmentType: "Fan_Coil_Unit" },
   { id: "Air_Handling_Unit", label: "Air Handling Units", icon: Building2, equipmentType: "Air_Handling_Unit" },
   { id: "Chiller", label: "Chillers", icon: Snowflake, equipmentType: "Chiller" },
-  { id: "active", label: "Units with active faults", icon: AlertTriangle, activeOnly: true },
+  { id: "active", label: "Units with active issues", icon: AlertTriangle, activeOnly: true },
 ] as const;
 
 export function EquipmentPage() {
@@ -155,7 +155,7 @@ export function EquipmentPage() {
             Browse your equipment
           </CardTitle>
           <p className="text-sm font-normal text-muted-foreground">
-            Use one-click filters, search, and a time window to see how many faults were detected per unit.
+            Use one-click filters, search, and a time window to see how many issues were detected per unit.
           </p>
         </CardHeader>
         <CardContent>
@@ -239,7 +239,7 @@ export function EquipmentPage() {
                   <TableHead>Equipment</TableHead>
                   <TableHead>Type</TableHead>
                   {!selectedSiteId && <TableHead>Site</TableHead>}
-                  <TableHead className="text-right">Faults in window</TableHead>
+                  <TableHead className="text-right">Issues in window</TableHead>
                   <TableHead className="text-right">Active now</TableHead>
                   <TableHead aria-label="Open detail" className="w-10" />
                 </TableRow>

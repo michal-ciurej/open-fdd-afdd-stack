@@ -116,7 +116,7 @@ Create a new site, delete existing sites, or amend data drivers for the currentl
                       onClick={() => {
                         if (
                           window.confirm(
-                            `Delete site "${site.name}"? This removes all equipment, points, timeseries, and faults for this site.`,
+                            `Delete site "${site.name}"? This removes all equipment, points, timeseries, and issues for this site.`,
                           )
                         ) {
                           deleteSiteMutation.mutate(site.id);

@@ -640,7 +640,7 @@ export function PlotsPage() {
     const single: Record<string, YAxisSpec> = {
       yaxis: { title: dataUnits.length === 1 ? dataUnits[0] : "Value" },
       yaxis2: {
-        title: "Fault 0/1",
+        title: "Issue 0/1",
         overlaying: "y",
         side: "right",
         range: [0, 1.1],
@@ -695,7 +695,7 @@ export function PlotsPage() {
         y,
         type: "scatter",
         mode: "lines",
-        name: `fault: ${faultOptionLabel(selectedFaultId)}`,
+        name: `issue: ${faultOptionLabel(selectedFaultId)}`,
         line: { shape: "hv", width: 1.5, dash: "dot", color: isDark ? "#f87171" : "#b91c1c" },
         yaxis: faultAxisId,
       });
@@ -879,7 +879,7 @@ export function PlotsPage() {
                   checked={showFaultOverlays}
                   onChange={(e) => setShowFaultOverlays(e.target.checked)}
                 />
-                Faults
+                Issues
               </label>
             </div>
 
@@ -965,7 +965,7 @@ export function PlotsPage() {
                 htmlFor="plots-faults-select"
                 className="mb-1 block text-xs font-medium text-muted-foreground"
               >
-                Fault overlay
+                Issue overlay
               </label>
               <select
                 id="plots-faults-select"
@@ -987,12 +987,12 @@ export function PlotsPage() {
                 disabled={faultIdsForEquipment.length === 0}
                 title={
                   faultIdsForEquipment.length === 0
-                    ? "No fault state rows for this equipment yet. Run FDD or pick another equipment."
+                    ? "No issue state rows for this equipment yet. Run FDD or pick another equipment."
                     : undefined
                 }
               >
                 {faultIdsForEquipment.length === 0 ? (
-                  <option value="">No faults linked to this equipment</option>
+                  <option value="">No issues linked to this equipment</option>
                 ) : (
                   faultIdsForEquipment.map((faultId) => (
                     <option key={faultId} value={faultId}>
@@ -1002,7 +1002,7 @@ export function PlotsPage() {
                 )}
               </select>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Overlays the selected fault for the equipment chosen above.
+                Overlays the selected issue for the equipment chosen above.
               </p>
             </div>
         </aside>
@@ -1047,7 +1047,7 @@ export function PlotsPage() {
             {traces.length > 0 ? (
               <PlotlyCanvas
                 traces={traces}
-                title="Trends and Faults"
+                title="Trends and Issues"
                 isDark={isDark}
                 yAxes={yAxes}
               />

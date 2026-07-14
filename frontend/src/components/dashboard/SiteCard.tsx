@@ -57,7 +57,7 @@ export function SiteCard({
               className={`mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full ${
                 hasFaults ? "bg-destructive" : "bg-success"
               }`}
-              aria-label={hasFaults ? "Has active faults" : "No faults"}
+              aria-label={hasFaults ? "Has active issues" : "No issues"}
             />
           </div>
         </CardHeader>
@@ -79,7 +79,7 @@ export function SiteCard({
               <span className={`font-medium tabular-nums ${hasFaults ? "text-destructive" : "text-success"}`}>
                 {faultCount}
               </span>{" "}
-              fault{faultCount !== 1 ? "s" : ""}
+              issue{faultCount !== 1 ? "s" : ""}
             </span>
           </div>
 

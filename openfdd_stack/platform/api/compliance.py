@@ -38,6 +38,10 @@ logger = logging.getLogger(__name__)
 
 SUPPLY_AIR_BRICK = "Supply_Air_Temperature_Sensor"
 RETURN_AIR_BRICK = "Return_Air_Temperature_Sensor"
+# On unitary equipment (FCUs etc.) the zone/space sensor is the return-side
+# air temperature - there is no dedicated return duct sensor - so we treat it
+# as the return-air fallback for ΔT and flow-temperature purposes.
+ZONE_AIR_BRICK = "Zone_Air_Temperature_Sensor"
 SUPPLY_WATER_BRICK = "Supply_Water_Temperature_Sensor"
 RETURN_WATER_BRICK = "Return_Water_Temperature_Sensor"
 
@@ -68,6 +72,7 @@ class ComplianceEquipmentRow(BaseModel):
     avg_supply_air_t: float | None = None
     avg_supply_water_t: float | None = None
     avg_return_air_t: float | None = None
+    avg_zone_air_t: float | None = None
     avg_return_water_t: float | None = None
     in_hours_compliance_pct: float | None = None
 
@@ -211,7 +216,13 @@ def equipment_analytics(
                 """,
                 (
                     equipment_ids,
-                    [SUPPLY_AIR_BRICK, RETURN_AIR_BRICK, SUPPLY_WATER_BRICK, RETURN_WATER_BRICK],
+                    [
+                        SUPPLY_AIR_BRICK,
+                        RETURN_AIR_BRICK,
+                        ZONE_AIR_BRICK,
+                        SUPPLY_WATER_BRICK,
+                        RETURN_WATER_BRICK,
+                    ],
                     start_dt,
                     end_dt,
                 ),
@@ -298,12 +309,18 @@ def equipment_analytics(
         bricks = avg_by_eq.get(eid, {})
         supply_air = bricks.get(SUPPLY_AIR_BRICK)
         return_air = bricks.get(RETURN_AIR_BRICK)
+        zone_air = bricks.get(ZONE_AIR_BRICK)
         supply_water = bricks.get(SUPPLY_WATER_BRICK)
         return_water = bricks.get(RETURN_WATER_BRICK)
 
+        # Warm/return-side air temperature: prefer a dedicated return sensor
+        # (AHUs), fall back to the zone/space sensor (FCUs and other unitary
+        # equipment that have no return duct sensor).
+        room_air = return_air if return_air is not None else zone_air
+
         delta_t = None
-        if supply_air is not None and return_air is not None:
-            delta_t = return_air - supply_air
+        if supply_air is not None and room_air is not None:
+            delta_t = room_air - supply_air
         elif supply_water is not None and return_water is not None:
             delta_t = return_water - supply_water
 
@@ -324,6 +341,7 @@ def equipment_analytics(
                 avg_supply_air_t=supply_air,
                 avg_supply_water_t=supply_water,
                 avg_return_air_t=return_air,
+                avg_zone_air_t=zone_air,
                 avg_return_water_t=return_water,
                 in_hours_compliance_pct=compliance_pct,
             )

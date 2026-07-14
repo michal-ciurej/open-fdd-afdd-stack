@@ -186,8 +186,9 @@ export function CompliancePage() {
             Per-equipment compliance analytics
           </CardTitle>
           <p className="text-sm font-normal text-muted-foreground">
-            Averages over the selected window. ΔT prefers air-side (return −
-            supply) and falls back to water-side. In-hours compliance % is the
+            Averages over the selected window. ΔT prefers air-side (return or
+            zone − supply) and falls back to water-side. In-hours compliance %
+            is the
             fraction of in-hours seconds during which no compliance rule was
             firing - 100 % if no schedule is configured yet.
           </p>
@@ -218,9 +219,13 @@ export function CompliancePage() {
                   const supply =
                     r.avg_supply_air_t ?? r.avg_supply_water_t ?? null;
                   // "Flow temperature" in hydronic systems = supply water side.
-                  // Falls back to return air if no water sensors are present.
+                  // Falls back to the return/zone air side when no water sensors
+                  // are present (zone air is the return-side proxy on units).
                   const flow =
-                    r.avg_supply_water_t ?? r.avg_return_air_t ?? null;
+                    r.avg_supply_water_t ??
+                    r.avg_return_air_t ??
+                    r.avg_zone_air_t ??
+                    null;
                   return (
                     <TableRow key={r.equipment_id}>
                       <TableCell className="font-medium">{r.name}</TableCell>

@@ -860,6 +860,7 @@ export interface ComplianceEquipmentRow {
   avg_supply_air_t: number | null;
   avg_supply_water_t: number | null;
   avg_return_air_t: number | null;
+  avg_zone_air_t: number | null;
   avg_return_water_t: number | null;
   in_hours_compliance_pct: number | null;
 }

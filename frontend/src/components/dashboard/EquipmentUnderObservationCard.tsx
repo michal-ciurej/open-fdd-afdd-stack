@@ -110,7 +110,7 @@ export function EquipmentUnderObservationCard({
           Equipment under observation
         </CardTitle>
         <p className="text-sm font-normal text-muted-foreground">
-          Fault frequency over the last {days} days for equipment flagged via the
+          Issue frequency over the last {days} days for equipment flagged via the
           equipment detail page. Click an equipment to drill in.
         </p>
       </CardHeader>
@@ -122,7 +122,7 @@ export function EquipmentUnderObservationCard({
           >
             No equipment marked for observation yet. Open an equipment and click
             <span className="mx-1 font-medium">Mark for observation</span>
-            to track its fault frequency here.
+            to track its issue frequency here.
           </div>
         ) : isLoading ? (
           <div className="px-6 py-4">
@@ -135,9 +135,9 @@ export function EquipmentUnderObservationCard({
                 <TableHead>Equipment</TableHead>
                 <TableHead>Type</TableHead>
                 {showSiteColumn && <TableHead>Site</TableHead>}
-                <TableHead className="text-right">Faults ({days}d)</TableHead>
-                <TableHead className="text-right">Faults / day</TableHead>
-                <TableHead className="text-right">Last fault</TableHead>
+                <TableHead className="text-right">Issues ({days}d)</TableHead>
+                <TableHead className="text-right">Issues / day</TableHead>
+                <TableHead className="text-right">Last issue</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

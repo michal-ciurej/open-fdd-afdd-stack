@@ -28,7 +28,7 @@ export function FddStatusBanner() {
             <span className="font-medium text-foreground tabular-nums">
               {faults?.length ?? "\u2026"}
             </span>
-            {" "}fault{faults?.length !== 1 ? "s" : ""} found
+            {" "}issue{faults?.length !== 1 ? "s" : ""} found
           </span>
         ) : (
           <span>No FDD runs recorded yet</span>

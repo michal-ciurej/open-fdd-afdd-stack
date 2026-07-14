@@ -800,7 +800,7 @@ function FddLoopStatusSection({ siteId }: { siteId: string | undefined }) {
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <Badge variant={statusVariant}>{lastRun.status}</Badge>
                       <span>sites: <span className="font-mono tabular-nums">{lastRun.sites_processed}</span></span>
-                      <span>faults written: <span className="font-mono tabular-nums">{lastRun.faults_written}</span></span>
+                      <span>issues written: <span className="font-mono tabular-nums">{lastRun.faults_written}</span></span>
                     </div>
                   </>
                 ) : (
@@ -831,7 +831,7 @@ function FddLoopStatusSection({ siteId }: { siteId: string | undefined }) {
               )}
               {!isRunning && runResult?.kind === "success" && (
                 <span className="text-xs text-muted-foreground">
-                  Run complete: {runResult.faults} fault{" "}
+                  Run complete: {runResult.faults} issue{" "}
                   {runResult.faults === 1 ? "row" : "rows"} written.
                 </span>
               )}
@@ -840,7 +840,7 @@ function FddLoopStatusSection({ siteId }: { siteId: string | undefined }) {
               )}
               {!isRunning && runResult?.kind === "timeout" && (
                 <span className="text-xs text-muted-foreground">
-                  Run started; status not yet confirmed — check the Faults page.
+                  Run started; status not yet confirmed — check the Issues page.
                 </span>
               )}
               {triggerMutation.isError && (
@@ -893,7 +893,7 @@ export function FddRulesPage() {
       <h1 className="mb-2 text-2xl font-semibold tracking-tight">FDD &amp; Rules</h1>
       <p className="mb-6 text-sm text-muted-foreground">
         Fault-detection engine administration: trigger a run, manage the rule repository, and review the
-        loaded fault definitions. Operators see the resulting faults on the <strong>Faults</strong> page.
+        loaded fault definitions. Operators see the resulting issues on the <strong>Issues</strong> page.
       </p>
 
       <FddLoopStatusSection siteId={selectedSiteId ?? undefined} />

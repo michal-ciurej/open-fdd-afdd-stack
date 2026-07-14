@@ -16,7 +16,7 @@ export function FaultPicker({
   definitions,
   selectedIds,
   onChange,
-  label = "Add faults",
+  label = "Add issues",
   "data-testid": testId,
 }: FaultPickerProps) {
   const [open, setOpen] = useState(false);
@@ -60,7 +60,7 @@ export function FaultPicker({
         onClick={() => setOpen(!open)}
       >
         <span className="truncate">
-          {selectedIds.length === 0 ? `${label}\u2026` : `${selectedIds.length} fault(s)`}
+          {selectedIds.length === 0 ? `${label}\u2026` : `${selectedIds.length} issue(s)`}
         </span>
         <svg
           className="h-4 w-4 shrink-0 text-muted-foreground"

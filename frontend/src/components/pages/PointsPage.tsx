@@ -77,7 +77,7 @@ function useTreeMutations(points: Point[]) {
       }
     },
     onDeleteSite: (id: string, name: string) => {
-      if (window.confirm(`Delete site "${name}"? This removes all equipment, points, timeseries, and faults.`)) {
+      if (window.confirm(`Delete site "${name}"? This removes all equipment, points, timeseries, and issues.`)) {
         deleteSiteMutation.mutate(id);
       }
     },

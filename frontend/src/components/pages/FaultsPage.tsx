@@ -58,7 +58,7 @@ function FaultsTable({
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center" data-testid="faults-empty-state">
         <p className="text-sm text-muted-foreground">
-          No active faults{siteMap ? " across any site" : " for this site"}.
+          No active issues{siteMap ? " across any site" : " for this site"}.
         </p>
       </div>
     );
@@ -80,7 +80,7 @@ function FaultsTable({
         <TableRow>
           {siteMap && <TableHead>Site</TableHead>}
           <TableHead>Device</TableHead>
-          <TableHead>Fault</TableHead>
+          <TableHead>Issue</TableHead>
           <TableHead className="text-muted-foreground">Sensor / point</TableHead>
           <TableHead>Severity</TableHead>
           <TableHead className="w-[1%] whitespace-nowrap text-muted-foreground">Plots</TableHead>
@@ -210,7 +210,7 @@ function ObservationEyeButton({ equipment }: { equipment: Equipment | undefined 
           ? "Equipment not loaded"
           : observed
             ? "Stop tracking this equipment on the overview page"
-            : "Track fault frequency on the overview page"
+            : "Track issue frequency on the overview page"
       }
       className={cn(
         "inline-flex h-8 w-8 items-center justify-center rounded-full border transition-colors",
@@ -284,7 +284,7 @@ function FaultCountsByEquipmentSection({
   if (error) {
     return (
       <div className="mb-8 text-sm text-destructive">
-        Could not load per-equipment fault counts.
+        Could not load per-equipment issue counts.
       </div>
     );
   }
@@ -292,10 +292,10 @@ function FaultCountsByEquipmentSection({
     return (
       <section className="mb-8">
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-          Fault counts by equipment
+          Issue counts by equipment
         </h2>
         <div className="rounded-xl border border-border/70 bg-muted/40 p-6 text-sm text-muted-foreground">
-          No fault rows in this time range.
+          No issue rows in this time range.
         </div>
       </section>
     );
@@ -304,10 +304,10 @@ function FaultCountsByEquipmentSection({
   return (
     <section className="mb-8">
       <h2 className="mb-1 text-sm font-medium text-muted-foreground">
-        Fault counts by equipment
+        Issue counts by equipment
       </h2>
       <p className="mb-3 text-xs text-muted-foreground">
-        Ranked by total fault count - highest first. Mark equipment for
+        Ranked by total issue count - highest first. Mark equipment for
         observation to surface it on the overview page.
       </p>
       <Table data-testid="fault-counts-by-equipment-table">
@@ -315,7 +315,7 @@ function FaultCountsByEquipmentSection({
           <TableRow>
             <TableHead className="w-[1%] whitespace-nowrap text-muted-foreground">#</TableHead>
             <TableHead>Equipment</TableHead>
-            <TableHead>Faults</TableHead>
+            <TableHead>Issues</TableHead>
             <TableHead className="text-right">Total</TableHead>
             <TableHead className="w-[1%] whitespace-nowrap text-right">Observe</TableHead>
           </TableRow>
@@ -442,7 +442,7 @@ export function FaultsPage() {
 
   return (
     <div className="flex flex-col">
-      <h1 className="mb-4 text-2xl font-semibold tracking-tight">Faults</h1>
+      <h1 className="mb-4 text-2xl font-semibold tracking-tight">Issues</h1>
 
       {/* Time range bar at top: all summary and charts below use this range */}
       <header className="mb-6 flex flex-wrap items-center gap-4 rounded-xl border border-border/80 bg-muted/70 px-4 py-3 shadow-sm">
@@ -464,7 +464,7 @@ export function FaultsPage() {
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">Active faults in period ({periodLabel})</p>
+              <p className="text-sm text-muted-foreground">Active issues in period ({periodLabel})</p>
               <p
                 className={`mt-1 text-3xl font-semibold tabular-nums ${
                   (summary.active_in_period ?? summary.total_faults ?? 0) > 0
@@ -475,7 +475,7 @@ export function FaultsPage() {
                 {summary.active_in_period ?? summary.total_faults ?? 0}
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Distinct (site + device + fault) in range. From FDD rule runs (fault_results).
+                Distinct (site + device + issue) in range. From FDD rule runs (fault_results).
               </p>
             </CardContent>
           </Card>
@@ -483,7 +483,7 @@ export function FaultsPage() {
       )}
 
       <section className="mb-8">
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">Fault flags over time</h2>
+        <h2 className="mb-3 text-sm font-medium text-muted-foreground">Issue flags over time</h2>
         <FaultOverTimeChart
           siteId={selectedSiteId ?? undefined}
           definitions={definitions}
@@ -501,7 +501,7 @@ export function FaultsPage() {
       />
 
       <section className="mt-8">
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">Active fault rows (current state)</h2>
+        <h2 className="mb-3 text-sm font-medium text-muted-foreground">Active issue rows (current state)</h2>
         {selectedSiteId ? <SiteFaultsView siteId={selectedSiteId} /> : <AllFaultsView />}
       </section>
     </div>

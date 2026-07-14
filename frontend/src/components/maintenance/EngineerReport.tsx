@@ -44,7 +44,7 @@ function FaultGrid({
   if (faults.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No faults recorded in this window.
+        No issues recorded in this window.
       </p>
     );
   }
@@ -105,7 +105,7 @@ function EquipmentReportCard({
       <div>
         <h4 className="mb-2 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
           <AlertTriangle className="h-3.5 w-3.5" />
-          Faults (last {windowDays} d)
+          Issues (last {windowDays} d)
         </h4>
         <FaultGrid faults={faults} isLoading={faultsLoading} />
       </div>

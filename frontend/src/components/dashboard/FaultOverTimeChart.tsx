@@ -110,7 +110,7 @@ export function FaultOverTimeChart({
         className="flex items-center justify-center rounded-2xl border border-border/60 bg-card"
         style={placeholderStyle}
       >
-        <p className="text-sm text-destructive">Failed to load fault history.</p>
+        <p className="text-sm text-destructive">Failed to load issue history.</p>
       </div>
     );
   }
@@ -125,7 +125,7 @@ export function FaultOverTimeChart({
           style={placeholderStyle}
         >
           <p className="text-sm text-muted-foreground">
-            No fault data in this period. FDD runs periodically; widen the range or run FDD to see results.
+            No issue data in this period. FDD runs periodically; widen the range or run FDD to see results.
           </p>
         </div>
       )}

@@ -51,7 +51,7 @@ function FaultSparkline({
       width={width}
       height={height}
       role="img"
-      aria-label="Fault count over the observation window"
+      aria-label="Issue count over the observation window"
       className="overflow-visible"
     >
       {values.map((v, i) => {
@@ -247,7 +247,7 @@ export function MaintenancePage() {
                 <TableHead>Equipment</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Last maintained</TableHead>
-                <TableHead>Fault timeline ({period} d)</TableHead>
+                <TableHead>Issue timeline ({period} d)</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
                 <TableHead aria-label="Open detail" className="w-10" />
               </TableRow>

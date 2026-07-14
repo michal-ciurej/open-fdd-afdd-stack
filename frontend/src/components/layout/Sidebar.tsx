@@ -52,7 +52,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
   {
     header: "Operate",
     items: [
-      { to: "/faults", label: "Faults", icon: AlertTriangle, end: false },
+      { to: "/faults", label: "Issues", icon: AlertTriangle, end: false },
       { to: "/equipment", label: "Equipment", icon: Boxes, end: false },
       { to: "/maintenance", label: "Maintenance", icon: Wrench, end: false },
       { to: "/compliance", label: "Compliance", icon: ShieldCheck, end: false },
@@ -183,7 +183,7 @@ export function Sidebar() {
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 <span>{label}</span>
-                {label === "Faults" && faults && faults.length > 0 && (
+                {label === "Issues" && faults && faults.length > 0 && (
                   <Badge
                     variant="destructive"
                     className="ml-auto h-5 min-w-5 justify-center px-1.5 text-[10px]"
@@ -292,7 +292,7 @@ export function Sidebar() {
                   <span className="font-medium text-foreground">Last FDD run:</span>{" "}
                   {timeAgo(lastFdd.run_ts)}
                   {weatherWithFdd && " (includes weather)"}
-                  {lastFdd.sites_processed != null && ` · ${lastFdd.sites_processed} sites, ${lastFdd.faults_written ?? 0} faults`}
+                  {lastFdd.sites_processed != null && ` · ${lastFdd.sites_processed} sites, ${lastFdd.faults_written ?? 0} issues`}
                 </li>
               )}
               {gs && (

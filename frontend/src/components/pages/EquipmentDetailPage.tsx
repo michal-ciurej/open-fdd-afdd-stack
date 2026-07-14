@@ -132,7 +132,7 @@ function ActiveFaultsCard({
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <AlertTriangle className="h-4 w-4" />
-          Active faults ({isLoading ? "…" : equipmentFaults.length})
+          Active issues ({isLoading ? "…" : equipmentFaults.length})
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 p-0">
@@ -142,13 +142,13 @@ function ActiveFaultsCard({
           </div>
         ) : equipmentFaults.length === 0 ? (
           <div className="px-6 py-6 text-sm text-muted-foreground">
-            No active faults on this equipment.
+            No active issues on this equipment.
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Fault</TableHead>
+                <TableHead>Issue</TableHead>
                 <TableHead>Severity</TableHead>
                 <TableHead className="text-right">Since</TableHead>
               </TableRow>
@@ -202,7 +202,7 @@ function ObservationToggle({ equipment }: { equipment: Equipment }) {
       type="button"
       onClick={() => mutation.mutate(!observed)}
       disabled={mutation.isPending}
-      title={observed ? "Stop tracking this equipment on the overview page" : "Track fault frequency on the overview page"}
+      title={observed ? "Stop tracking this equipment on the overview page" : "Track issue frequency on the overview page"}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors",
         observed
@@ -232,7 +232,7 @@ function FaultsChartCard({ equipment, definitions }: FaultsChartCardProps) {
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <Activity className="h-4 w-4" />
-          Faults over time
+          Issues over time
         </CardTitle>
         <ChartTogglePill value={preset} onChange={setPreset} />
       </CardHeader>

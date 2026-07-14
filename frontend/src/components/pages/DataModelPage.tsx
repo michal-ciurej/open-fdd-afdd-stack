@@ -650,12 +650,12 @@ export function DataModelPage() {
             </div>
             <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
               <p className="mb-1 text-sm font-medium text-destructive">
-                High risk - reset fault history for the selected site
+                High risk - reset issue history for the selected site
               </p>
               <p className="mb-3 text-xs text-muted-foreground leading-relaxed">
                 <span className="font-medium text-destructive/90">Danger level: high.</span> Calls{" "}
                 <code className="rounded bg-background/80 px-1">POST /faults/reset</code> for{" "}
-                <strong>only the selected site</strong>. Permanently deletes that site's fault history -{" "}
+                <strong>only the selected site</strong>. Permanently deletes that site's issue history -{" "}
                 <code className="rounded bg-background/80 px-1">fault_results</code>,{" "}
                 <code className="rounded bg-background/80 px-1">fault_events</code>, and current{" "}
                 <code className="rounded bg-background/80 px-1">fault_state</code>. Sites, equipment, points, and time-series
@@ -663,7 +663,7 @@ export function DataModelPage() {
               </p>
               {!selectedSiteId ? (
                 <p className="text-sm font-medium text-muted-foreground">
-                  Select a site in the header to enable fault-history reset.
+                  Select a site in the header to enable issue-history reset.
                 </p>
               ) : (
                 <>
@@ -693,12 +693,12 @@ export function DataModelPage() {
                       className="inline-flex items-center gap-2 rounded-lg border border-destructive/60 bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-50"
                     >
                       <Trash2 className="h-4 w-4" />
-                      Reset fault history for this site
+                      Reset issue history for this site
                     </button>
                   </div>
                   {resetFaultsMutation.isSuccess && (
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Cleared {resetFaultsMutation.data.fault_results_deleted} fault result(s),{" "}
+                      Cleared {resetFaultsMutation.data.fault_results_deleted} issue result(s),{" "}
                       {resetFaultsMutation.data.fault_events_deleted} event(s), and{" "}
                       {resetFaultsMutation.data.fault_state_deleted} active state row(s) for{" "}
                       {resetFaultsMutation.data.site_name}.

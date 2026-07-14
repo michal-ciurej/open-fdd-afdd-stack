@@ -53,7 +53,7 @@ export function EquipmentHealthMatrix({ rows, period }: EquipmentHealthMatrixPro
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Equipment Health Quickview ({period} d)</CardTitle>
         <p className="text-sm font-normal text-muted-foreground">
-          Daily fault density per observed asset, worst first. The outline marks when an
+          Daily issue density per observed asset, worst first. The outline marks when an
           asset was last maintained - watch the band to its right cool down if the maintenance was successful.
         </p>
       </CardHeader>
@@ -85,7 +85,7 @@ export function EquipmentHealthMatrix({ rows, period }: EquipmentHealthMatrixPro
                   {row.fault_histogram.map((v, i) => (
                     <div
                       key={i}
-                      title={`${row.histogram_days[i] ?? ""}: ${v} fault${v === 1 ? "" : "s"}${
+                      title={`${row.histogram_days[i] ?? ""}: ${v} issue${v === 1 ? "" : "s"}${
                         i === cutoff ? " · maintained" : ""
                       }`}
                       className={cn(
@@ -108,7 +108,7 @@ export function EquipmentHealthMatrix({ rows, period }: EquipmentHealthMatrixPro
             {LEVEL_CLASS.map((c, i) => (
               <span key={i} className={cn("inline-block h-2.5 w-2.5 rounded-[2px]", c)} />
             ))}
-            More faults
+            More issues
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block h-2.5 w-2.5 rounded-[2px] bg-muted/50 ring-2 ring-primary" />

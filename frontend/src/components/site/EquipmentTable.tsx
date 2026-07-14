@@ -40,7 +40,7 @@ export function EquipmentTable({
           <TableHead>Name</TableHead>
           <TableHead>Type</TableHead>
           <TableHead className="text-right">Points</TableHead>
-          <TableHead className="text-right">Faults</TableHead>
+          <TableHead className="text-right">Issues</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

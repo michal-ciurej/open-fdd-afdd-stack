@@ -108,10 +108,10 @@ function SiteSummaryView({ siteId }: { siteId: string }) {
         <div className="mt-3">
           {faultCount > 0 ? (
             <Badge variant="destructive">
-              {faultCount} fault{faultCount !== 1 ? "s" : ""} in last 7 days
+              {faultCount} issue{faultCount !== 1 ? "s" : ""} in last 7 days
             </Badge>
           ) : (
-            <Badge variant="success">No faults</Badge>
+            <Badge variant="success">No issues</Badge>
           )}
         </div>
       </div>
@@ -135,7 +135,7 @@ function SiteSummaryView({ siteId }: { siteId: string }) {
         </Card>
         <Card tone="glass">
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Active Faults</p>
+            <p className="text-sm text-muted-foreground">Active Issues</p>
             <p className={`mt-1 text-3xl font-semibold tabular-nums ${faultCount > 0 ? "text-destructive" : "text-success"}`}>
               {faultCount}
             </p>
@@ -146,7 +146,7 @@ function SiteSummaryView({ siteId }: { siteId: string }) {
       {faults.length > 0 && (
         <div className="mt-6">
           <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-            Active Faults
+            Active Issues
           </h2>
           <Card tone="glass">
             <CardContent className="pt-4">

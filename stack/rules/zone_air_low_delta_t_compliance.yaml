@@ -1,0 +1,29 @@
+# Compliance: air-side ΔT below target during cooling, measured room-to-supply.
+# For units with no dedicated return-air sensor the zone/space sensor is the
+# return-side temperature, so ΔT = zone − supply. A persistently low ΔT signals
+# poor coil heat transfer (frosted/fouled coil, low flow, valve passing) and
+# wastes fan energy for the cooling delivered.
+# Sibling of ahu_low_delta_t_compliance (which uses a dedicated return sensor);
+# this one fires on FCUs/AHUs that report zone/space temp instead.
+name: zone_air_low_delta_t_compliance
+description: Air-side ΔT below target vs zone temp while unit is cooling
+type: expression
+flag: zone_air_low_delta_t_compliance_flag
+category: compliance
+severity: warning
+equipment_type: [Fan_Coil_Unit, Air_Handling_Unit]
+
+inputs:
+  Supply_Air_Temperature_Sensor:
+    brick: Supply_Air_Temperature_Sensor
+  Zone_Air_Temperature_Sensor:
+    brick: Zone_Air_Temperature_Sensor
+  Cooling_Command:
+    brick: Cooling_Command
+
+params:
+  min_delta_t_f: 12.0    # °F room-to-supply drop expected under cooling
+  rolling_window: 12     # ~1 h at 5-min sampling (debounce)
+
+expression: |
+  ((Zone_Air_Temperature_Sensor - Supply_Air_Temperature_Sensor).rolling(window=rolling_window).mean() < min_delta_t_f) & (normalize_cmd(Cooling_Command) > 0)
