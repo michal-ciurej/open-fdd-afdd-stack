@@ -252,7 +252,7 @@ try {
             Write-Host ""
             Write-Host "Working tree is DIRTY - refusing to tag an image with SHA $SHA." -ForegroundColor Red
             Write-Host "Image tags are git SHAs; a SHA tag on uncommitted code makes rollbacks lie (README)." -ForegroundColor Red
-            Write-Host "  * Commit your changes (that's your job), then re-run, OR" -ForegroundColor Yellow
+            Write-Host "  * Commit your changes, then re-run, OR" -ForegroundColor Yellow
             Write-Host "  * re-run with -AllowDirty to build a unique dev-<UTC> tag instead." -ForegroundColor Yellow
             Set-Location $OrigLocation
             exit 1
