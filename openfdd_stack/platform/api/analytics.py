@@ -14,6 +14,7 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
 
+from openfdd_stack.platform import fault_scoring
 from openfdd_stack.platform.config import get_platform_settings
 from openfdd_stack.platform.database import get_conn
 from openfdd_stack.platform.site_resolver import resolve_site_uuid
@@ -358,7 +359,7 @@ def fetch_fault_timeseries_data(
     When ``equipment_ids`` is set, aggregates are limited to those equipment rows
     (Plots page device scope). Otherwise behavior is site-wide (dashboard chart).
     """
-    if bucket not in ("hour", "day"):
+    if bucket not in ("hour", "day", "raw"):
         bucket = "hour"  # API default for invalid bucket; AI agent passes "day" explicitly
     conditions = ["fr.ts::date >= %s", "fr.ts::date <= %s"]
     params: list = [start_date, end_date]
@@ -383,16 +384,35 @@ def fetch_fault_timeseries_data(
 
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                f"""
-                SELECT date_trunc(%s, fr.ts) AS time, fr.fault_id AS metric, SUM(fr.flag_value)::float AS value
-                FROM fault_results fr
-                WHERE {" AND ".join(conditions)}
-                GROUP BY 1, fr.fault_id
-                ORDER BY 1, fr.fault_id
-                """,
-                [bucket, *params],
-            )
+            if bucket == "raw":
+                # Native FDD-run resolution: one point per evaluated timestamp,
+                # not date-truncated. fault_results is append-only and each run
+                # re-evaluates an overlapping lookback window, so the same
+                # (ts, equipment, fault) is written by several runs. COUNT(DISTINCT
+                # equipment_id) over flagged rows dedupes that overlap and yields
+                # the number of equipment flagged for each issue at that timestamp.
+                cur.execute(
+                    f"""
+                    SELECT fr.ts AS time, fr.fault_id AS metric,
+                           COUNT(DISTINCT fr.equipment_id)::float AS value
+                    FROM fault_results fr
+                    WHERE {" AND ".join(conditions)} AND fr.flag_value > 0
+                    GROUP BY fr.ts, fr.fault_id
+                    ORDER BY fr.ts, fr.fault_id
+                    """,
+                    params,
+                )
+            else:
+                cur.execute(
+                    f"""
+                    SELECT date_trunc(%s, fr.ts) AS time, fr.fault_id AS metric, SUM(fr.flag_value)::float AS value
+                    FROM fault_results fr
+                    WHERE {" AND ".join(conditions)}
+                    GROUP BY 1, fr.fault_id
+                    ORDER BY 1, fr.fault_id
+                    """,
+                    [bucket, *params],
+                )
             rows = cur.fetchall()
 
     out: dict[str, Any] = {
@@ -416,8 +436,8 @@ def get_fault_timeseries(
     end_date: date = Query(..., description="End of range"),
     bucket: str = Query(
         "hour",
-        description="Time bucket: hour or day",
-        pattern="^(hour|day)$",
+        description="Time bucket: hour, day, or raw (per-FDD-run native resolution)",
+        pattern="^(hour|day|raw)$",
     ),
     equipment_ids: list[UUID] | None = Query(
         None,
@@ -595,6 +615,290 @@ def get_fault_counts_by_equipment(
         "period": {"start": str(start_date), "end": str(end_date)},
         "rows": out,
     }
+
+
+# --- Equipment attention score (Issues page ranking) -----------------------
+
+
+def _attention_bucket_unit(start_date: date, end_date: date) -> str:
+    """Day buckets normally; hour buckets for windows <= 2 days so the per-day
+    slope trend still has enough points on the 24h preset."""
+    return "hour" if (end_date - start_date).days <= 2 else "day"
+
+
+def _days_active(first_ts: Optional[datetime], last_ts: Optional[datetime]) -> Optional[int]:
+    if first_ts is None or last_ts is None:
+        return None
+    return max(1, (last_ts.date() - first_ts.date()).days + 1)
+
+
+def _humanize_type(t: Optional[str]) -> str:
+    return t.replace("_", " ") if t else "Untyped equipment"
+
+
+def _aggregate_attention(
+    site_id: Optional[str],
+    start_date: date,
+    end_date: date,
+    bucket_unit: str,
+) -> dict[str, dict]:
+    """Per-(equipment, fault, time-bucket) aggregation of fault_results.
+
+    Returns a dict keyed by equipment id/name. Persistence uses COUNT(DISTINCT ts)
+    for both flagged and total so the append-only overlap between FDD runs (the
+    same ts re-written each run) is deduped, mirroring the raw-bucket logic.
+    """
+    conditions = ["fr.ts::date >= %s", "fr.ts::date <= %s"]
+    cond_params: list = [start_date, end_date]
+    if site_id:
+        conditions.append(
+            "(fr.site_id = %s OR fr.site_id IN (SELECT name FROM sites WHERE id::text = %s))"
+        )
+        cond_params.extend([site_id, site_id])
+
+    # %s order in the SQL: SELECT date_trunc, WHERE bounds (+site), GROUP BY date_trunc.
+    params = [bucket_unit, *cond_params, bucket_unit]
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT
+                  fr.site_id,
+                  fr.equipment_id,
+                  e.id::text AS equipment_uuid,
+                  e.name AS equipment_name,
+                  e.equipment_type,
+                  fr.fault_id,
+                  fd.name AS fault_name,
+                  fd.severity AS fault_severity,
+                  fd.category AS fault_category,
+                  date_trunc(%s, fr.ts) AS bucket,
+                  COUNT(DISTINCT fr.ts) AS total_ts,
+                  COUNT(DISTINCT fr.ts) FILTER (WHERE fr.flag_value = 1) AS flagged_ts,
+                  MIN(fr.ts) AS first_ts,
+                  MAX(fr.ts) AS last_ts,
+                  bool_or(fs.active) AS is_active
+                FROM fault_results fr
+                LEFT JOIN sites s
+                  ON (s.id::text = fr.site_id OR s.name = fr.site_id)
+                LEFT JOIN equipment e
+                  ON e.site_id = s.id
+                  AND (e.id::text = fr.equipment_id OR e.name = fr.equipment_id)
+                LEFT JOIN fault_definitions fd
+                  ON fd.fault_id = fr.fault_id
+                LEFT JOIN fault_state fs
+                  ON fs.site_id = fr.site_id
+                  AND fs.equipment_id = fr.equipment_id
+                  AND fs.fault_id = fr.fault_id
+                WHERE {" AND ".join(conditions)}
+                GROUP BY
+                  fr.site_id, fr.equipment_id, e.id, e.name, e.equipment_type,
+                  fr.fault_id, fd.name, fd.severity, fd.category, date_trunc(%s, fr.ts)
+                ORDER BY fr.equipment_id, fr.fault_id, bucket
+                """,
+                params,
+            )
+            rows = cur.fetchall()
+
+    equip: dict[str, dict] = {}
+    for r in rows:
+        ekey = r["equipment_uuid"] or r["equipment_id"]
+        e = equip.get(ekey)
+        if e is None:
+            e = {
+                "equipment_id": r["equipment_uuid"] or r["equipment_id"],
+                "site_id": r["site_id"],
+                "name": r["equipment_name"] or r["equipment_id"] or "-",
+                "type": r.get("equipment_type"),
+                "faults": {},
+            }
+            equip[ekey] = e
+        f = e["faults"].get(r["fault_id"])
+        if f is None:
+            f = {
+                "fault_id": r["fault_id"],
+                "name": r.get("fault_name") or r["fault_id"],
+                "severity": (r.get("fault_severity") or "warning"),
+                "category": r.get("fault_category") or "general",
+                "flagged_ts": 0,
+                "total_ts": 0,
+                "first_ts": None,
+                "last_ts": None,
+                "is_active": False,
+                "buckets": [],  # (bucket_ts, persistence)
+            }
+            e["faults"][r["fault_id"]] = f
+        flagged = int(r["flagged_ts"] or 0)
+        total = int(r["total_ts"] or 0)
+        f["flagged_ts"] += flagged
+        f["total_ts"] += total
+        if r["first_ts"] is not None and (f["first_ts"] is None or r["first_ts"] < f["first_ts"]):
+            f["first_ts"] = r["first_ts"]
+        if r["last_ts"] is not None and (f["last_ts"] is None or r["last_ts"] > f["last_ts"]):
+            f["last_ts"] = r["last_ts"]
+        f["is_active"] = f["is_active"] or bool(r.get("is_active"))
+        f["buckets"].append((r["bucket"], (flagged / total) if total else 0.0))
+    return equip
+
+
+def _score_units(equip: dict[str, dict]) -> list[dict]:
+    """Roll aggregated equipment into scored, banded rows (units with >=1 fault
+    that fired in the period), ranked worst-first."""
+    out: list[dict] = []
+    for e in equip.values():
+        fired = [f for f in e["faults"].values() if f["flagged_ts"] > 0]
+        if not fired:
+            continue
+        faults = []
+        for f in fired:
+            persistence = f["flagged_ts"] / f["total_ts"] if f["total_ts"] else 0.0
+            faults.append(
+                {
+                    "fault_id": f["fault_id"],
+                    "name": f["name"],
+                    "severity": f["severity"],
+                    "persistence": round(persistence, 3),
+                    "count": f["flagged_ts"],
+                    "is_active": f["is_active"],
+                }
+            )
+        faults.sort(
+            key=lambda x: fault_scoring.contribution(x["severity"], x["persistence"]),
+            reverse=True,
+        )
+        score = fault_scoring.equipment_score(faults)
+        band = fault_scoring.band(score, faults)
+        dom = fault_scoring.dominant_fault(faults)
+        dom_raw = e["faults"][dom["fault_id"]]
+        series = [p for (_, p) in sorted(dom_raw["buckets"], key=lambda bp: bp[0])]
+        out.append(
+            {
+                "id": e["equipment_id"],
+                "site_id": e["site_id"],
+                "name": e["name"],
+                "type": e["type"],
+                "score": score,
+                "band": band,
+                "trend": fault_scoring.trend(series),
+                "dominant": {
+                    "fault_id": dom["fault_id"],
+                    "name": dom["name"],
+                    "severity": dom["severity"],
+                    "persistence": dom["persistence"],
+                    "days_active": _days_active(dom_raw["first_ts"], dom_raw["last_ts"]),
+                },
+                "faults": faults,
+            }
+        )
+    _BAND_RANK = {"attention": 0, "degraded": 1, "healthy": 2}
+    out.sort(key=lambda u: (_BAND_RANK.get(u["band"], 3), -u["score"]))
+    return out
+
+
+def fetch_equipment_attention_data(
+    site_id: Optional[str],
+    start_date: date,
+    end_date: date,
+) -> dict[str, Any]:
+    """Build the /analytics/equipment-attention payload (ranked, banded units)."""
+    bucket_unit = _attention_bucket_unit(start_date, end_date)
+    equip = _aggregate_attention(site_id, start_date, end_date, bucket_unit)
+    scored = _score_units(equip)
+
+    attention = [u for u in scored if u["band"] == "attention"]
+    degraded = [u for u in scored if u["band"] == "degraded"]
+    evaluated = len(equip)
+    scored_ids = {u["id"] for u in attention + degraded}
+
+    # critical faults currently active, across all evaluated equipment
+    critical_active = 0
+    for e in equip.values():
+        for f in e["faults"].values():
+            if (
+                (f["severity"] or "").strip().lower() == "critical"
+                and f["flagged_ts"] > 0
+                and f["is_active"]
+            ):
+                critical_active += 1
+
+    # worst-affected equipment type (among units needing attention / degraded)
+    flagged_by_type: dict[str, int] = {}
+    total_by_type: dict[str, int] = {}
+    for e in equip.values():
+        total_by_type[_humanize_type(e["type"])] = (
+            total_by_type.get(_humanize_type(e["type"]), 0) + 1
+        )
+    for u in attention + degraded:
+        label = _humanize_type(u["type"])
+        flagged_by_type[label] = flagged_by_type.get(label, 0) + 1
+    worst_system = None
+    if flagged_by_type:
+        label = max(flagged_by_type, key=lambda k: flagged_by_type[k])
+        worst_system = {
+            "label": label,
+            "detail": f"{flagged_by_type[label]} of {total_by_type.get(label, flagged_by_type[label])} flagged",
+        }
+
+    healthy_names = [
+        e["name"] for e in equip.values() if e["equipment_id"] not in scored_ids
+    ]
+
+    # week-over-week: attention count in the immediately preceding equal window
+    vs_last_period = None
+    try:
+        span = end_date - start_date
+        prev_end = start_date - timedelta(days=1)
+        prev_start = prev_end - span
+        prev_bucket = _attention_bucket_unit(prev_start, prev_end)
+        prev_scored = _score_units(
+            _aggregate_attention(site_id, prev_start, prev_end, prev_bucket)
+        )
+        prev_attention = sum(1 for u in prev_scored if u["band"] == "attention")
+        vs_last_period = {
+            "attention_delta": len(attention) - prev_attention,
+            "prev": prev_attention,
+        }
+    except Exception:  # noqa: BLE001 - KPI is best-effort, never break the page
+        vs_last_period = None
+
+    return {
+        "site_id": site_id,
+        "period": {"start": str(start_date), "end": str(end_date)},
+        "bands": {
+            "attention": len(attention),
+            "degraded": len(degraded),
+            "healthy": max(0, evaluated - len(attention) - len(degraded)),
+            "evaluated": evaluated,
+        },
+        "critical_active": critical_active,
+        "worst_system": worst_system,
+        "vs_last_period": vs_last_period,
+        "equipment": attention + degraded,
+        "healthy_sample": healthy_names[:6],
+    }
+
+
+@router.get(
+    "/equipment-attention",
+    summary="Equipment ranked by derived attention score (Issues page)",
+)
+def get_equipment_attention(
+    site_id: Optional[str] = Query(None, description="Site name or UUID; omit for all"),
+    start_date: date = Query(..., description="Start of range"),
+    end_date: date = Query(..., description="End of range"),
+):
+    """
+    Rank equipment by a derived **attention score** = sum over active faults of
+    severity-weight x persistence (share of FDD checks failed). Units are bucketed
+    into attention / degraded / healthy bands with a per-bucket-slope trend, so
+    facilities managers see which units to visit first rather than raw fault counts.
+
+    See ``fault_scoring`` for the weights and band thresholds (tunable constants).
+    """
+    if site_id and resolve_site_uuid(site_id, create_if_empty=False) is None:
+        raise HTTPException(404, f"No site found for: {site_id!r}")
+    return fetch_equipment_attention_data(site_id, start_date, end_date)
 
 
 @router.get(

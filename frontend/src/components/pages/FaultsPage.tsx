@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ArrowUp, ArrowDown, ArrowRight } from "lucide-react";
 import { useSiteContext } from "@/contexts/site-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -20,14 +20,22 @@ import { useAllEquipment, useEquipment, useSite, useSites } from "@/hooks/use-si
 import {
   useActiveFaults,
   useFaultDefinitions,
-  useFaultSummary,
   useSiteFaults,
-  useFaultCountsByEquipment,
+  useEquipmentAttention,
 } from "@/hooks/use-faults";
 import { FaultOverTimeChart } from "@/components/dashboard/FaultOverTimeChart";
 import { DateRangeSelect } from "@/components/site/DateRangeSelect";
 import type { DatePreset } from "@/components/site/DateRangeSelect";
-import type { FaultState, FaultDefinition, Equipment, Site } from "@/types/api";
+import type {
+  FaultState,
+  FaultDefinition,
+  Equipment,
+  Site,
+  AttentionBand,
+  AttentionEquipment,
+  AttentionTrend,
+  EquipmentAttentionResponse,
+} from "@/types/api";
 
 function FaultsTable({
   faults,
@@ -173,20 +181,6 @@ function SiteFaultsView({ siteId }: { siteId: string }) {
   );
 }
 
-type EquipmentFaultRollup = {
-  equipment_id: string;
-  equipment_name: string;
-  equipment_type: string | null;
-  site_id: string;
-  total_count: number;
-  faults: {
-    fault_id: string;
-    fault_name: string;
-    fault_severity: string;
-    count: number;
-  }[];
-};
-
 function ObservationEyeButton({ equipment }: { equipment: Equipment | undefined }) {
   const queryClient = useQueryClient();
   const observed = isEquipmentObserved(equipment);
@@ -228,7 +222,193 @@ function ObservationEyeButton({ equipment }: { equipment: Equipment | undefined 
   );
 }
 
-function FaultCountsByEquipmentSection({
+const pctOf = (p: number) => `${Math.round(p * 100)}%`;
+
+/** Band-specific colour classes (semantic tokens, matched to severity styling). */
+function bandTint(band: AttentionBand): { dot: string; bar: string } {
+  switch (band) {
+    case "attention":
+      return { dot: "bg-destructive", bar: "bg-destructive" };
+    case "degraded":
+      return { dot: "bg-warning", bar: "bg-warning" };
+    default:
+      return { dot: "bg-success", bar: "bg-success" };
+  }
+}
+
+function TrendPill({ trend }: { trend: AttentionTrend }) {
+  const meta = {
+    worsening: { icon: ArrowUp, label: "worsening", cls: "text-destructive" },
+    improving: { icon: ArrowDown, label: "improving", cls: "text-success" },
+    stable: { icon: ArrowRight, label: "stable", cls: "text-muted-foreground" },
+  }[trend];
+  const Icon = meta.icon;
+  return (
+    <span className={cn("inline-flex items-center gap-1 text-xs font-medium", meta.cls)}>
+      <Icon className="h-3.5 w-3.5" />
+      {meta.label}
+    </span>
+  );
+}
+
+function AttentionCard({
+  unit,
+  equipment,
+}: {
+  unit: AttentionEquipment;
+  equipment: Equipment | undefined;
+}) {
+  const tint = bandTint(unit.band);
+  const dom = unit.dominant;
+  return (
+    <div
+      className="flex flex-col gap-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm sm:flex-row"
+      data-testid={`attention-row-${unit.id}`}
+    >
+      <div className="min-w-0 flex-1 p-4">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link
+            to={`/equipment/${unit.id}`}
+            className="font-medium text-primary underline-offset-2 hover:underline"
+          >
+            {unit.name}
+          </Link>
+          <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+            {unit.type ?? "Untyped"}
+          </span>
+        </div>
+
+        <div className="mt-2 flex flex-wrap items-baseline gap-2 text-sm">
+          <Badge variant={severityVariant(dom.severity)}>{dom.severity}</Badge>
+          <span className="text-foreground/90">{dom.name}</span>
+        </div>
+
+        <div className="mt-2.5 flex items-center gap-3">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className={cn("h-full rounded-full", tint.bar)}
+              style={{ width: pctOf(dom.persistence) }}
+            />
+          </div>
+          <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+            fired in {pctOf(dom.persistence)} of checks
+            {dom.days_active != null ? ` · ${dom.days_active} d` : ""}
+          </span>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {unit.faults.map((f) => (
+            <Badge
+              key={f.fault_id}
+              variant={severityVariant(f.severity)}
+              title={`${f.name} · severity ${f.severity} · fired in ${pctOf(f.persistence)} of checks`}
+            >
+              {f.name}
+              <span className="ml-1.5 tabular-nums opacity-80">{pctOf(f.persistence)}</span>
+            </Badge>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 border-t border-border/60 p-4 sm:w-40 sm:flex-col sm:items-end sm:justify-between sm:border-l sm:border-t-0">
+        <div className="text-right">
+          <div className="text-2xl font-semibold tabular-nums leading-none">
+            {unit.score.toFixed(1)}
+          </div>
+          <div className="mt-1 text-[0.65rem] uppercase tracking-wide text-muted-foreground">
+            score
+          </div>
+        </div>
+        <TrendPill trend={unit.trend} />
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/equipment/${unit.id}`}
+            className="whitespace-nowrap text-xs text-primary underline-offset-2 hover:underline"
+          >
+            View trends →
+          </Link>
+          <ObservationEyeButton equipment={equipment} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KpiStrip({ data }: { data: EquipmentAttentionResponse }) {
+  const delta = data.vs_last_period?.attention_delta ?? null;
+  const deltaLabel =
+    delta == null
+      ? "—"
+      : delta > 0
+        ? `▲ ${delta} more`
+        : delta < 0
+          ? `▼ ${Math.abs(delta)} fewer`
+          : "no change";
+  const tiles = [
+    {
+      key: "attention",
+      label: "Units needing attention",
+      value: String(data.bands.attention),
+      sub: `of ${data.bands.evaluated} evaluated`,
+      accent: data.bands.attention > 0 ? "text-destructive" : "text-muted-foreground",
+      stripe: data.bands.attention > 0 ? "bg-destructive" : "bg-border",
+    },
+    {
+      key: "critical",
+      label: "Critical faults active",
+      value: String(data.critical_active),
+      sub: data.critical_active === 1 ? "on 1 unit" : "across units",
+      accent: "text-foreground",
+      stripe: "bg-border",
+    },
+    {
+      key: "system",
+      label: "Worst-affected system",
+      value: data.worst_system?.label ?? "—",
+      sub: data.worst_system?.detail ?? "no units flagged",
+      accent: "text-foreground",
+      small: true,
+      stripe: "bg-border",
+    },
+    {
+      key: "delta",
+      label: "vs last period",
+      value: deltaLabel,
+      sub:
+        data.vs_last_period != null
+          ? `was ${data.vs_last_period.prev} needing attention`
+          : "no prior data",
+      accent: delta && delta > 0 ? "text-warning-foreground" : "text-foreground",
+      small: true,
+      stripe: delta && delta > 0 ? "bg-warning" : "bg-border",
+    },
+  ];
+
+  return (
+    <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {tiles.map((t) => (
+        <Card key={t.key} className="relative overflow-hidden">
+          <span className={cn("absolute inset-y-0 left-0 w-1", t.stripe)} />
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{t.label}</p>
+            <p
+              className={cn(
+                "mt-1 font-semibold tabular-nums",
+                t.small ? "text-xl" : "text-3xl",
+                t.accent,
+              )}
+            >
+              {t.value}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t.sub}</p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function AttentionSection({
   siteId,
   startDate,
   endDate,
@@ -237,11 +417,7 @@ function FaultCountsByEquipmentSection({
   startDate: string;
   endDate: string;
 }) {
-  const { data, isLoading, error } = useFaultCountsByEquipment(
-    siteId,
-    startDate,
-    endDate,
-  );
+  const { data, isLoading, error } = useEquipmentAttention(siteId, startDate, endDate);
   const { data: equipmentAll = [] } = useAllEquipment();
   const { data: equipmentSite = [] } = useEquipment(siteId);
   const equipment = siteId ? equipmentSite : equipmentAll;
@@ -249,127 +425,100 @@ function FaultCountsByEquipmentSection({
     () => new Map(equipment.map((e) => [e.id, e])),
     [equipment],
   );
+  const [showHealthy, setShowHealthy] = useState(false);
 
-  const rollups: EquipmentFaultRollup[] = useMemo(() => {
-    const rows = data?.rows ?? [];
-    const acc = new Map<string, EquipmentFaultRollup>();
-    for (const r of rows) {
-      let entry = acc.get(r.equipment_id);
-      if (!entry) {
-        entry = {
-          equipment_id: r.equipment_id,
-          equipment_name: r.equipment_name,
-          equipment_type: r.equipment_type,
-          site_id: r.site_id,
-          total_count: 0,
-          faults: [],
-        };
-        acc.set(r.equipment_id, entry);
-      }
-      entry.total_count += r.count;
-      entry.faults.push({
-        fault_id: r.fault_id,
-        fault_name: r.fault_name,
-        fault_severity: r.fault_severity,
-        count: r.count,
-      });
-    }
-    const list = Array.from(acc.values());
-    for (const e of list) e.faults.sort((a, b) => b.count - a.count);
-    list.sort((a, b) => b.total_count - a.total_count);
-    return list;
-  }, [data]);
-
-  if (isLoading) return <Skeleton className="h-40 w-full rounded-xl" />;
-  if (error) {
+  if (isLoading) {
     return (
-      <div className="mb-8 text-sm text-destructive">
-        Could not load per-equipment issue counts.
+      <div className="space-y-4">
+        <Skeleton className="h-24 w-full rounded-2xl" />
+        <Skeleton className="h-40 w-full rounded-2xl" />
       </div>
     );
   }
-  if (rollups.length === 0) {
+  if (error || !data) {
     return (
-      <section className="mb-8">
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-          Issue counts by equipment
-        </h2>
-        <div className="rounded-xl border border-border/70 bg-muted/40 p-6 text-sm text-muted-foreground">
-          No issue rows in this time range.
-        </div>
-      </section>
+      <div className="text-sm text-destructive">Could not load equipment attention ranking.</div>
     );
   }
 
+  const groups: { band: AttentionBand; label: string; dot: string }[] = [
+    { band: "attention", label: "Needs attention now", dot: bandTint("attention").dot },
+    { band: "degraded", label: "Degraded — plan a visit", dot: bandTint("degraded").dot },
+  ];
+
   return (
-    <section className="mb-8">
-      <h2 className="mb-1 text-sm font-medium text-muted-foreground">
-        Issue counts by equipment
-      </h2>
-      <p className="mb-3 text-xs text-muted-foreground">
-        Ranked by total issue count - highest first. Mark equipment for
-        observation to surface it on the overview page.
-      </p>
-      <Table data-testid="fault-counts-by-equipment-table">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[1%] whitespace-nowrap text-muted-foreground">#</TableHead>
-            <TableHead>Equipment</TableHead>
-            <TableHead>Issues</TableHead>
-            <TableHead className="text-right">Total</TableHead>
-            <TableHead className="w-[1%] whitespace-nowrap text-right">Observe</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rollups.map((row, idx) => {
-            const equip = equipById.get(row.equipment_id);
+    <>
+      <KpiStrip data={data} />
+
+      <section className="mb-8">
+        <h2 className="mb-1 text-sm font-medium text-muted-foreground">
+          Equipment needing attention
+        </h2>
+        <p className="mb-4 max-w-3xl text-xs text-muted-foreground">
+          Ranked by a derived <span className="font-medium text-foreground">attention score</span> —
+          each active fault weighted by its severity and by how persistently it's firing (share of
+          FDD checks it fails), summed per unit. Worst first.
+        </p>
+
+        {data.equipment.length === 0 ? (
+          <div className="rounded-xl border border-border/70 bg-muted/40 p-6 text-sm text-muted-foreground">
+            No equipment needs attention in this time range.
+          </div>
+        ) : (
+          groups.map((g) => {
+            const units = data.equipment.filter((u) => u.band === g.band);
+            if (units.length === 0) return null;
             return (
-              <TableRow
-                key={row.equipment_id}
-                data-testid={`fault-counts-row-${row.equipment_id}`}
-              >
-                <TableCell className="text-muted-foreground tabular-nums">
-                  {idx + 1}
-                </TableCell>
-                <TableCell>
-                  <Link
-                    to={`/equipment/${row.equipment_id}`}
-                    className="font-medium text-primary underline-offset-2 hover:underline"
-                  >
-                    {row.equipment_name}
-                  </Link>
-                  <div className="text-xs text-muted-foreground">
-                    {row.equipment_type ?? "-"}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1.5">
-                    {row.faults.map((f) => (
-                      <Badge
-                        key={f.fault_id}
-                        variant={severityVariant(f.fault_severity)}
-                        title={`${f.fault_name} · severity ${f.fault_severity}`}
-                      >
-                        {f.fault_name}
-                        <span className="ml-1.5 tabular-nums opacity-80">
-                          {f.count}
-                        </span>
-                      </Badge>
-                    ))}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right font-mono font-medium tabular-nums">
-                  {row.total_count}
-                </TableCell>
-                <TableCell className="text-right">
-                  <ObservationEyeButton equipment={equip} />
-                </TableCell>
-              </TableRow>
+              <div key={g.band} className="mb-5">
+                <div className="mb-2.5 flex items-center gap-2 text-sm font-semibold">
+                  <span className={cn("h-2.5 w-2.5 rounded-full", g.dot)} />
+                  {g.label}
+                  <span className="font-normal text-muted-foreground">({units.length})</span>
+                </div>
+                <div className="flex flex-col gap-2.5">
+                  {units.map((u) => (
+                    <AttentionCard key={u.id} unit={u} equipment={equipById.get(u.id)} />
+                  ))}
+                </div>
+              </div>
             );
-          })}
-        </TableBody>
-      </Table>
-    </section>
+          })
+        )}
+
+        {data.bands.healthy > 0 && (
+          <div className="mt-4 rounded-xl border border-success/25 bg-success/10 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className={cn("h-2.5 w-2.5 rounded-full", bandTint("healthy").dot)} />
+              <span className="text-sm text-foreground/90">
+                <span className="font-semibold text-success">{data.bands.healthy} units healthy</span>{" "}
+                — no persistent faults in this period.
+              </span>
+              {data.healthy_sample.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowHealthy((v) => !v)}
+                  className="ml-auto text-xs text-primary hover:underline"
+                >
+                  {showHealthy ? "Hide" : "Show sample"}
+                </button>
+              )}
+            </div>
+            {showHealthy && (
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {data.healthy_sample.map((n) => (
+                  <span
+                    key={n}
+                    className="rounded-full border border-border bg-background px-2.5 py-0.5 text-xs text-muted-foreground"
+                  >
+                    {n}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    </>
   );
 }
 
@@ -399,20 +548,6 @@ function presetRange(preset: DatePreset): { start: string; end: string } {
   return { start: start.toISOString(), end: end.toISOString() };
 }
 
-function labelForPreset(preset: DatePreset): string {
-  switch (preset) {
-    case "24h":
-      return "last 24 h";
-    case "7d":
-      return "last 7 d";
-    case "30d":
-      return "last 30 d";
-    case "custom":
-    default:
-      return "custom range";
-  }
-}
-
 export function FaultsPage() {
   const { selectedSiteId } = useSiteContext();
   const [preset, setPreset] = useState<DatePreset>("7d");
@@ -431,59 +566,49 @@ export function FaultsPage() {
     return presetRange(preset);
   }, [preset, customStart, customEnd]);
 
-  const bucket: "hour" | "day" = preset === "24h" ? "hour" : "day";
+  // Native FDD-run resolution: one point per evaluated timestamp rather than a
+  // date-truncated total, so individual runs are visible instead of a daily sum.
+  const bucket = "raw" as const;
   const { data: definitions = [] } = useFaultDefinitions();
-  const { data: summary } = useFaultSummary(
-    selectedSiteId ?? undefined,
-    start,
-    end,
-  );
-  const periodLabel = labelForPreset(preset);
 
   return (
     <div className="flex flex-col">
-      <h1 className="mb-4 text-2xl font-semibold tracking-tight">Issues</h1>
-
-      {/* Time range bar at top: all summary and charts below use this range */}
-      <header className="mb-6 flex flex-wrap items-center gap-4 rounded-xl border border-border/80 bg-muted/70 px-4 py-3 shadow-sm">
-        <span className="text-sm font-semibold text-foreground">Time range</span>
-        <DateRangeSelect
-          preset={preset}
-          onPresetChange={setPreset}
-          customStart={customStart}
-          customEnd={customEnd}
-          onCustomStartChange={setCustomStart}
-          onCustomEndChange={setCustomEnd}
-        />
-        <span className="font-mono text-sm text-muted-foreground tabular-nums">
-          {start.slice(0, 10)} → {end.slice(0, 10)}
-        </span>
+      {/* Header: title + subtitle on the left, time range top-right. */}
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Issues</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Equipment health, derived from FDD rule runs — ranked so you know which units to
+            send an engineer to first, not just how many alerts fired.
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <DateRangeSelect
+            preset={preset}
+            onPresetChange={setPreset}
+            customStart={customStart}
+            customEnd={customEnd}
+            onCustomStartChange={setCustomStart}
+            onCustomEndChange={setCustomEnd}
+          />
+          <span className="font-mono text-xs text-muted-foreground tabular-nums">
+            {start.slice(0, 10)} → {end.slice(0, 10)}
+          </span>
+        </div>
       </header>
 
-      {summary != null && (
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">Active issues in period ({periodLabel})</p>
-              <p
-                className={`mt-1 text-3xl font-semibold tabular-nums ${
-                  (summary.active_in_period ?? summary.total_faults ?? 0) > 0
-                    ? "text-destructive"
-                    : "text-muted-foreground"
-                }`}
-              >
-                {summary.active_in_period ?? summary.total_faults ?? 0}
-              </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Distinct (site + device + issue) in range. From FDD rule runs (fault_results).
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <AttentionSection
+        siteId={selectedSiteId ?? undefined}
+        startDate={start}
+        endDate={end}
+      />
 
       <section className="mb-8">
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">Issue flags over time</h2>
+        <h2 className="mb-1 text-sm font-medium text-muted-foreground">Issue flags over time</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Equipment flagged per issue at each FDD run (native resolution), not
+          smoothed into daily totals.
+        </p>
         <FaultOverTimeChart
           siteId={selectedSiteId ?? undefined}
           definitions={definitions}
@@ -494,15 +619,18 @@ export function FaultsPage() {
         />
       </section>
 
-      <FaultCountsByEquipmentSection
-        siteId={selectedSiteId ?? undefined}
-        startDate={start}
-        endDate={end}
-      />
-
-      <section className="mt-8">
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">Active issue rows (current state)</h2>
-        {selectedSiteId ? <SiteFaultsView siteId={selectedSiteId} /> : <AllFaultsView />}
+      <section className="mt-2">
+        <details className="rounded-2xl border border-border/60 bg-card shadow-sm">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
+            All active issue rows{" "}
+            <span className="font-normal text-muted-foreground">
+              — full flat list for engineers (current state)
+            </span>
+          </summary>
+          <div className="px-2 pb-2">
+            {selectedSiteId ? <SiteFaultsView siteId={selectedSiteId} /> : <AllFaultsView />}
+          </div>
+        </details>
       </section>
     </div>
   );

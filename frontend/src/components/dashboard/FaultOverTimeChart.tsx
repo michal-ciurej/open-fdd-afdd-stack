@@ -36,7 +36,7 @@ interface FaultOverTimeChartProps {
   preset: "24h" | "7d" | "30d" | "custom";
   start: string;
   end: string;
-  bucket: "hour" | "day";
+  bucket: "hour" | "day" | "raw";
   /** When set, scopes the timeseries query to these equipment IDs. */
   equipmentIds?: string[];
   /** Override the rendered chart height (default 340). */

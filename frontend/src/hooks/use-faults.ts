@@ -10,6 +10,7 @@ import type {
   FaultCountsByEquipmentResponse,
   FaultResultsSeriesResponse,
   FaultResultsRawResponse,
+  EquipmentAttentionResponse,
   BacnetDevice,
 } from "@/types/api";
 
@@ -119,7 +120,7 @@ export function useFaultTimeseries(
   siteId: string | undefined,
   startDate: string,
   endDate: string,
-  bucket: "hour" | "day" = "hour",
+  bucket: "hour" | "day" | "raw" = "hour",
   options?: { enabled?: boolean; equipmentIds?: string[] },
 ) {
   const datesOk = !!startDate && !!endDate;
@@ -179,6 +180,29 @@ export function useFaultCountsByEquipment(
     queryFn: () =>
       apiFetch<FaultCountsByEquipmentResponse>(
         `/analytics/fault-counts-by-equipment${buildSearchParams({
+          site_id: siteId ?? undefined,
+          start_date: start,
+          end_date: end,
+        })}`,
+      ),
+    enabled: !!startDate && !!endDate,
+    staleTime: 60 * 1000,
+  });
+}
+
+/** Equipment ranked by derived attention score (Issues page). */
+export function useEquipmentAttention(
+  siteId: string | undefined,
+  startDate: string,
+  endDate: string,
+) {
+  const start = startDate.slice(0, 10);
+  const end = endDate.slice(0, 10);
+  return useQuery<EquipmentAttentionResponse>({
+    queryKey: ["faults", "equipment-attention", siteId ?? "all", start, end],
+    queryFn: () =>
+      apiFetch<EquipmentAttentionResponse>(
+        `/analytics/equipment-attention${buildSearchParams({
           site_id: siteId ?? undefined,
           start_date: start,
           end_date: end,

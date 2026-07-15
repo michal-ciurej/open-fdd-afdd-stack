@@ -1,23 +1,21 @@
-# Open-FDD AFDD stack
-
-> **Deprecated (AFDD platform)** - Active development of the Docker AFDD stack (Compose, API, BACnet scrapers, React UI, `bootstrap.sh`) now lives in the **[open-fdd monorepo](https://github.com/bbartling/open-fdd)** under **`afdd_stack/`**. Clone that repository and run **`./afdd_stack/scripts/bootstrap.sh`** from the repo root. Documentation is published with the engine at **[bbartling.github.io/open-fdd](https://bbartling.github.io/open-fdd/)**. This **`open-fdd-afdd-stack`** repository is retained only for history and inbound links; do not start new work here. The **`open-fdd`** package on **[PyPI](https://pypi.org/project/open-fdd/)** remains the published rules engine.
+Fault Finding
 
 [![Discord](https://img.shields.io/badge/Discord-Join%20Server-5865F2.svg?logo=discord&logoColor=white)](https://discord.gg/Ta48yQF8fC)
-[![CI](https://github.com/bbartling/open-fdd-afdd-stack/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bbartling/open-fdd-afdd-stack/actions/workflows/ci.yml)
+[![CI](https://github.com/PredMain/PredMain-afdd-stack/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/PredMain/PredMain-afdd-stack/actions/workflows/ci.yml)
 ![MIT License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Development Status](https://img.shields.io/badge/status-Beta-blue)
 ![Python](https://img.shields.io/badge/Python-3.9+-blue?logo=python&logoColor=white)
-[![Engine (PyPI)](https://img.shields.io/pypi/v/open-fdd?label=engine%20(PyPI))](https://pypi.org/project/open-fdd/)
+[![Engine (PyPI)](https://img.shields.io/pypi/v/PredMain?label=engine%20(PyPI))](https://pypi.org/project/PredMain/)
 
 <div align="center">
 
-![open-fdd logo](https://raw.githubusercontent.com/bbartling/open-fdd-afdd-stack/main/image.png)
+
 
 </div>
 
-Open-FDD is an open-source knowledge graph fault-detection platform for HVAC systems that helps facilities optimize their energy usage and cost-savings. Because it runs on-prem, facilities never have to worry about a vendor hiking prices, going dark, or walking away with their data. The platform is an AFDD stack designed to run inside the building, behind the firewall, under the owner’s control. It transforms operational data into actionable, cost-saving insights and provides a secure integration layer that any cloud platform can use without vendor lock-in. U.S. Department of Energy research reports median energy savings of roughly 8–9% from FDD programs-meaningful annual savings depending on facility size and energy spend.
+PredMain is an open-source knowledge graph fault-detection platform for HVAC systems that helps facilities optimize their energy usage and cost-savings. Because it runs on-prem, facilities never have to worry about a vendor hiking prices, going dark, or walking away with their data. The platform is an AFDD stack designed to run inside the building, behind the firewall, under the owner’s control. It transforms operational data into actionable, cost-saving insights and provides a secure integration layer that any cloud platform can use without vendor lock-in. U.S. Department of Energy research reports median energy savings of roughly 8–9% from FDD programs-meaningful annual savings depending on facility size and energy spend.
 
-The content that used to live here is now **`afdd_stack/`** in **[bbartling/open-fdd](https://github.com/bbartling/open-fdd)**. The README below is **legacy**; prefer the monorepo. The **rules engine** is still **[`open-fdd` on PyPI](https://pypi.org/project/open-fdd/)**.
+The content that used to live here is now **`afdd_stack/`** in **[PredMain/PredMain](https://github.com/PredMain/PredMain)**. The README below is **legacy**; prefer the monorepo. The **rules engine** is still **[`PredMain` on PyPI](https://pypi.org/project/PredMain/)**.
 
 
 ---
@@ -25,28 +23,28 @@ The content that used to live here is now **`afdd_stack/`** in **[bbartling/open
  Documentation
 
 
-* 📖 **[Stack Docs](https://bbartling.github.io/open-fdd-afdd-stack/)** - bootstrap, Docker, API, drivers, React UI
-* 📘 **[Engine Docs](https://bbartling.github.io/open-fdd/)** - RuleRunner, YAML rules, pandas ([repo](https://github.com/bbartling/open-fdd), [`open-fdd` PyPI](https://pypi.org/project/open-fdd/))
-* 📕 **[PDF Docs](https://github.com/bbartling/open-fdd/blob/master/pdf/open-fdd-docs.pdf)** - offline build: `python3 scripts/build_docs_pdf.py`
-* ✨ **[LLM Workflow](https://bbartling.github.io/open-fdd-afdd-stack/modeling/llm_workflow#copy-paste-prompt-template-recommended)** - export → tag → import
-* 🤖 **[Open-Claw](https://bbartling.github.io/open-fdd-afdd-stack/openclaw_integration)** - model context, MCP, API workflows
+* 📖 **[Stack Docs](https://PredMain.github.io/PredMain-afdd-stack/)** - bootstrap, Docker, API, drivers, React UI
+* 📘 **[Engine Docs](https://PredMain.github.io/PredMain/)** - RuleRunner, YAML rules, pandas ([repo](https://github.com/PredMain/PredMain), [`PredMain` PyPI](https://pypi.org/project/PredMain/))
+* 📕 **[PDF Docs](https://github.com/PredMain/PredMain/blob/master/pdf/PredMain-docs.pdf)** - offline build: `python3 scripts/build_docs_pdf.py`
+* ✨ **[LLM Workflow](https://PredMain.github.io/PredMain-afdd-stack/modeling/llm_workflow#copy-paste-prompt-template-recommended)** - export → tag → import
+* 🤖 **[Open-Claw](https://PredMain.github.io/PredMain-afdd-stack/openclaw_integration)** - model context, MCP, API workflows
 
 ---
 
  Quick Starts
 
- Open-FDD Engine-only (rules engine, no Docker) PyPi
+ PredMain Engine-only (rules engine, no Docker) PyPi
 
 If you only want the Python rules engine (without the full platform stack), you can use it in standard Python environments.
 
 ```bash
-pip install open-fdd
+pip install PredMain
 ```
 
 
- Open-FDD AFDD Platform Manually by the Human
+ PredMain AFDD Platform Manually by the Human
 
-Open-FDD uses Docker and Docker Compose to orchestrate and manage all platform services within a unified containerized environment. The bootstrap script (`./scripts/bootstrap.sh`) is **Linux-only** and intended for IoT edge applications using Docker exclusively.
+PredMain uses Docker and Docker Compose to orchestrate and manage all platform services within a unified containerized environment. The bootstrap script (`./scripts/bootstrap.sh`) is **Linux-only** and intended for IoT edge applications using Docker exclusively.
 
  Debian / Ubuntu setup
 
@@ -74,7 +72,7 @@ pip install argon2-cffi
 Clone the repository:
 
 ```bash
-git clone https://github.com/bbartling/open-fdd.git
+git clone https://github.com/PredMain/PredMain.git
 ```
 
  Standard HTTP bootstrap (no TLS) and app login
@@ -82,7 +80,7 @@ git clone https://github.com/bbartling/open-fdd.git
 The `--bacnet-address` value is the static bind address for BACnet, which is the usual setup for BACnet/IP on operations technology (OT) LANs. Bootstrap supports **dual-NIC** hosts: use this address on the OT interface; your other interface can use DHCP for outbound internet access.
 
 ```bash
-cd open-fdd-afdd-stack
+cd PredMain-afdd-stack
 
 printf '%s' 'YourSecurePassword' | ./scripts/bootstrap.sh \
   --bacnet-address 192.168.204.16/24:47808 \
@@ -94,11 +92,11 @@ printf '%s' 'YourSecurePassword' | ./scripts/bootstrap.sh \
 
  Standard hardened stack - self-signed TLS (Caddy) and app login
 
-Open-FDD runs over TLS with self-signed certificates, and there is no access to the Open-FDD API or the DIY BACnet server Docker container APIs.
+PredMain runs over TLS with self-signed certificates, and there is no access to the PredMain API or the DIY BACnet server Docker container APIs.
 
 
 ```bash
-cd open-fdd-afdd-stack
+cd PredMain-afdd-stack
 
 printf '%s' 'YourSecurePassword' | ./scripts/bootstrap.sh \
   --bacnet-address 192.168.204.16/24:47808 \
@@ -121,7 +119,7 @@ Also available is the **partial stack** mode: `./scripts/bootstrap.sh --mode col
 Use the same bootstrap script for local verification (no separate CI recipe required on the machine):
 
 ```bash
-cd open-fdd-afdd-stack
+cd PredMain-afdd-stack
 ./scripts/bootstrap.sh --test
 ```
 
@@ -146,7 +144,7 @@ Local development (co-developing engine + stack) and push to a new or existing d
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -U pip
-pip install -e "/path/to/open-fdd[dev]"
+pip install -e "/path/to/PredMain[dev]"
 pip install -e ".[dev]"
 pytest openfdd_stack/tests -v
 ```

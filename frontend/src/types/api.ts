@@ -453,6 +453,56 @@ export interface FaultCountsByEquipmentResponse {
   }[];
 }
 
+/** GET /analytics/equipment-attention */
+export type AttentionBand = "attention" | "degraded" | "healthy";
+export type AttentionTrend = "worsening" | "stable" | "improving";
+
+export interface AttentionFault {
+  fault_id: string;
+  name: string;
+  severity: string;
+  /** Share of FDD checks this fault failed in the period, 0..1. */
+  persistence: number;
+  count: number;
+  is_active: boolean;
+}
+
+export interface AttentionEquipment {
+  id: string;
+  site_id: string;
+  name: string;
+  type: string | null;
+  /** Derived attention score = Σ severity-weight × persistence over active faults. */
+  score: number;
+  band: AttentionBand;
+  trend: AttentionTrend;
+  dominant: {
+    fault_id: string;
+    name: string;
+    severity: string;
+    persistence: number;
+    days_active: number | null;
+  };
+  faults: AttentionFault[];
+}
+
+export interface EquipmentAttentionResponse {
+  site_id: string | null;
+  period: { start: string; end: string };
+  bands: {
+    attention: number;
+    degraded: number;
+    healthy: number;
+    evaluated: number;
+  };
+  critical_active: number;
+  worst_system: { label: string; detail: string } | null;
+  vs_last_period: { attention_delta: number; prev: number } | null;
+  /** Only units in the attention / degraded bands, ranked worst-first. */
+  equipment: AttentionEquipment[];
+  healthy_sample: string[];
+}
+
 /** GET /analytics/equipment-fault-counts */
 export interface EquipmentFaultCountsResponse {
   site_id: string | null;
