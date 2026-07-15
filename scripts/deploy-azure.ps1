@@ -84,6 +84,9 @@ $SwaApp        = 'predmain-frontend'
 $script:StepIndex = 0
 $script:Results   = [System.Collections.Generic.List[object]]::new()
 $script:Warnings  = [System.Collections.Generic.List[string]]::new()
+$script:TAG       = '(unset)'   # set once the tag is resolved
+$script:RevName   = '(unset)'   # set once the API revision name is built
+$script:LogFile   = $null       # set once the log file is opened
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -186,7 +189,7 @@ function Start-AndWaitJob {
     if (-not $execName) {
         $execName = (az containerapp job execution list -g $ResourceGroup --name $Job --query '[0].name' -o tsv 2>>$script:LogFile)
     }
-    Log "  $Job: started execution $execName"
+    Log "  ${Job}: started execution $execName"
 
     $deadline = (Get-Date).AddMinutes($JobTimeoutMin)
     while ((Get-Date) -lt $deadline) {
