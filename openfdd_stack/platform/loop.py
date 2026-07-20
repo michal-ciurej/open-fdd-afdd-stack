@@ -28,6 +28,37 @@ from openfdd_stack.platform.site_resolver import resolve_site_uuid
 from open_fdd.schema import FDDResult, results_from_runner_output
 
 
+def _pivot_and_resample(rows: list) -> Optional[pd.DataFrame]:
+    """Pivot tall (ts, external_id, value) rows into a wide DataFrame aligned to a fixed cadence.
+
+    Every data source writes to timeseries_readings with its own timestamp semantics:
+      - BACnet scrape: `datetime.now(utc)` captured once per scrape iteration
+      - Niagara polling (future): same pattern as BACnet
+      - Niagara history sync: timestamps from Niagara's own history table (15-min ticks by default)
+      - Weather: Open-Meteo forecast ticks (15-min / hourly)
+
+    Without alignment the pivot yields a mostly-NaN table and rules that need multiple columns
+    at the same ts silently fail. We resample-mean into `rule_resample_cadence` buckets so
+    every row is a fully populated (or genuinely gapped) point-in-time snapshot.
+
+    Do NOT rename the DataFrame columns here — the engine expects `column_map`
+    (Brick/logical → actual DataFrame column name) and our columns are `points.external_id`.
+    """
+    if not rows:
+        return None
+    df = pd.DataFrame(rows)
+    df = df.pivot_table(index="ts", columns="external_id", values="value")
+    if df.empty:
+        return None
+    # Ensure resample() sees a DatetimeIndex; DB ts is stored UTC.
+    df.index = pd.to_datetime(df.index, utc=True)
+    cadence = get_platform_settings().rule_resample_cadence or "15min"
+    df = df.resample(cadence).mean()
+    df = df.reset_index()
+    df["timestamp"] = pd.to_datetime(df["ts"])
+    return df
+
+
 def _fdd_runner_run_kwargs(
     settings: object,
     *,
@@ -115,14 +146,7 @@ def load_timeseries_for_site(
     if not rows:
         return None
 
-    df = pd.DataFrame(rows)
-    df = df.pivot_table(index="ts", columns="external_id", values="value")
-    df = df.reset_index()
-    # Do NOT rename the DataFrame columns here.
-    # The engine expects `column_map` (Brick/logical -> actual DataFrame column name).
-    # Our actual columns are `points.external_id` from the DB pivot above.
-    df["timestamp"] = pd.to_datetime(df["ts"])
-    return df
+    return _pivot_and_resample(rows)
 
 
 def load_timeseries_for_equipment(
@@ -173,14 +197,7 @@ def load_timeseries_for_equipment(
     if not rows:
         return None
 
-    df = pd.DataFrame(rows)
-    df = df.pivot_table(index="ts", columns="external_id", values="value")
-    df = df.reset_index()
-    # Do NOT rename the DataFrame columns here.
-    # The engine expects `column_map` (Brick/logical -> actual DataFrame column name).
-    # Our actual columns are `points.external_id` from the DB pivot above.
-    df["timestamp"] = pd.to_datetime(df["ts"])
-    return df
+    return _pivot_and_resample(rows)
 
 
 def load_timeseries_for_equipment_uuid(
@@ -230,11 +247,7 @@ def load_timeseries_for_equipment_uuid(
     if not rows:
         return None
 
-    df = pd.DataFrame(rows)
-    df = df.pivot_table(index="ts", columns="external_id", values="value")
-    df = df.reset_index()
-    df["timestamp"] = pd.to_datetime(df["ts"])
-    return df
+    return _pivot_and_resample(rows)
 
 
 def _sync_fault_definitions_from_rules(rules: list) -> None:

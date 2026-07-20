@@ -53,6 +53,12 @@ class PlatformSettings(BaseSettings):
     )
     # When True: FDD loop fails fast on bad column_map / non-numeric inputs (open-fdd input_validation=strict, skip_missing_columns=False). Use in dev/CI.
     fdd_strict_rules: bool = False
+    # Rule engine input alignment: resample the pivoted timeseries to this pandas offset alias
+    # (e.g. "15min", "5min", "1h") before handing the DataFrame to open-fdd. Aligns rows across
+    # sources with different write cadences (BACnet 5-min, Niagara history 15-min, weather hourly)
+    # so rules that need multiple columns simultaneously don't silently fail on unaligned ts.
+    # Default 15 minutes to match Niagara's default history logging tick.
+    rule_resample_cadence: str = "15min"
 
     # Manual FDD trigger on Azure (POST /run-fdd). When fdd_job_resource_id is set,
     # /run-fdd starts ONE execution of this ACA Job (the dedicated, correctly-sized
