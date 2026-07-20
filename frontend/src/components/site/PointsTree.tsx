@@ -384,11 +384,11 @@ function TreeRows({
         <TableCell className="text-muted-foreground text-xs">{p.unit ?? "-"}</TableCell>
         <TableCell>
           {p.polling ? (
-            <span title="BACnet scraper polls this point">
+            <span title="Logged: included in live polling (BACnet scraper / Niagara live-value poll). For Niagara, the point's endpoint must also have Poll points on.">
               <CircleDot className="h-4 w-4 text-primary" />
             </span>
           ) : (
-            <span title="Not polled">
+            <span title="Not polled: excluded from live-value logging">
               <Circle className="h-4 w-4 text-muted-foreground" />
             </span>
           )}

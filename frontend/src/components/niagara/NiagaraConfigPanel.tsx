@@ -32,11 +32,14 @@ export function NiagaraConfigPanel() {
         <>
           Scans discover control points via BQL; equipment is grouped from the nav ORD folder
           twice removed. Syncs pull history for points carrying an{" "}
-          <code className="rounded bg-muted px-1 text-xs">n:history</code> tag.
+          <code className="rounded bg-muted px-1 text-xs">n:history</code> tag. Enable{" "}
+          <strong>Poll points</strong> to also scrape live values each poll cycle (only points
+          with <strong>Polling</strong> on are read).
         </>
       }
       bqlWindows={BQL_WINDOWS}
       defaultWindow="lastweek"
+      supportsPolling
       api={{
         listEndpoints: listNiagaraEndpoints,
         createEndpoint: createNiagaraEndpoint,

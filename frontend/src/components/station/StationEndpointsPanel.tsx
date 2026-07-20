@@ -36,6 +36,12 @@ export interface StationEndpointsPanelProps {
   bqlWindows: readonly string[];
   defaultWindow: string;
   api: StationApi;
+  /**
+   * Whether this driver supports live-value polling (Niagara only). When true a
+   * "Poll points" toggle (endpoint.poll_enabled) is shown on the add + edit
+   * forms. IQVision has no poll_enabled column, so it leaves this off.
+   */
+  supportsPolling?: boolean;
 }
 
 export function StationEndpointsPanel({
@@ -46,6 +52,7 @@ export function StationEndpointsPanel({
   bqlWindows,
   defaultWindow,
   api,
+  supportsPolling = false,
 }: StationEndpointsPanelProps) {
   const { selectedSiteId, selectedSite } = useSiteContext();
   const queryClient = useQueryClient();
@@ -65,6 +72,7 @@ export function StationEndpointsPanel({
   const [password, setPassword] = useState("");
   const [sslVerify, setSslVerify] = useState(true);
   const [enabled, setEnabled] = useState(true);
+  const [pollEnabled, setPollEnabled] = useState(false);
   const [addStatus, setAddStatus] = useState<string | null>(null);
 
   const resetAddForm = () => {
@@ -74,18 +82,22 @@ export function StationEndpointsPanel({
     setPassword("");
     setSslVerify(true);
     setEnabled(true);
+    setPollEnabled(false);
   };
 
   const createMut = useMutation({
-    mutationFn: () =>
-      api.createEndpoint(selectedSiteId!, {
+    mutationFn: () => {
+      const body: NiagaraEndpointCreateBody = {
         name: name.trim(),
         base_url: baseUrl.trim(),
         username: username.trim(),
         password,
         ssl_verify: sslVerify,
         enabled,
-      }),
+      };
+      if (supportsPolling) body.poll_enabled = pollEnabled;
+      return api.createEndpoint(selectedSiteId!, body);
+    },
     onSuccess: () => {
       setAddStatus(null);
       setShowAdd(false);
@@ -205,6 +217,20 @@ export function StationEndpointsPanel({
                     />
                     Enabled
                   </label>
+                  {supportsPolling && (
+                    <label
+                      className="flex items-center gap-2 text-sm"
+                      title="Scrape live values from this endpoint each poll cycle. Only points with Polling on are read."
+                    >
+                      <input
+                        type="checkbox"
+                        checked={pollEnabled}
+                        onChange={(e) => setPollEnabled(e.target.checked)}
+                        className="h-4 w-4 rounded border-border"
+                      />
+                      Poll points
+                    </label>
+                  )}
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -253,6 +279,7 @@ export function StationEndpointsPanel({
           bqlWindows={bqlWindows}
           defaultWindow={defaultWindow}
           api={api}
+          supportsPolling={supportsPolling}
           onChanged={() => queryClient.invalidateQueries({ queryKey: endpointsKey })}
         />
       ))}
@@ -268,6 +295,7 @@ interface StationEndpointCardProps {
   bqlWindows: readonly string[];
   defaultWindow: string;
   api: StationApi;
+  supportsPolling: boolean;
   onChanged: () => void;
 }
 
@@ -279,6 +307,7 @@ function StationEndpointCard({
   bqlWindows,
   defaultWindow,
   api,
+  supportsPolling,
   onChanged,
 }: StationEndpointCardProps) {
   const queryClient = useQueryClient();
@@ -289,6 +318,7 @@ function StationEndpointCard({
   const [password, setPassword] = useState("");
   const [sslVerify, setSslVerify] = useState(endpoint.ssl_verify);
   const [enabled, setEnabled] = useState(endpoint.enabled);
+  const [pollEnabled, setPollEnabled] = useState(endpoint.poll_enabled ?? false);
   const [timeWindow, setTimeWindow] = useState<string>(defaultWindow);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
@@ -299,15 +329,18 @@ function StationEndpointCard({
   });
 
   const saveMut = useMutation({
-    mutationFn: () =>
-      api.updateEndpoint(endpoint.id, {
+    mutationFn: () => {
+      const body: NiagaraEndpointUpdateBody = {
         name: name.trim(),
         base_url: baseUrl.trim(),
         username: username.trim(),
         password: password || undefined,
         ssl_verify: sslVerify,
         enabled,
-      }),
+      };
+      if (supportsPolling) body.poll_enabled = pollEnabled;
+      return api.updateEndpoint(endpoint.id, body);
+    },
     onSuccess: () => {
       setStatusMsg("Endpoint saved.");
       setPassword("");
@@ -369,6 +402,11 @@ function StationEndpointCard({
               disabled
             </span>
           )}
+          {supportsPolling && endpoint.poll_enabled && (
+            <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-normal text-primary">
+              polling
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -426,6 +464,20 @@ function StationEndpointCard({
               />
               Enabled
             </label>
+            {supportsPolling && (
+              <label
+                className="flex items-center gap-2 text-sm"
+                title="Scrape live values from this endpoint each poll cycle. Only points with Polling on are read."
+              >
+                <input
+                  type="checkbox"
+                  checked={pollEnabled}
+                  onChange={(e) => setPollEnabled(e.target.checked)}
+                  className="h-4 w-4 rounded border-border"
+                />
+                Poll points
+              </label>
+            )}
           </div>
         </div>
 

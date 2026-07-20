@@ -510,6 +510,12 @@ export interface NiagaraEndpoint {
   username: string;
   ssl_verify: boolean;
   enabled: boolean;
+  /**
+   * Live-value polling switch for this endpoint. When true (and per-point
+   * `polling` is on), the poll driver scrapes current values into the
+   * timeseries. Niagara-only; IQVision endpoints never carry this field.
+   */
+  poll_enabled?: boolean;
   last_scan_ts?: string | null;
   last_sync_ts?: string | null;
 }
@@ -522,6 +528,7 @@ export interface NiagaraEndpointCreateBody {
   password: string;
   ssl_verify: boolean;
   enabled: boolean;
+  poll_enabled?: boolean;
 }
 
 /** Body for PUT (update) - omitted fields and a blank password keep the current value. */
@@ -532,6 +539,7 @@ export interface NiagaraEndpointUpdateBody {
   password?: string;
   ssl_verify?: boolean;
   enabled?: boolean;
+  poll_enabled?: boolean;
 }
 
 export interface NiagaraScanPoint {
