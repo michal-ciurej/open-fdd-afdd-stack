@@ -25,7 +25,7 @@ router = APIRouter(prefix="/points", tags=["points"])
 
 _COLS = (
     "id, site_id, external_id, brick_type, fdd_input, unit, description, equipment_id, "
-    "bacnet_device_id, object_identifier, object_name, niagara_history_path, "
+    "bacnet_device_id, object_identifier, object_name, niagara_history_path, niagara_nav_ord, "
     "COALESCE(polling, true) AS polling, modbus_config, created_at"
 )
 

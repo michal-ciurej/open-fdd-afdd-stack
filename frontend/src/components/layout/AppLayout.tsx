@@ -36,7 +36,8 @@ function backgroundFor(pathname: string): string | undefined {
 
 export function AppLayout() {
   const { pathname } = useLocation();
-  const fullWidthContent = pathname === "/plots" || pathname === "/weather";
+  const fullWidthContent =
+    pathname === "/plots" || pathname === "/weather" || pathname === "/points";
   const backgroundImage = backgroundFor(pathname);
 
   return (

@@ -11,6 +11,27 @@ import type { Point, Equipment, Site } from "@/types/api";
 import { parseUtcTimestamp } from "@/lib/utils";
 import { Circle, CircleDot, ChevronRight, ChevronDown, Server, Box, CircleDotIcon, Radio, CircleOff, Unlink } from "lucide-react";
 
+/**
+ * Derive the equipment folder ORD from a point's Niagara navOrd. Mirrors
+ * `_folder_ord_from_point_ord` in openfdd_stack/platform/drivers/niagara.py.
+ *
+ * `local:|station:|slot:/Drivers/BacnetNetwork/FS_29_ACE_FCU14/points/RaDeadband`
+ *  → `slot:/Drivers/BacnetNetwork/FS_29_ACE_FCU14/points`
+ *
+ * Returns null when the ORD doesn't start with `slot:` after prefix stripping —
+ * i.e. the point isn't a Niagara point at all.
+ */
+function folderOrdFromPointOrd(pointOrd: string | null | undefined): string | null {
+  if (!pointOrd) return null;
+  let s = pointOrd;
+  for (const prefix of ["local:|", "station:|"]) {
+    if (s.startsWith(prefix)) s = s.slice(prefix.length);
+  }
+  if (!s.startsWith("slot:")) return null;
+  const idx = s.lastIndexOf("/");
+  return idx > 0 ? s.slice(0, idx) : null;
+}
+
 /** Format ts for display (API timestamps are UTC; we show relative time). */
 function formatLastUpdated(ts: string | null): string {
   if (!ts) return "-";
@@ -144,6 +165,19 @@ export function PointsTree({
     [points, equipment, siteMap],
   );
 
+  // For each equipment, derive its Niagara folder ORD from the first point
+  // that carries a niagara_nav_ord. Points on the same equipment share a
+  // folder in Niagara, so any child's nav ORD gives the equipment ORD.
+  const equipmentFolderOrd = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of points) {
+      if (!p.equipment_id || map.has(p.equipment_id)) continue;
+      const folder = folderOrdFromPointOrd(p.niagara_nav_ord ?? null);
+      if (folder) map.set(p.equipment_id, folder);
+    }
+    return map;
+  }, [points]);
+
   const [openIds, setOpenIds] = useState<Set<string>>(() => {
     const initial = new Set<string>();
     tree.forEach((node) => {
@@ -202,6 +236,7 @@ export function PointsTree({
             <TableHead className="w-[90px]">Polling</TableHead>
             <TableHead className="min-w-[100px]">Last value</TableHead>
             <TableHead className="w-[120px]">Last updated</TableHead>
+            <TableHead className="min-w-[240px]">Niagara ORD</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -216,6 +251,7 @@ export function PointsTree({
               hasSites={hasSites}
               siteName={node.type === "site" ? node.name : undefined}
               onContextMenu={handleContextMenu}
+              equipmentFolderOrd={equipmentFolderOrd}
             />
           ))}
         </TableBody>
@@ -309,6 +345,7 @@ function TreeRows({
   hasSites,
   siteName,
   onContextMenu,
+  equipmentFolderOrd,
 }: {
   node: TreeNode;
   depth: number;
@@ -318,6 +355,7 @@ function TreeRows({
   hasSites: boolean;
   siteName?: string;
   onContextMenu?: (e: React.MouseEvent, type: "point" | "equipment" | "site", id: string, name: string) => void;
+  equipmentFolderOrd?: Map<string, string>;
 }) {
   const indent = depth * 20;
   const hasChildren = node.type !== "point" && node.children.length > 0;
@@ -368,6 +406,7 @@ function TreeRows({
         <TableCell className="text-muted-foreground text-xs">
           {p.polling && latest != null && latest.ts ? formatLastUpdated(latest.ts) : "-"}
         </TableCell>
+        <TableCell className="text-muted-foreground text-xs" />
       </TableRow>
     );
   }
@@ -433,6 +472,20 @@ function TreeRows({
           </span>
         </TableCell>
         <TableCell colSpan={hasSites ? 7 : 6} />
+        <TableCell className="font-mono text-xs text-muted-foreground max-w-[360px] truncate">
+          {node.type === "equipment" ? (
+            (() => {
+              const folder = equipmentFolderOrd?.get(node.id);
+              return folder ? (
+                <span title={folder}>{folder}</span>
+              ) : (
+                <span className="text-muted-foreground/60">-</span>
+              );
+            })()
+          ) : (
+            ""
+          )}
+        </TableCell>
       </TableRow>
       {isOpen &&
         node.children.map((child) => (
@@ -446,6 +499,7 @@ function TreeRows({
             hasSites={hasSites}
             siteName={siteName ?? (node.type === "site" ? node.name : undefined)}
             onContextMenu={onContextMenu}
+            equipmentFolderOrd={equipmentFolderOrd}
           />
         ))}
     </>

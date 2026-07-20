@@ -146,6 +146,7 @@ class PointRead(BaseModel):
     object_identifier: Optional[str] = None
     object_name: Optional[str] = None
     niagara_history_path: Optional[str] = None
+    niagara_nav_ord: Optional[str] = None
     polling: bool = True
     modbus_config: Optional[dict[str, Any]] = None
     created_at: datetime

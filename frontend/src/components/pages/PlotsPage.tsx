@@ -591,7 +591,7 @@ export function PlotsPage() {
           format: "wide",
           point_ids: allPointIds,
         },
-        `openfdd_plots_${startD}_${endD}.csv`,
+        `Sherlock_Data_${startD}_${endD}.csv`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to download CSV.");

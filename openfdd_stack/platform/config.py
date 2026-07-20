@@ -60,6 +60,14 @@ class PlatformSettings(BaseSettings):
     # Default 15 minutes to match Niagara's default history logging tick.
     rule_resample_cadence: str = "15min"
 
+    # Niagara live-value polling (run_niagara_poll driver / predmain-niagara-poll ACA Job).
+    # Per-endpoint enable and per-endpoint delay override live in site_niagara_endpoints
+    # (see migration 034). These settings are the platform defaults and global kill-switch.
+    niagara_poll_enabled: bool = False
+    niagara_poll_interval_min: int = 15
+    niagara_poll_equipment_delay_ms: int = 200
+    niagara_poll_request_timeout_sec: int = 30
+
     # Manual FDD trigger on Azure (POST /run-fdd). When fdd_job_resource_id is set,
     # /run-fdd starts ONE execution of this ACA Job (the dedicated, correctly-sized
     # predmain-fdd-loop) via its managed identity, instead of touching the local

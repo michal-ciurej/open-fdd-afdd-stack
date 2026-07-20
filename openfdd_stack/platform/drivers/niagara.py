@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
@@ -201,6 +202,103 @@ def _build_scan_url(base_url: str) -> str:
     """URL for the station-wide ControlPoint scan."""
     ord_body = f"station:|slot:/Drivers|bql:{_SCAN_BQL}|view:?fullScreen=true"
     return _encode_ord_url(base_url, ord_body)
+
+
+# BQL for live-value polling. `out.value.toString` returns the ordinal for
+# booleans (0/1) and enums (0/1/2/...) rather than a label, which lets rules
+# treat everything as a number without an enum→float mapping. Numerics come
+# through as their float value, with unit/status/priority trailing.
+_POLL_BQL = (
+    "select "
+    "proxyExt.device.displayName as 'Device',"
+    "navOrd as 'PointLocation',"
+    "displayName as 'Point',"
+    "out.value.toString as 'Value',"
+    "vykonPro:Lib.tags() as 'Tags' "
+    "from control:ControlPoint"
+)
+
+
+def _build_polling_url(base_url: str, folder_ord: str) -> str:
+    """Live-value BQL scoped to one equipment-folder ORD.
+
+    ``folder_ord`` looks like ``slot:/Drivers/BacnetNetwork/FS_29_ACE_FCU14/points``
+    — derived at runtime from the polling points' ``niagara_nav_ord`` by
+    :func:`_folder_ord_from_point_ord`. The URL is the same shape as the
+    station-wide scan but restricted to that folder, so each JACE only encodes
+    the live values of one equipment's points per request.
+    """
+    if not folder_ord.startswith("slot:"):
+        raise ValueError(f"expected 'slot:' prefix on folder ORD, got {folder_ord!r}")
+    ord_body = f"station:|{folder_ord}|bql:{_POLL_BQL}|view:?fullScreen=true"
+    return _encode_ord_url(base_url, ord_body)
+
+
+def _normalize_ord(o: Optional[str]) -> str:
+    """Strip Niagara's optional ``local:|`` / ``station:|`` prefixes.
+
+    Point ORDs come back from scans as ``local:|station:|slot:/…`` but are
+    sometimes stored (or passed) without those prefixes. Normalize both sides
+    to their ``slot:…`` tail before equality-comparing.
+    """
+    if not o:
+        return ""
+    for prefix in ("local:|", "station:|"):
+        if o.startswith(prefix):
+            o = o[len(prefix):]
+    return o
+
+
+def _folder_ord_from_point_ord(point_ord: Optional[str]) -> Optional[str]:
+    """Compute the parent folder ORD of a point's ``niagara_nav_ord``.
+
+    Given ``local:|station:|slot:/Drivers/BacnetNetwork/FS_29_ACE_FCU14/points/RaDeadband``
+    returns ``slot:/Drivers/BacnetNetwork/FS_29_ACE_FCU14/points``.
+
+    Grouping polling points by this key gives one BQL request per equipment
+    folder — the JACE encodes only that folder's live values per request,
+    avoiding the "encode everything at once" cost of a station-wide scan.
+    """
+    s = _normalize_ord(point_ord)
+    if not s.startswith("slot:"):
+        return None
+    idx = s.rfind("/")
+    return s[:idx] if idx > 0 else None
+
+
+# `2.00 °C {ok} @ def`, `1 {ok} @ def` (bool), `78 % {ok} @ 8`, `--- {down}`, etc.
+_POLL_VALUE_RE = re.compile(
+    r"^\s*"
+    r"(?P<val>[-+]?\d+(?:\.\d+)?)"        # numeric (int or float)
+    r"[^\s{@]*"                            # optional unit token
+    r"\s*"
+    r"(?:\{(?P<status>[^}]*)\})?"          # optional {status}
+    r".*$"                                  # ignore trailing @ priority etc.
+)
+
+
+def parse_niagara_poll_value(raw: Optional[str]) -> tuple[Optional[float], str]:
+    """Parse a Niagara ``out.value.toString`` cell.
+
+    Returns ``(value, status)``. ``status`` is lower-cased (``ok`` when the
+    cell had no ``{...}`` marker at all). ``value`` is ``None`` if the cell
+    doesn't start with a number (``---`` for downed sensors, unexpected text)
+    — the caller is expected to skip DB writes in that case.
+
+    With ``out.value.toString`` in the BQL, booleans arrive as ``1`` / ``0``
+    and enums as their ordinal (``2``, ``3``, ...), so a single numeric parser
+    covers every point type without an enum-to-float mapping.
+    """
+    if not raw:
+        return (None, "empty")
+    m = _POLL_VALUE_RE.match(raw)
+    if not m:
+        return (None, "unparseable")
+    status = (m.group("status") or "ok").lower().strip()
+    try:
+        return (float(m.group("val")), status)
+    except ValueError:
+        return (None, status or "unparseable")
 
 
 def _build_history_url(base_url: str, history_path: str, time_window: str) -> str:
@@ -926,6 +1024,288 @@ def scan_niagara_station(endpoint_id: str) -> dict:
         "equipment_upserted": len(equipment_ids),
         "error": None,
     }
+
+
+# ---------------------------------------------------------------------------
+# Per-endpoint live-value polling
+# ---------------------------------------------------------------------------
+#
+# One BQL request per equipment folder (parent of the polling points' navOrd),
+# sequentially, with a per-endpoint politeness delay between requests. The JACE
+# only encodes one equipment's live values per request, avoiding the CPU spike
+# from a station-wide toString scan.
+#
+# Preconditions:
+#   * migration 034 adds site_niagara_endpoints.poll_enabled + poll_equipment_delay_ms
+#   * migration 035 adds niagara_poll_log for observability
+#   * points.niagara_nav_ord (from 033) must be populated by the manual mapping
+#     workflow; points.polling (from 011) gates each individual point.
+
+def _load_polling_points_for_endpoint(endpoint_id: str) -> list[dict]:
+    """Points on this endpoint that are opted in for live polling.
+
+    Filters to points that carry a nav ORD (needed to build the polling URL and
+    match response rows back to point ids) AND haven't had polling explicitly
+    turned off. COALESCE(polling, true) preserves the pre-011 default.
+    """
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, site_id, external_id, niagara_nav_ord
+                FROM points
+                WHERE niagara_endpoint_id = %s
+                  AND niagara_nav_ord IS NOT NULL
+                  AND COALESCE(polling, true) = true
+                """,
+                (endpoint_id,),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+
+def _log_poll_row(
+    *,
+    endpoint_id: Optional[str],
+    endpoint_name: Optional[str],
+    site_id: Optional[str],
+    folder_ord: Optional[str],
+    status: str,
+    rows_seen: int = 0,
+    rows_inserted: int = 0,
+    rows_unmatched: int = 0,
+    duration_ms: Optional[int] = None,
+    error: Optional[str] = None,
+) -> None:
+    """Best-effort insert into niagara_poll_log. Never raises."""
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO niagara_poll_log (
+                      endpoint_id, endpoint_name, site_id, folder_ord, status,
+                      rows_seen, rows_inserted, rows_unmatched, duration_ms, error
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        endpoint_id, endpoint_name, site_id, folder_ord, status,
+                        rows_seen, rows_inserted, rows_unmatched, duration_ms, error,
+                    ),
+                )
+            conn.commit()
+    except Exception:
+        logger.exception("niagara_poll_log insert failed (endpoint=%s status=%s)", endpoint_id, status)
+
+
+def poll_niagara_endpoint(endpoint_id: str, default_delay_ms: int, request_timeout_sec: int = 30) -> dict:
+    """Poll one Niagara endpoint: group polling points by folder, BQL-scan each
+    folder sequentially, write readings.
+
+    ``default_delay_ms`` is the platform-level fallback; the per-endpoint override
+    (``site_niagara_endpoints.poll_equipment_delay_ms``) wins when set.
+
+    Returns a summary dict for the driver's aggregate report. Individual folder
+    successes/failures are also written to ``niagara_poll_log``.
+    """
+    endpoint = _get_endpoint_with_polling(endpoint_id)
+    if not endpoint:
+        return {"ok": False, "error": f"no endpoint {endpoint_id}", "folders": 0, "rows_inserted": 0}
+    if not endpoint.get("enabled", True) or not endpoint.get("poll_enabled", False):
+        _log_poll_row(
+            endpoint_id=endpoint_id, endpoint_name=endpoint.get("name"),
+            site_id=str(endpoint["site_id"]) if endpoint.get("site_id") else None,
+            folder_ord=None, status="skipped",
+            error="endpoint disabled" if not endpoint.get("enabled", True) else "poll_enabled=false",
+        )
+        return {"ok": True, "skipped": True, "folders": 0, "rows_inserted": 0}
+
+    points = _load_polling_points_for_endpoint(endpoint_id)
+    if not points:
+        _log_poll_row(
+            endpoint_id=endpoint_id, endpoint_name=endpoint.get("name"),
+            site_id=str(endpoint["site_id"]), folder_ord=None,
+            status="summary", rows_seen=0, rows_inserted=0, rows_unmatched=0,
+        )
+        return {"ok": True, "folders": 0, "rows_inserted": 0, "note": "no polling points"}
+
+    # Group by folder ORD (parent of point's nav ORD).
+    groups: dict[str, list[dict]] = {}
+    for pt in points:
+        folder = _folder_ord_from_point_ord(pt["niagara_nav_ord"])
+        if folder:
+            groups.setdefault(folder, []).append(pt)
+
+    delay_s = (endpoint.get("poll_equipment_delay_ms") or default_delay_ms) / 1000.0
+    site_id = str(endpoint["site_id"])
+    endpoint_name = endpoint.get("name")
+
+    session = requests.Session()
+    session.auth = (endpoint["username"], endpoint["password"])
+    session.verify = bool(endpoint["ssl_verify"])
+
+    cycle_ts = datetime.now(timezone.utc)  # one ts across the whole cycle
+    total_inserted = 0
+    total_unmatched = 0
+    total_seen = 0
+    cycle_started = time.monotonic()
+
+    for folder, expected_points in groups.items():
+        folder_started = time.monotonic()
+        try:
+            url = _build_polling_url(endpoint["base_url"], folder)
+            resp = session.get(url, timeout=request_timeout_sec)
+            resp.raise_for_status()
+            rows = _parse_bql_html_scan(resp.text)
+            inserted, unmatched = _match_and_insert_poll_readings(
+                site_id=site_id,
+                expected=expected_points,
+                rows=rows,
+                cycle_ts=cycle_ts,
+            )
+            total_inserted += inserted
+            total_unmatched += unmatched
+            total_seen += len(rows)
+            _log_poll_row(
+                endpoint_id=endpoint_id, endpoint_name=endpoint_name, site_id=site_id,
+                folder_ord=folder, status="ok",
+                rows_seen=len(rows), rows_inserted=inserted, rows_unmatched=unmatched,
+                duration_ms=int((time.monotonic() - folder_started) * 1000),
+            )
+        except requests.exceptions.Timeout:
+            _log_poll_row(
+                endpoint_id=endpoint_id, endpoint_name=endpoint_name, site_id=site_id,
+                folder_ord=folder, status="timeout",
+                duration_ms=int((time.monotonic() - folder_started) * 1000),
+                error=f"HTTP timeout after {request_timeout_sec}s",
+            )
+        except requests.exceptions.RequestException as exc:
+            _log_poll_row(
+                endpoint_id=endpoint_id, endpoint_name=endpoint_name, site_id=site_id,
+                folder_ord=folder, status="http_error",
+                duration_ms=int((time.monotonic() - folder_started) * 1000),
+                error=str(exc)[:500],
+            )
+        except Exception as exc:  # parse errors, unexpected shapes
+            logger.exception("poll: folder %s on endpoint %s failed", folder, endpoint_id)
+            _log_poll_row(
+                endpoint_id=endpoint_id, endpoint_name=endpoint_name, site_id=site_id,
+                folder_ord=folder, status="parse_error",
+                duration_ms=int((time.monotonic() - folder_started) * 1000),
+                error=str(exc)[:500],
+            )
+        time.sleep(delay_s)
+
+    session.close()
+
+    # Cycle summary row
+    _log_poll_row(
+        endpoint_id=endpoint_id, endpoint_name=endpoint_name, site_id=site_id,
+        folder_ord=None, status="summary",
+        rows_seen=total_seen, rows_inserted=total_inserted, rows_unmatched=total_unmatched,
+        duration_ms=int((time.monotonic() - cycle_started) * 1000),
+    )
+
+    return {
+        "ok": True,
+        "endpoint_id": endpoint_id,
+        "folders": len(groups),
+        "rows_seen": total_seen,
+        "rows_inserted": total_inserted,
+        "rows_unmatched": total_unmatched,
+        "duration_ms": int((time.monotonic() - cycle_started) * 1000),
+    }
+
+
+def _get_endpoint_with_polling(endpoint_id: str) -> Optional[dict]:
+    """Load a Niagara endpoint including polling-specific columns.
+
+    Kept separate from :func:`_get_endpoint` so the history-sync callers don't
+    have to change to pick up the new columns; the poll driver just uses the
+    extended query.
+    """
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, site_id, name, base_url, username, password,
+                       ssl_verify, enabled, poll_enabled, poll_equipment_delay_ms
+                FROM site_niagara_endpoints
+                WHERE id = %s
+                """,
+                (endpoint_id,),
+            )
+            row = cur.fetchone()
+    return dict(row) if row else None
+
+
+def _match_and_insert_poll_readings(
+    *,
+    site_id: str,
+    expected: list[dict],
+    rows: list[dict],
+    cycle_ts: datetime,
+) -> tuple[int, int]:
+    """Match parsed BQL rows back to point ids by nav ORD and bulk-insert readings.
+
+    Returns ``(inserted, unmatched)``. Unmatched rows (rows the JACE returned
+    that don't correspond to a polling point in our DB) are counted and can
+    surface via the poll log; they indicate address drift on the station side.
+    """
+    if not expected or not rows:
+        return (0, len(rows) if rows else 0)
+
+    # Key expected points on their normalized nav ORD for O(1) lookup per row.
+    by_ord = {_normalize_ord(pt["niagara_nav_ord"]): pt for pt in expected}
+    to_insert: list[tuple[datetime, str, str, float]] = []
+    unmatched = 0
+
+    for row in rows:
+        pt = by_ord.get(_normalize_ord(row.get("point_location")))
+        if pt is None:
+            unmatched += 1
+            continue
+        value, status = parse_niagara_poll_value(row.get("value"))
+        if value is None or status != "ok":
+            continue
+        to_insert.append((cycle_ts, site_id, str(pt["id"]), value))
+
+    if not to_insert:
+        return (0, unmatched)
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            execute_values(
+                cur,
+                """
+                INSERT INTO timeseries_readings (ts, site_id, point_id, value)
+                VALUES %s
+                ON CONFLICT (point_id, ts) DO NOTHING
+                """,
+                to_insert,
+                page_size=500,
+            )
+            inserted = cur.rowcount if cur.rowcount is not None else len(to_insert)
+        conn.commit()
+    return (inserted, unmatched)
+
+
+def list_polling_endpoints() -> list[dict]:
+    """All Niagara endpoints currently opted in to live polling.
+
+    Used by :mod:`openfdd_stack.platform.drivers.run_niagara_poll` to fan out
+    per cron fire.
+    """
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, site_id, name
+                FROM site_niagara_endpoints
+                WHERE enabled = true AND poll_enabled = true
+                ORDER BY name
+                """
+            )
+            return [dict(r) for r in cur.fetchall()]
 
 
 # ---------------------------------------------------------------------------

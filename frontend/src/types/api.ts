@@ -63,6 +63,13 @@ export interface Point {
   bacnet_device_id: string | null;
   object_identifier: string | null;
   object_name: string | null;
+  /**
+   * Full navOrd of this point on the Niagara station, e.g.
+   * `local:|station:|slot:/Drivers/BacnetNetwork/FS_29_ACE_FCU14/points/RaDeadband`.
+   * Used to derive the equipment folder ORD for live-value polling. NULL for
+   * non-Niagara points (BACnet, weather, Modbus, ...).
+   */
+  niagara_nav_ord?: string | null;
   /** From data model (ofdd:polling in TTL). If true, BACnet scraper polls this point. */
   polling: boolean;
   /** When set, Modbus TCP scrape reads this point via the BACnet gateway /modbus/read_registers. */

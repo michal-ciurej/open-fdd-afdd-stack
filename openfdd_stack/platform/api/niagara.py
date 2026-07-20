@@ -35,6 +35,14 @@ class NiagaraEndpointCreate(BaseModel):
     password: str
     ssl_verify: bool = Field(True, description="Set false for self-signed certs")
     enabled: bool = Field(True)
+    poll_enabled: bool = Field(
+        False,
+        description="Enable live-value polling for this endpoint (default off; requires per-point polling=true too).",
+    )
+    poll_equipment_delay_ms: Optional[int] = Field(
+        None,
+        description="Delay between successive BQL requests to this station, in ms. NULL falls back to OFDD_NIAGARA_POLL_EQUIPMENT_DELAY_MS.",
+    )
 
 
 class NiagaraEndpointUpdate(BaseModel):
@@ -46,6 +54,8 @@ class NiagaraEndpointUpdate(BaseModel):
     password: Optional[str] = None
     ssl_verify: Optional[bool] = None
     enabled: Optional[bool] = None
+    poll_enabled: Optional[bool] = None
+    poll_equipment_delay_ms: Optional[int] = None
 
 
 class NiagaraEndpointRead(BaseModel):
@@ -56,6 +66,8 @@ class NiagaraEndpointRead(BaseModel):
     username: str
     ssl_verify: bool
     enabled: bool
+    poll_enabled: bool = False
+    poll_equipment_delay_ms: Optional[int] = None
     last_scan_ts: Optional[str] = None
     last_sync_ts: Optional[str] = None
 
@@ -71,6 +83,8 @@ class NiagaraEndpointRead(BaseModel):
             username=row["username"],
             ssl_verify=bool(row["ssl_verify"]),
             enabled=bool(row["enabled"]),
+            poll_enabled=bool(row.get("poll_enabled", False)),
+            poll_equipment_delay_ms=row.get("poll_equipment_delay_ms"),
             last_scan_ts=_iso(row.get("last_scan_ts")),
             last_sync_ts=_iso(row.get("last_sync_ts")),
         )
@@ -85,6 +99,7 @@ class NiagaraSyncJobBody(BaseModel):
 
 _READ_COLS = (
     "id, site_id, name, base_url, username, ssl_verify, enabled, "
+    "poll_enabled, poll_equipment_delay_ms, "
     "last_scan_ts, last_sync_ts"
 )
 
@@ -172,8 +187,9 @@ def create_endpoint(site_id: str, body: NiagaraEndpointCreate):
                 cur.execute(
                     f"""
                     INSERT INTO site_niagara_endpoints
-                        (site_id, name, base_url, username, password, ssl_verify, enabled)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        (site_id, name, base_url, username, password, ssl_verify, enabled,
+                         poll_enabled, poll_equipment_delay_ms)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING {_READ_COLS}
                     """,
                     (
@@ -184,6 +200,8 @@ def create_endpoint(site_id: str, body: NiagaraEndpointCreate):
                         body.password,
                         body.ssl_verify,
                         body.enabled,
+                        body.poll_enabled,
+                        body.poll_equipment_delay_ms,
                     ),
                 )
                 row = cur.fetchone()
@@ -218,13 +236,15 @@ def update_endpoint(endpoint_id: str, body: NiagaraEndpointUpdate):
                 cur.execute(
                     f"""
                     UPDATE site_niagara_endpoints SET
-                        name       = COALESCE(%s, name),
-                        base_url   = COALESCE(%s, base_url),
-                        username   = COALESCE(%s, username),
-                        password   = COALESCE(%s, password),
-                        ssl_verify = COALESCE(%s, ssl_verify),
-                        enabled    = COALESCE(%s, enabled),
-                        updated_at = now()
+                        name                     = COALESCE(%s, name),
+                        base_url                 = COALESCE(%s, base_url),
+                        username                 = COALESCE(%s, username),
+                        password                 = COALESCE(%s, password),
+                        ssl_verify               = COALESCE(%s, ssl_verify),
+                        enabled                  = COALESCE(%s, enabled),
+                        poll_enabled             = COALESCE(%s, poll_enabled),
+                        poll_equipment_delay_ms  = COALESCE(%s, poll_equipment_delay_ms),
+                        updated_at               = now()
                     WHERE id = %s
                     RETURNING {_READ_COLS}
                     """,
@@ -235,6 +255,8 @@ def update_endpoint(endpoint_id: str, body: NiagaraEndpointUpdate):
                         password,
                         body.ssl_verify,
                         body.enabled,
+                        body.poll_enabled,
+                        body.poll_equipment_delay_ms,
                         endpoint_id,
                     ),
                 )
