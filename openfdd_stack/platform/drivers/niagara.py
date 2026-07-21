@@ -266,6 +266,76 @@ def _folder_ord_from_point_ord(point_ord: Optional[str]) -> Optional[str]:
     return s[:idx] if idx > 0 else None
 
 
+def _common_ancestor_ord(folder_ords: list[str]) -> Optional[str]:
+    """Longest shared ``slot:`` folder ORD across the given folder ORDs.
+
+    Used to scope one BQL request to a single equipment: the tightest folder that
+    still contains every one of that equipment's point folders. Returns ``None``
+    when the inputs share no ``slot:`` prefix.
+    """
+    folders = [f for f in folder_ords if f and f.startswith("slot:")]
+    if not folders:
+        return None
+    common = folders[0].split("/")
+    for f in folders[1:]:
+        parts = f.split("/")
+        i = 0
+        while i < len(common) and i < len(parts) and common[i] == parts[i]:
+            i += 1
+        common = common[:i]
+        if not common:
+            return None
+    folder = "/".join(common)
+    return folder if folder.startswith("slot:") else None
+
+
+def _poll_batches(points: list[dict]) -> list[tuple[str, str, list[dict]]]:
+    """Split polling points into ``(query_folder_ord, label, points)`` batches so
+    each station request is scoped to a single equipment.
+
+    Points are grouped by ``equipment_id``; the request folder for a group is the
+    common-ancestor folder of its points (one bounded BQL scan covers exactly
+    that equipment's subtree). Points with no equipment fall back to their own
+    parent folder, so nothing is silently dropped. Iterating the batches
+    sequentially keeps only one equipment's worth of points in flight per
+    request, instead of fanning a broad scan across the whole station.
+    """
+    by_equip: dict = {}
+    unassigned: list[dict] = []
+    for pt in points:
+        eq = pt.get("equipment_id")
+        if eq is None:
+            unassigned.append(pt)
+        else:
+            by_equip.setdefault(eq, []).append(pt)
+
+    batches: list[tuple[str, str, list[dict]]] = []
+    for eq_id, eq_points in by_equip.items():
+        label = eq_points[0].get("equipment_name") or str(eq_id)
+        parent_folders = [
+            _folder_ord_from_point_ord(p["niagara_nav_ord"]) for p in eq_points
+        ]
+        folder = _common_ancestor_ord([f for f in parent_folders if f])
+        if folder:
+            batches.append((folder, label, eq_points))
+        else:
+            logger.warning(
+                "poll: equipment %s has no common slot folder; %d point(s) skipped",
+                label, len(eq_points),
+            )
+
+    # Unassigned points keep the per-folder behaviour so they're still polled.
+    by_folder: dict = {}
+    for pt in unassigned:
+        folder = _folder_ord_from_point_ord(pt["niagara_nav_ord"])
+        if folder:
+            by_folder.setdefault(folder, []).append(pt)
+    for folder, pts in by_folder.items():
+        batches.append((folder, "(unassigned)", pts))
+
+    return batches
+
+
 # `2.00 °C {ok} @ def`, `1 {ok} @ def` (bool), `78 % {ok} @ 8`, `--- {down}`, etc.
 _POLL_VALUE_RE = re.compile(
     r"^\s*"
@@ -565,12 +635,15 @@ def _parse_bql_html_history(html: str, history_path: str) -> list[tuple[datetime
     return records
 
 
-def _parse_bql_html_scan(html: str) -> list[dict[str, str]]:
+def _parse_bql_html_scan(html: str) -> list[dict[str, Optional[str]]]:
     """
-    Parse the station-scan HTML table.
+    Parse a Niagara BQL HTML table (station scan *or* live-value poll).
 
-    Expected columns (case-insensitive): Device, PointLocation, Point, Tags.
-    Returns one dict per row with normalised keys: device, point_location, point, tags.
+    Required columns (case-insensitive): Device, PointLocation, Point, Tags.
+    The poll query additionally selects a ``Value`` column; it is captured under
+    the ``value`` key when present and is ``None`` on scan responses (which don't
+    select it). Returns one dict per row with normalised keys: device,
+    point_location, point, tags, value.
     """
     parser = _BqlTableParser()
     parser.feed(html)
@@ -590,6 +663,7 @@ def _parse_bql_html_scan(html: str) -> list[dict[str, str]]:
     loc_idx = _find("pointlocation", "point_location")
     point_idx = _find("point")
     tags_idx = _find("tags")
+    value_idx = _find("value")  # present on poll responses, absent on scans
 
     if None in (device_idx, loc_idx, point_idx, tags_idx):
         logger.warning(
@@ -597,7 +671,7 @@ def _parse_bql_html_scan(html: str) -> list[dict[str, str]]:
         )
         return []
 
-    rows: list[dict[str, str]] = []
+    rows: list[dict[str, Optional[str]]] = []
     for row in parser.rows:
         if len(row) <= max(device_idx, loc_idx, point_idx, tags_idx):
             continue
@@ -606,6 +680,11 @@ def _parse_bql_html_scan(html: str) -> list[dict[str, str]]:
             "point_location": row[loc_idx].strip(),
             "point": row[point_idx].strip(),
             "tags": row[tags_idx].strip(),
+            "value": (
+                row[value_idx].strip()
+                if value_idx is not None and value_idx < len(row)
+                else None
+            ),
         })
     return rows
 
@@ -1046,17 +1125,21 @@ def _load_polling_points_for_endpoint(endpoint_id: str) -> list[dict]:
 
     Filters to points that carry a nav ORD (needed to build the polling URL and
     match response rows back to point ids) AND haven't had polling explicitly
-    turned off. COALESCE(polling, true) preserves the pre-011 default.
+    turned off. COALESCE(polling, true) preserves the pre-011 default. The
+    equipment id + name come along so the poller can batch one bounded request
+    per equipment (see :func:`_poll_batches`).
     """
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, site_id, external_id, niagara_nav_ord
-                FROM points
-                WHERE niagara_endpoint_id = %s
-                  AND niagara_nav_ord IS NOT NULL
-                  AND COALESCE(polling, true) = true
+                SELECT p.id, p.site_id, p.external_id, p.niagara_nav_ord,
+                       p.equipment_id, e.name AS equipment_name
+                FROM points p
+                LEFT JOIN equipment e ON e.id = p.equipment_id
+                WHERE p.niagara_endpoint_id = %s
+                  AND p.niagara_nav_ord IS NOT NULL
+                  AND COALESCE(p.polling, true) = true
                 """,
                 (endpoint_id,),
             )
@@ -1098,14 +1181,16 @@ def _log_poll_row(
 
 
 def poll_niagara_endpoint(endpoint_id: str, default_delay_ms: int, request_timeout_sec: int = 30) -> dict:
-    """Poll one Niagara endpoint: group polling points by folder, BQL-scan each
-    folder sequentially, write readings.
+    """Poll one Niagara endpoint: group polling points by equipment, BQL-scan
+    each equipment's folder subtree sequentially, write readings.
 
-    ``default_delay_ms`` is the platform-level fallback; the per-endpoint override
+    Each request is scoped to a single equipment (via _poll_batches), so no one
+    query pulls the whole station at once. ``default_delay_ms`` is the
+    platform-level fallback between requests; the per-endpoint override
     (``site_niagara_endpoints.poll_equipment_delay_ms``) wins when set.
 
-    Returns a summary dict for the driver's aggregate report. Individual folder
-    successes/failures are also written to ``niagara_poll_log``.
+    Returns a summary dict for the driver's aggregate report. Individual
+    per-equipment successes/failures are also written to ``niagara_poll_log``.
     """
     endpoint = _get_endpoint_with_polling(endpoint_id)
     if not endpoint:
@@ -1128,12 +1213,10 @@ def poll_niagara_endpoint(endpoint_id: str, default_delay_ms: int, request_timeo
         )
         return {"ok": True, "folders": 0, "rows_inserted": 0, "note": "no polling points"}
 
-    # Group by folder ORD (parent of point's nav ORD).
-    groups: dict[str, list[dict]] = {}
-    for pt in points:
-        folder = _folder_ord_from_point_ord(pt["niagara_nav_ord"])
-        if folder:
-            groups.setdefault(folder, []).append(pt)
+    # One bounded request per equipment: group polling points by equipment and
+    # scan only that equipment's folder subtree (see _poll_batches). Sequential
+    # iteration keeps a single equipment's points in flight per station request.
+    batches = _poll_batches(points)
 
     delay_s = (endpoint.get("poll_equipment_delay_ms") or default_delay_ms) / 1000.0
     site_id = str(endpoint["site_id"])
@@ -1149,7 +1232,7 @@ def poll_niagara_endpoint(endpoint_id: str, default_delay_ms: int, request_timeo
     total_seen = 0
     cycle_started = time.monotonic()
 
-    for folder, expected_points in groups.items():
+    for folder, label, expected_points in batches:
         folder_started = time.monotonic()
         try:
             url = _build_polling_url(endpoint["base_url"], folder)
@@ -1186,7 +1269,9 @@ def poll_niagara_endpoint(endpoint_id: str, default_delay_ms: int, request_timeo
                 error=str(exc)[:500],
             )
         except Exception as exc:  # parse errors, unexpected shapes
-            logger.exception("poll: folder %s on endpoint %s failed", folder, endpoint_id)
+            logger.exception(
+                "poll: equipment %s (folder %s) on endpoint %s failed", label, folder, endpoint_id
+            )
             _log_poll_row(
                 endpoint_id=endpoint_id, endpoint_name=endpoint_name, site_id=site_id,
                 folder_ord=folder, status="parse_error",
@@ -1208,7 +1293,7 @@ def poll_niagara_endpoint(endpoint_id: str, default_delay_ms: int, request_timeo
     return {
         "ok": True,
         "endpoint_id": endpoint_id,
-        "folders": len(groups),
+        "folders": len(batches),
         "rows_seen": total_seen,
         "rows_inserted": total_inserted,
         "rows_unmatched": total_unmatched,

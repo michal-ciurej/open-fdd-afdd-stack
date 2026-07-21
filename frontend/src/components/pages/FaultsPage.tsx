@@ -443,7 +443,7 @@ function AttentionSection({
 
   const groups: { band: AttentionBand; label: string; dot: string }[] = [
     { band: "attention", label: "Needs attention now", dot: bandTint("attention").dot },
-    { band: "degraded", label: "Degraded — plan a visit", dot: bandTint("degraded").dot },
+    { band: "degraded", label: "Performance Degraded: plan a visit", dot: bandTint("degraded").dot },
   ];
 
   return (
@@ -455,7 +455,7 @@ function AttentionSection({
           Equipment needing attention
         </h2>
         <p className="mb-4 max-w-3xl text-xs text-muted-foreground">
-          Ranked by a derived <span className="font-medium text-foreground">attention score</span> —
+          Ranked by a derived <span className="font-medium text-foreground">attention score</span> :
           each active fault weighted by its severity and by how persistently it's firing (share of
           FDD checks it fails), summed per unit. Worst first.
         </p>
@@ -578,8 +578,7 @@ export function FaultsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Issues</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Equipment health, derived from FDD rule runs — ranked so you know which units to
-            send an engineer to first, not just how many alerts fired.
+            Equipment health, derived from FDD rule runs, ranked by highest number of issues spotted.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
