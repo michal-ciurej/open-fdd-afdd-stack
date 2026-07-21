@@ -27,7 +27,7 @@ import { useSiteContext } from "@/contexts/site-context";
 import { useAllEquipment, useEquipmentPoints } from "@/hooks/use-sites";
 import { useFaultDefinitions, useSiteFaults } from "@/hooks/use-faults";
 import { DataQueryWidget } from "@/components/dashboard/DataQueryWidget";
-import { FaultOverTimeChart } from "@/components/dashboard/FaultOverTimeChart";
+import { FaultOverTimeHeatmap } from "@/components/dashboard/FaultOverTimeHeatmap";
 import { EquipmentEnergyTab } from "@/components/equipment/EquipmentEnergyTab";
 import { updateEquipment } from "@/lib/crud-api";
 import { severityVariant, timeAgo, cn, isEquipmentObserved } from "@/lib/utils";
@@ -110,6 +110,7 @@ interface ActiveFaultsCardProps {
   faults: FaultState[];
   definitions: FaultDefinition[];
   isLoading: boolean;
+  className?: string;
 }
 
 function ActiveFaultsCard({
@@ -117,6 +118,7 @@ function ActiveFaultsCard({
   faults,
   definitions,
   isLoading,
+  className,
 }: ActiveFaultsCardProps) {
   const defMap = useMemo(
     () => new Map(definitions.map((d) => [d.fault_id, d])),
@@ -128,7 +130,7 @@ function ActiveFaultsCard({
   );
 
   return (
-    <Card className="flex h-full flex-col">
+    <Card className={cn("flex h-full flex-col", className)}>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <AlertTriangle className="h-4 w-4" />
@@ -223,12 +225,14 @@ interface FaultsChartCardProps {
   definitions: FaultDefinition[];
 }
 
-function FaultsChartCard({ equipment, definitions }: FaultsChartCardProps) {
-  const [preset, setPreset] = useState<ChartPreset>("7d");
+/** Full-width "Issues over time" heatmap: one row per unique flagged issue,
+ *  one column per day, cell intensity = issue count that day. */
+function IssuesOverTimeCard({ equipment, definitions }: FaultsChartCardProps) {
+  const [preset, setPreset] = useState<ChartPreset>("30d");
   const { start, end } = useMemo(() => presetWindow(preset), [preset]);
 
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="mb-6">
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <Activity className="h-4 w-4" />
@@ -236,16 +240,13 @@ function FaultsChartCard({ equipment, definitions }: FaultsChartCardProps) {
         </CardTitle>
         <ChartTogglePill value={preset} onChange={setPreset} />
       </CardHeader>
-      <CardContent className="flex-1 px-3 pb-3">
-        <FaultOverTimeChart
+      <CardContent>
+        <FaultOverTimeHeatmap
           siteId={equipment.site_id}
           definitions={definitions}
-          preset={preset}
           start={start}
           end={end}
-          bucket="day"
-          equipmentIds={[equipment.id]}
-          height={240}
+          equipmentId={equipment.id}
         />
       </CardContent>
     </Card>
@@ -412,16 +413,17 @@ export function EquipmentDetailPage() {
             </Card>
 
             <ActiveFaultsCard
+              className="lg:col-span-2"
               equipmentId={equipment.id}
               faults={siteFaults}
               definitions={definitions}
               isLoading={faultsLoading}
             />
-
-            <FaultsChartCard equipment={equipment} definitions={definitions} />
           </div>
 
-        <DataQueryWidget siteId={equipment.site_id} equipmentId={equipment.id} />
+          <IssuesOverTimeCard equipment={equipment} definitions={definitions} />
+
+          <DataQueryWidget siteId={equipment.site_id} equipmentId={equipment.id} />
 
 
           <Card className="mb-6">
